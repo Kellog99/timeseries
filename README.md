@@ -11,9 +11,7 @@ This library allows to:
 What is a multivariate timeseries?
 
 **Definition**   
-A multivariate timeseries is a finite part of a realization from a stochastic process $\{X_t,t\in T\}$ in $\mathbb{R}^k$, i.e.
-$\{X_t,t\in T_0\}\subseteq\mathbb{R}^k$
-with $T_0\subset T$
+A multivariate timeseries is a finite part of a realization from a stochastic process $\{X_t,t\in T\}$ in $\mathbb{R}^k$, i.e. $\{X_t,t\in T_0\}\subseteq\mathbb{R}^k$ with $T_0\subset T$
 
 
 In this case $\mathbb{R}^k$ is the result of a concatenation of 2 space:
@@ -21,10 +19,8 @@ In this case $\mathbb{R}^k$ is the result of a concatenation of 2 space:
 1. $\mathcal{C} \subset \mathbf{N}^c$ the set of categorical variables.
 2. $\mathcal{W} \subset \mathbf{R}^{k-c}$ the set of numerical variables
 
-For this reason it is possible to write $\forall t\in T_0$
-\[
-X_t=c_tw_t\qquad c_t\in\mathcal{C}, w_t\in \mathcal{W}
-\]
+For this reason it is possible to write $\forall t\in T_0, 
+X_t=c_tw_t$ with $c_t\in\mathcal{C}, w_t\in \mathcal{W}$
 where $c_tw_t$ means concatenation.
 
 ***   
@@ -67,38 +63,38 @@ The output of a new model must be $[B,L,C,1]$ in case of single prediction or $[
 Try to reuse some of the common keyworks while building your model. After the initialization of the model you can use whatever variable you want but during the initialization please use the following conventions.
 This frist block maybe is common between several architectures:
 
-- **past_steps** = int. THIS IS CRUCIAL and self explanatory
-- **future_steps** = int. THIS IS CRUCIAL and self explanatory
-- **past_channels** = len(ts.num_var). THIS IS CRUCIAL and self explanatory
-- **future_channels** = len(ts.future_variables). THIS IS CRUCIAL and self explanatory
-- **embs** = [ts.dataset[c].nunique() for c in ts.cat_var]. THIS IS CRUCIAL and self explanatory. 
-- **out_channels** = len(ts.target_variables). THIS IS CRUCIAL and self explanatory
-- **cat_emb_dim** = int. Dimension of embedded categorical variables, the choice here is to use a constant value and let the user chose if concatenate or sum the variables
-- **sum_emb** = boolean. If true the contribution of each categorical variable is summed
-- **quantiles**=[0.1,0.5,0.9]. Quantiles for quantile loss
-- **kind** =str. If there are some similar architectures with small differences maybe is better to use the same code specifying some properties (e.g. GRU vs LSTM)
-- **activation**='relu'. activation function between layers, it can be one between relu, selu or prelu (Notice that if selu is used the batch normalization will be disabled)
-- **dropout_rate**=0.1. dropout rate
-- **use_bn**=False. Use or not batch normalization
+- `past_steps` = int. THIS IS CRUCIAL and self explanatory
+- `future_steps` = int. THIS IS CRUCIAL and self explanatory
+- `past_channels` = len(ts.num_var). THIS IS CRUCIAL and self explanatory
+- `future_channels` = len(ts.future_variables). THIS IS CRUCIAL and self explanatory
+- `embs` = [ts.dataset[c].nunique() for c in ts.cat_var]. THIS IS CRUCIAL and self explanatory. 
+- `out_channels` = len(ts.target_variables). THIS IS CRUCIAL and self explanatory
+- `cat_emb_dim` = int. Dimension of embedded categorical variables, the choice here is to use a constant value and let the user chose if concatenate or sum the variables
+- `sum_emb` = boolean. If true the contribution of each categorical variable is summed
+- `quantiles`=[0.1,0.5,0.9]. Quantiles for quantile loss
+- `kind` =str. If there are some similar architectures with small differences maybe is better to use the same code specifying some properties (e.g. GRU vs LSTM)
+- `activation`='relu'. activation function between layers, it can be one between relu, selu or prelu (Notice that if selu is used the batch normalization will be disabled)
+- `dropout_rate`=0.1. dropout rate
+- `use_bn`=False. Use or not batch normalization
 
 
 some are more specific for RNN-CONV architectures:
 
-- **hidden_RNN** = int. If there are some RNN use this and the following
-- **num_layers_RNN** = int.
-- **kernel_size** = int. If there are some convolutional layers
+- `hidden_RNN` = int. If there are some RNN use this and the following
+- `num_layers_RNN` = int.
+- `kernel_size` = int. If there are some convolutional layers
 
 linear:
-- **hidden_size** = int. Usually the hidden dimension, for some architecture maybe you can pass the list of the dimensions
-- **kind** =str. Type of linear approach
+- `hidden_size` = int. Usually the hidden dimension, for some architecture maybe you can pass the list of the dimensions
+- `kind` =str. Type of linear approach
 
 or attention based models:
 
-- **d_model** = int .d_model of a typical attention layer
-- **num_heads** = int .Heads
-- **dropout** = float. dropout
-- **n_layer_encoder** = int. encoder layers
-- **n_layer_decoder** = int. decoder layers
+- `d_model` = int .d_model of a typical attention layer
+- `num_heads` = int .Heads
+- `dropout` = float. dropout
+- `n_layer_encoder` = int. encoder layers
+- `n_layer_decoder` = int. decoder layers
 
 ## Organization
 Here below it is represented how this library it is organized.
@@ -108,10 +104,10 @@ Here below it is represented how this library it is organized.
     * `model.py` : it is the python file that define the model
     * `training.py` : it contains the procedure for training that specific model 
     * `config.yaml` : it is the dictionary that store the global information of the model itself
-    
+    * `README.md` : it provides the description of the model and the reference for further information
 * `data_managment`
-* `main.py`
-
+* `main.py`: it is the main block that allows to test all the models on the same dataset
+* `global_env.yaml`: it contains the main information about the global variables, i.e. `past_step`, `future_step` ... that are passed to each model.
 
 ## How to
 
