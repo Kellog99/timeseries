@@ -1,4 +1,4 @@
-# DSIPTS: unified library for timeseries modelling
+# LAZY-TS: unified library for timeseries regression
 
 This library allows to:
 
@@ -12,12 +12,10 @@ What is a multivariate timeseries?
 
 **Definition**   
 A multivariate timeseries is a finite part of a realization from a stochastic process $\{X_t,t\in T\}$ in $\mathbb{R}^k$, i.e.
-\[
-\{X_t,t\in T_0\}\subseteq\mathbb{R}^k
-\]
+$\{X_t,t\in T_0\}\subseteq\mathbb{R}^k$
 with $T_0\subset T$
 
-\noindent
+
 In this case $\mathbb{R}^k$ is the result of a concatenation of 2 space:
 
 1. $\mathcal{C} \subset \mathbf{N}^c$ the set of categorical variables.
@@ -101,6 +99,18 @@ or attention based models:
 - **dropout** = float. dropout
 - **n_layer_encoder** = int. encoder layers
 - **n_layer_decoder** = int. decoder layers
+
+## Organization
+Here below it is represented how this library it is organized.
+
+* `models`
+  * `nome_modello`:
+    * `model.py` : it is the python file that define the model
+    * `training.py` : it contains the procedure for training that specific model 
+    * `config.yaml` : it is the dictionary that store the global information of the model itself
+    
+* `data_managment`
+* `main.py`
 
 
 ## How to
