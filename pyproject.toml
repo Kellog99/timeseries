@@ -1,0 +1,25 @@
+[project]
+name = "timeseries"
+version = "0.0.1"
+authors = [
+    { name = "Andrea Chelini", email = "a.chelini99@gmail.com" }
+]
+description = "Python library for time series forecasting"
+readme = "README.md"
+dependencies = [
+    "pandas==1.5.3",
+    "numpy",
+    "scikit-learn",
+    "beautifulsoup4==4.12.0",
+    "html5lib",
+    "ipdb==0.13.13",
+    "html-table-parser-python3==0.3.1",
+    "omegaconf",
+    "plotly",
+    "kaleido",
+    "sphinx",
+    "sphinx_rtd_theme",
+    "hydra-core",
+    "einops",
+    "torch>=2.9.1",
+]
