@@ -1,0 +1,36 @@
+{
+  "name": "GOLD",
+  "description": "Gold spot price per ounce (USD) history",
+  "history": {
+    "2025/10/10": {
+      "daily_min": 2645.80,
+      "daily_max": 2668.40,
+      "daily_avg": 2657.10
+    },
+    "2025/10/11": {
+      "daily_min": 2652.30,
+      "daily_max": 2675.90,
+      "daily_avg": 2664.10
+    },
+    "2025/10/12": {
+      "daily_min": 2648.20,
+      "daily_max": 2671.50,
+      "daily_avg": 2659.85
+    },
+    "2025/10/13": {
+      "daily_min": 2640.50,
+      "daily_max": 2663.80,
+      "daily_avg": 2652.15
+    },
+    "2025/10/14": {
+      "daily_min": 2638.70,
+      "daily_max": 2661.20,
+      "daily_avg": 2649.95
+    },
+    "2025/10/15": {
+      "daily_min": 2655.40,
+      "daily_max": 2678.90,
+      "daily_avg": 2667.15
+    }
+  }
+}

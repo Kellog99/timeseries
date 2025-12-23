@@ -1,0 +1,36 @@
+{
+  "name": "NASDAQ",
+  "description": "NASDAQ Composite index history",
+  "history": {
+    "2025/10/10": {
+      "daily_min": 18420.50,
+      "daily_max": 18585.30,
+      "daily_avg": 18502.90
+    },
+    "2025/10/11": {
+      "daily_min": 18475.20,
+      "daily_max": 18640.75,
+      "daily_avg": 18558.00
+    },
+    "2025/10/12": {
+      "daily_min": 18390.40,
+      "daily_max": 18555.60,
+      "daily_avg": 18473.00
+    },
+    "2025/10/13": {
+      "daily_min": 18320.10,
+      "daily_max": 18490.25,
+      "daily_avg": 18405.18
+    },
+    "2025/10/14": {
+      "daily_min": 18285.90,
+      "daily_max": 18460.40,
+      "daily_avg": 18373.15
+    },
+    "2025/10/15": {
+      "daily_min": 18410.30,
+      "daily_max": 18590.50,
+      "daily_avg": 18500.40
+    }
+  }
+}

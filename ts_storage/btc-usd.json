@@ -1,0 +1,36 @@
+{
+  "name": "BTC-USD",
+  "description": "Bitcoin to USD price history",
+  "history": {
+    "2025/10/10": {
+      "daily_min": 62450.00,
+      "daily_max": 64280.50,
+      "daily_avg": 63365.25
+    },
+    "2025/10/11": {
+      "daily_min": 63120.00,
+      "daily_max": 65890.75,
+      "daily_avg": 64505.38
+    },
+    "2025/10/12": {
+      "daily_min": 62890.50,
+      "daily_max": 65120.00,
+      "daily_avg": 64005.25
+    },
+    "2025/10/13": {
+      "daily_min": 61750.00,
+      "daily_max": 64450.25,
+      "daily_avg": 63100.13
+    },
+    "2025/10/14": {
+      "daily_min": 62300.00,
+      "daily_max": 65200.50,
+      "daily_avg": 63750.25
+    },
+    "2025/10/15": {
+      "daily_min": 63500.00,
+      "daily_max": 66150.75,
+      "daily_avg": 64825.38
+    }
+  }
+}

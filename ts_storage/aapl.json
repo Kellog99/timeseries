@@ -1,0 +1,36 @@
+{
+  "name": "AAPL",
+  "description": "Apple Inc. stock price history",
+  "history": {
+    "2025/10/10": {
+      "daily_min": 225.40,
+      "daily_max": 228.75,
+      "daily_avg": 227.08
+    },
+    "2025/10/11": {
+      "daily_min": 226.80,
+      "daily_max": 230.20,
+      "daily_avg": 228.50
+    },
+    "2025/10/12": {
+      "daily_min": 225.10,
+      "daily_max": 229.45,
+      "daily_avg": 227.28
+    },
+    "2025/10/13": {
+      "daily_min": 223.50,
+      "daily_max": 227.90,
+      "daily_avg": 225.70
+    },
+    "2025/10/14": {
+      "daily_min": 224.20,
+      "daily_max": 228.60,
+      "daily_avg": 226.40
+    },
+    "2025/10/15": {
+      "daily_min": 226.50,
+      "daily_max": 231.00,
+      "daily_avg": 228.75
+    }
+  }
+}

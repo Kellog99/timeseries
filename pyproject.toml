@@ -6,6 +6,7 @@ authors = [
 ]
 description = "Python library for time series forecasting"
 readme = "README.md"
+requires-python = ">=3.12"
 dependencies = [
     "pandas==1.5.3",
     "numpy",
@@ -22,4 +23,5 @@ dependencies = [
     "hydra-core",
     "einops",
     "torch>=2.9.1",
+    "uvicorn[standard]>=0.40.0",
 ]

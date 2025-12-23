@@ -1,0 +1,36 @@
+{
+  "name": "S&P500",
+  "description": "S&P500 stock options history",
+  "history": {
+    "2025/10/10": {
+      "daily_min": 10,
+      "daily_max": 12,
+      "daily_avg": 11
+    },
+    "2025/10/11": {
+      "daily_min": 11,
+      "daily_max": 13,
+      "daily_avg": 12
+    },
+    "2025/10/12": {
+      "daily_min": 10.5,
+      "daily_max": 14,
+      "daily_avg": 12
+    },
+    "2025/10/13": {
+      "daily_min": 10.5,
+      "daily_max": 14,
+      "daily_avg": 12
+    },
+    "2025/10/14": {
+      "daily_min": 10.5,
+      "daily_max": 14,
+      "daily_avg": 12
+    },
+    "2025/10/15": {
+      "daily_min": 10.5,
+      "daily_max": 14,
+      "daily_avg": 12
+    }
+  }
+}

@@ -520,7 +520,7 @@ if __name__=='__main__':
         quantiles = [0.1, 0.5, 0.9]
         loss = [0]*len(quantiles)
         target = torch.randint(-2, 2, (bs, lag))
-        # last_linear in model.py
+        # last_linear in models.py
         out_linear = nn.Linear(d_model, len(quantiles))
         out = out_linear(out)
         for i, q in enumerate(quantiles):
