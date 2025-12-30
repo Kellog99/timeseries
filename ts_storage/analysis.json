@@ -1,0 +1,37 @@
+{
+  "portfolio_id": "PORT_001",
+  "last_updated": "2025-12-30T00:00:00Z",
+  "metrics": {
+    "sharpe_ratio": 0.9,
+    "inv_return": 0.02,
+    "variance": 0.33
+  },
+  "current_holdings": {
+    "stocks": 15000.50,
+    "bonds": 8000.75,
+    "currency": 3000.25,
+    "crypto": 2000.00,
+    "etf": 12000.99,
+    "total_value": 40002.49
+  },
+  "history": [
+    {
+      "date": "2025-12-28",
+      "mean": 39500.25,
+      "max": 39850.60,
+      "min": 39200.10
+    },
+    {
+      "date": "2025-12-29",
+      "mean": 39800.50,
+      "max": 40100.25,
+      "min": 39650.75
+    },
+    {
+      "date": "2025-12-30",
+      "mean": 40000.80,
+      "max": 40250.30,
+      "min": 39850.25
+    }
+  ]
+}

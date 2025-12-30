@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to the TITANN Job API"}
+    return {"message": "Welcome to the Finance Job API"}
 
 
 def parse_arguments():
@@ -37,7 +37,7 @@ def parse_arguments():
     parser.add_argument(
         "--ts_storage", "-ds",
         type=str,
-        default="./time_series_repo",
+        default="./ts_storage",
         help="Path to internal storage of timeseries."
     )
 

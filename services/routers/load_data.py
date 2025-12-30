@@ -4,7 +4,7 @@ import os
 from fastapi import APIRouter
 from fastapi.params import Query
 
-from .models import Data, History
+from .models import Data, History, Portfolio
 
 router = APIRouter(prefix="/load")
 
@@ -32,3 +32,18 @@ def get_data(
                 )
             )
     return out
+
+
+@router.get("/portfolio")
+def get_portfolio(
+        portfolio_path: str = Query(
+            default=...,
+            description="It represent the path to the portfolio time series."
+        )
+) -> Portfolio:
+    if os.path.exists(portfolio_path):
+        with open(portfolio_path, "r") as f:
+            data_json = json.load(f)
+        return Portfolio.model_validate_json(data_json)
+    else:
+        raise ValueError("The path to the portfolio analysis does not exists")
