@@ -5,15 +5,18 @@ from pydantic import BaseModel, Field
 
 
 class History(BaseModel):
-    daily_min: float
-    daily_max: float
-    daily_avg: float
+    Date: str
+    Low: float
+    High: float
+    Open: float
+    Close: float
+    Volume: int
 
 
 class Data(BaseModel):
     name: str
     description: str
-    history: dict[str, History]
+    history: list[History]
 
 
 class Holdings(BaseModel):
@@ -32,7 +35,7 @@ class Holdings(BaseModel):
         ge=0,
         description="Value of stocks"
     )
-    cripto: Optional[float] = Field(
+    crypto: Optional[float] = Field(
         default=None,
         ge=0,
         description="Value of stocks"
@@ -72,32 +75,3 @@ class Portfolio(BaseModel):
         default=[],
         description="Daily historical data"
     )
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "portfolio_id": "PORT_001",
-                "last_updated": "2025-12-30T00:00:00Z",
-                "metrics": {
-                    "sharpe_ratio": 0.9,
-                    "inv_return": 0.02,
-                    "variance": 0.33
-                },
-                "current_holdings": {
-                    "stocks": 15000.50,
-                    "bonds": 8000.75,
-                    "currency": 3000.25,
-                    "crypto": 2000.00,
-                    "etf": 12000.99,
-                    "total_value": 40002.49
-                },
-                "history": [
-                    {
-                        "date": "2025-12-28",
-                        "mean": 39500.25,
-                        "max": 39850.60,
-                        "min": 39200.10
-                    }
-                ]
-            }
-        }
