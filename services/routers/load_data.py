@@ -2,7 +2,7 @@ import json
 import os
 
 import yfinance as yf
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.params import Query
 
 from .models import Data, Portfolio, History
@@ -11,23 +11,31 @@ router = APIRouter(prefix="/load")
 
 
 @router.get("/data")
-def get_data() -> list[Data]:
-    tickers = [
-        "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL",
-        "GOOG", "META", "AVGO", "TSLA",
-        "LLY", "WMT", "JPM", "V", "ORCL",
-        "MA", "XOM", "JNJ", "PLTR", "ABBV",
-        "BAC", "NFLX", "COST", "AMD", "HD",
-        "PG", "MU", "GE", "CSCO", "CVX"
-    ]
+def get_data(
+        ticker: str = Query(
+            default=...,
+            description="Ticker to ask for the data"
+        ),
+        data_path: str = Query(
+            default="/home/andrea/Desktop/projects/timeseries/ts_storage/data",
+            description="Time series already saved"
+        ),
+        save: bool = Query(
+            default=True,
+            description="It tells whether a new ticker has to be saved into the data path folder."
+        )) -> Data:
+    try:
+        data_path = os.path.join(data_path, f"{ticker}.json")
+        if os.path.exists(data_path):
+            with open(data_path, "r") as f:
+                data_json = json.load(f)
+            return Data.model_validate(data_json)
 
-    out: list[Data] = []
-    miss_labelled = {
-        'date': 'Date',
-        'daily_min': 'Low',
-        'daily_max': 'High'
-    }
-    for ticker in tickers:
+        miss_labelled = {
+            'date': 'Date',
+            'daily_min': 'Low',
+            'daily_max': 'High'
+        }
         tick = yf.Ticker(ticker)
         history = tick.history(period="max")
         history.reset_index(inplace=True)
@@ -37,28 +45,42 @@ def get_data() -> list[Data]:
         for c in miss_labelled.keys():
             if c in history.columns:
                 history.rename(columns={c: miss_labelled[c]})
+
         ################# Description #################
         desc = "No description provided"
-        if "longBusinessSummary" in tick.info:
-            desc = tick.info["longBusinessSummary"]
+        try:
+            info = tick.info
+            if "longBusinessSummary" in info:
+                desc = tick.info["longBusinessSummary"]
+
+        except Exception as e:
+            # Handle yfinance-specific errors
+            raise HTTPException(
+                status_code=503,
+                detail=f"Unable to fetch data for {ticker}: {str(e)}"
+            )
         ###############################################
 
-        out.append(
-            Data(
-                name=ticker,
-                description=desc,
-                history=[History.model_validate(value) for value in
-                         history[[
-                             "Date",
-                             "Open",
-                             "Close",
-                             "High",
-                             "Low",
-                             "Volume"
-                         ]].to_dict(orient="records")]
-            ))
+        data = Data(
+            name=ticker,
+            description=desc,
+            history=[History.model_validate(value) for value in
+                     history[[
+                         "Date",
+                         "Open",
+                         "Close",
+                         "High",
+                         "Low",
+                         "Volume"
+                     ]].to_dict(orient="records")]
+        )
+        if save:
+            with open(data_path, "w") as f:
+                json.dump(data.model_dump(), f)
 
-    return out
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/portfolio")
