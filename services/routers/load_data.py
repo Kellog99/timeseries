@@ -16,6 +16,10 @@ def get_data(
             default=...,
             description="Ticker to ask for the data"
         ),
+        step_size: int = Query(
+            default=100,
+            description="Step between each point in the plot"
+        ),
         data_path: str = Query(
             default="/home/andrea/Desktop/projects/timeseries/ts_storage/data",
             description="Time series already saved"
@@ -29,56 +33,59 @@ def get_data(
         if os.path.exists(data_path):
             with open(data_path, "r") as f:
                 data_json = json.load(f)
-            return Data.model_validate(data_json)
+            out: Data = Data.model_validate(data_json)
+        else:
+            miss_labelled = {
+                'date': 'Date',
+                'daily_min': 'Low',
+                'daily_max': 'High'
+            }
+            tick = yf.Ticker(ticker)
+            history = tick.history(period="max")
+            history.reset_index(inplace=True)
+            if "Date" in history.columns:
+                history.Date = history.Date.apply(lambda x: x.strftime('%Y-%m-%d'))
 
-        miss_labelled = {
-            'date': 'Date',
-            'daily_min': 'Low',
-            'daily_max': 'High'
-        }
-        tick = yf.Ticker(ticker)
-        history = tick.history(period="max")
-        history.reset_index(inplace=True)
-        if "Date" in history.columns:
-            history.Date = history.Date.apply(lambda x: x.strftime('%Y-%m-%d'))
+            for c in miss_labelled.keys():
+                if c in history.columns:
+                    history.rename(columns={c: miss_labelled[c]})
 
-        for c in miss_labelled.keys():
-            if c in history.columns:
-                history.rename(columns={c: miss_labelled[c]})
+            ################# Description #################
+            desc = "No description provided"
+            try:
+                info = tick.info
+                if "longBusinessSummary" in info:
+                    desc = tick.info["longBusinessSummary"]
 
-        ################# Description #################
-        desc = "No description provided"
-        try:
-            info = tick.info
-            if "longBusinessSummary" in info:
-                desc = tick.info["longBusinessSummary"]
+            except Exception as e:
+                # Handle yfinance-specific errors
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Unable to fetch data for {ticker}: {str(e)}"
+                )
+            ###############################################
 
-        except Exception as e:
-            # Handle yfinance-specific errors
-            raise HTTPException(
-                status_code=503,
-                detail=f"Unable to fetch data for {ticker}: {str(e)}"
+            out = Data(
+                name=ticker,
+                description=desc,
+                history=[History.model_validate(value) for value in
+                         history[[
+                             "Date",
+                             "Open",
+                             "Close",
+                             "High",
+                             "Low",
+                             "Volume"
+                         ]].to_dict(orient="records")]
             )
-        ###############################################
+            if save:
+                with open(data_path, "w") as f:
+                    json.dump(out.model_dump(), f)
 
-        data = Data(
-            name=ticker,
-            description=desc,
-            history=[History.model_validate(value) for value in
-                     history[[
-                         "Date",
-                         "Open",
-                         "Close",
-                         "High",
-                         "Low",
-                         "Volume"
-                     ]].to_dict(orient="records")]
-        )
-        if save:
-            with open(data_path, "w") as f:
-                json.dump(data.model_dump(), f)
+        # Reducing the dimensionality of the history array
+        out.history = [value for i, value in enumerate(out.history) if i % step_size == 0]
+        return out
 
-        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

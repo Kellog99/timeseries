@@ -1,6 +1,7 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Annotated
 
+from annotated_types import Ge
 from pydantic import BaseModel, Field
 
 
@@ -53,6 +54,12 @@ class Metrics(BaseModel):
     variance: Optional[float] = None
 
 
+class InvestmentHistory(BaseModel):
+    Date: str
+    Invested: Annotated[float, Ge(0.)]
+    Value: Annotated[float, Ge(0.)]
+
+
 class Portfolio(BaseModel):
     """Complete portfolio model"""
     portfolio_id: str = Field(
@@ -69,9 +76,13 @@ class Portfolio(BaseModel):
     )
     holdings: Holdings = Field(
         default=...,
-        description="The amount of money for each type of investment in the portfolio."
+        description="The amount of money in the portfolio, for each category, value."
     )
-    history: List[History] = Field(
+    investment: Holdings = Field(
+        default=...,
+        description="The amount of money invested for each category."
+    )
+    history: List[InvestmentHistory] = Field(
         default=[],
         description="Daily historical data"
     )
