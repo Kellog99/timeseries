@@ -1,132 +1,116 @@
-from typing import Literal
-
 import torch
-import torch.nn as nn
+from torchmetrics import Metric
 
 
-class TimeSeriesCorrelation(nn.Module):
-    """
-    Compute correlation metrics among multiple time series.
+class CrossCorrelationMatrix(Metric):
+    """Computes the p x q correlation matrix between two latent spaces."""
 
-    Args:
-        method: Correlation method ('pearson' or 'spearman')
-        reduction: How to aggregate pairwise correlations
-            - 'mean': Average of all pairwise correlations
-            - 'min': Minimum correlation (weakest relationship)
-            - 'max': Maximum correlation (strongest relationship)
-            - 'none': Return full correlation matrix
-        dim: Dimension along which series are arranged (default: 1)
-    """
-
-    def __init__(
-            self,
-            method: Literal['pearson', 'spearman'] = 'pearson',
-            reduction: Literal['mean', 'min', 'max', 'none'] = 'mean',
-            dim: int = 1
-    ):
+    def __init__(self):
         super().__init__()
-        self.method = method
-        self.reduction = reduction
-        self.dim = dim
+        self.add_state("x_list", default=[], dist_reduce_effect="cat")
+        self.add_state("y_list", default=[], dist_reduce_effect="cat")
 
-    def _pearson_correlation(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute Pearson correlation matrix."""
-        # Center the data
-        x_centered = x - x.mean(dim=-1, keepdim=True)
+    def update(self, x: torch.Tensor, y: torch.Tensor) -> None:
+        self.x_list.append(x)
+        self.y_list.append(y)
 
-        # Compute covariance matrix
-        cov = torch.matmul(x_centered, x_centered.transpose(-2, -1))
+    def compute(self) -> float:
+        X = torch.cat(self.x_list, dim=0)
+        Y = torch.cat(self.y_list, dim=0)
 
-        # Compute standard deviations
-        std = torch.sqrt(torch.sum(x_centered ** 2, dim=-1, keepdim=True))
+        X_c = X - X.mean(dim=0)
+        Y_c = Y - Y.mean(dim=0)
 
-        # Compute correlation matrix
-        corr = cov / (torch.matmul(std, std.transpose(-2, -1)) + 1e-8)
+        cov = torch.mm(X_c.t(), Y_c) / (X.size(0) - 1)
+        std_x = torch.std(X, dim=0, keepdim=True).t()
+        std_y = torch.std(Y, dim=0, keepdim=True)
 
-        return corr
+        return cov / (std_x @ std_y + 1e-8)
 
-    def _spearman_correlation(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute Spearman rank correlation matrix."""
-        # Convert to ranks
-        ranks = self._compute_ranks(x)
 
-        # Compute Pearson correlation on ranks
-        return self._pearson_correlation(ranks)
+class CanonicalCorrelation(Metric):
+    """Computes the first (highest) canonical correlation value."""
 
-    def _compute_ranks(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute ranks along the time dimension."""
-        # Get sorting indices
-        sorted_indices = torch.argsort(x, dim=-1)
+    def __init__(self):
+        super().__init__()
+        self.add_state("x_list", default=[], dist_reduce_effect="cat")
+        self.add_state("y_list", default=[], dist_reduce_effect="cat")
 
-        # Create ranks tensor
-        ranks = torch.zeros_like(x)
+    def update(self, x: torch.Tensor, y: torch.Tensor):
+        self.x_list.append(x)
+        self.y_list.append(y)
 
-        # Assign ranks
-        batch_size, n_series, n_timesteps = x.shape
-        for i in range(batch_size):
-            for j in range(n_series):
-                ranks[i, j, sorted_indices[i, j]] = torch.arange(
-                    n_timesteps, dtype=x.dtype, device=x.device
-                )
+    def compute(self) -> float:
+        X = torch.cat(self.x_list, dim=0)
+        Y = torch.cat(self.y_list, dim=0)
 
-        return ranks
+        # Center and Orthogonalize
+        X_c = X - X.mean(dim=0)
+        Y_c = Y - Y.mean(dim=0)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Compute correlation among time series.
+        # QR decomposition for numerical stability in high dimensions
+        Qx, _ = torch.linalg.qr(X_c)
+        Qy, _ = torch.linalg.qr(Y_c)
 
-        Args:
-            x: Input tensor of shape (batch, n_series, time_steps)
-               or (n_series, time_steps) for single batch
+        # Singular values of the product are the canonical correlations
+        S = torch.linalg.svdvals(torch.mm(Qx.t(), Qy))
+        return S[0]
 
-        Returns:
-            Correlation value(s) based on reduction method:
-            - 'mean'/'min'/'max': Scalar or (batch,) tensor
-            - 'none': (batch, n_series, n_series) correlation matrix
-        """
-        # Handle single batch case
-        if x.ndim == 2:
-            x = x.unsqueeze(0)
-            squeeze_output = True
-        else:
-            squeeze_output = False
 
-        # Ensure correct dimension order
-        if self.dim != 1:
-            x = x.transpose(1, self.dim)
+class RVCoefficient(Metric):
+    """Computes the RV coefficient (multivariate generalization of R^2)."""
 
-        # Compute correlation matrix
-        if self.method == 'pearson':
-            corr_matrix = self._pearson_correlation(x)
-        elif self.method == 'spearman':
-            corr_matrix = self._spearman_correlation(x)
-        else:
-            raise ValueError(f"Unknown method: {self.method}")
+    def __init__(self):
+        super().__init__()
+        self.add_state("x_list", default=[], dist_reduce_effect="cat")
+        self.add_state("y_list", default=[], dist_reduce_effect="cat")
 
-        # Apply reduction
-        if self.reduction == 'none':
-            result = corr_matrix
-        else:
-            # Get upper triangle (excluding diagonal) for pairwise correlations
-            batch_size, n_series = corr_matrix.shape[0], corr_matrix.shape[1]
-            mask = torch.triu(torch.ones(n_series, n_series, device=x.device), diagonal=1).bool()
+    def update(self, x: torch.Tensor, y: torch.Tensor):
+        self.x_list.append(x)
+        self.y_list.append(y)
 
-            if self.reduction == 'mean':
-                result = torch.stack([
-                    corr_matrix[i][mask].mean() for i in range(batch_size)
-                ])
-            elif self.reduction == 'min':
-                result = torch.stack([
-                    corr_matrix[i][mask].min() for i in range(batch_size)
-                ])
-            elif self.reduction == 'max':
-                result = torch.stack([
-                    corr_matrix[i][mask].max() for i in range(batch_size)
-                ])
-            else:
-                raise ValueError(f"Unknown reduction: {self.reduction}")
+    def compute(self) -> float:
+        X = torch.cat(self.x_list, dim=0)
+        Y = torch.cat(self.y_list, dim=0)
 
-        if squeeze_output and self.reduction != 'none':
-            result = result.squeeze(0)
+        X_c = X - X.mean(dim=0)
+        Y_c = Y - Y.mean(dim=0)
 
-        return result
+        # Build Similarity Matrices
+        SXX = torch.mm(X_c, X_c.t())
+        SYY = torch.mm(Y_c, Y_c.t())
+
+        num = torch.trace(torch.mm(SXX, SYY))
+        den = torch.sqrt(torch.trace(torch.mm(SXX, SXX)) * torch.trace(torch.mm(SYY, SYY)))
+        return num / (den + 1e-8)
+
+
+class DistanceCorrelation(Metric):
+    """Computes Distance Correlation (captures non-linear dependence)."""
+
+    def __init__(self):
+        super().__init__()
+        self.add_state("x_list", default=[], dist_reduce_effect="cat")
+        self.add_state("y_list", default=[], dist_reduce_effect="cat")
+
+    def update(self, x: torch.Tensor, y: torch.Tensor):
+        self.x_list.append(x)
+        self.y_list.append(y)
+
+    def compute(self) -> float:
+        X = torch.cat(self.x_list, dim=0)
+        Y = torch.cat(self.y_list, dim=0)
+        n = X.size(0)
+
+        def double_center(mat):
+            return mat - mat.mean(dim=1, keepdim=True) - mat.mean(dim=0, keepdim=True) + mat.mean()
+
+        # Compute Euclidean distances
+        A = double_center(torch.cdist(X, X, p=2))
+        B = double_center(torch.cdist(Y, Y, p=2))
+
+        dcov2 = torch.sum(A * B) / (n * n)
+        dvarX2 = torch.sum(A * A) / (n * n)
+        dvarY2 = torch.sum(B * B) / (n * n)
+
+        return torch.sqrt(dcov2 / (torch.sqrt(dvarX2 * dvarY2) + 1e-8))
