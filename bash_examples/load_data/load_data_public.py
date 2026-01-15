@@ -1,6 +1,4 @@
-import os
-import pickle
-from dsipts import TimeSeries,read_public_dataset
+from timeseries.dsipts import TimeSeries,read_public_dataset
 
 def load_data(conf):
     data, columns = read_public_dataset(**conf.dataset)

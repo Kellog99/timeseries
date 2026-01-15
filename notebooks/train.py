@@ -1,4 +1,4 @@
-from dsipts import TimeSeries,read_public_dataset
+from timeseries.dsipts import TimeSeries,read_public_dataset
 from sklearn.cluster import BisectingKMeans
 import torch
 from torch.utils.data import Dataset
@@ -7,9 +7,7 @@ from minigpt import GPT
 from trainer import Trainer
 import logging
 logging.basicConfig(level=logging.INFO)
-import argparse
-from omegaconf import DictConfig, OmegaConf
-from hydra.core.hydra_config import HydraConfig
+from omegaconf import DictConfig
 import hydra
 import pickle
 import numpy as np

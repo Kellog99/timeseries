@@ -1,6 +1,5 @@
 import os
-import pickle
-from dsipts import TimeSeries
+from timeseries.dsipts import TimeSeries
 import numpy as np
 import pandas as pd
 

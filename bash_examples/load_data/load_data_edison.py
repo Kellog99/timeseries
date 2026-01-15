@@ -1,6 +1,6 @@
 import os
 import pickle
-from dsipts import TimeSeries
+from timeseries.dsipts import TimeSeries
 
 def load_data(conf):
     with open(os.path.join(conf.dataset.path,'edison.pkl'),'rb') as f:
