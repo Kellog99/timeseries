@@ -49,21 +49,25 @@ def get_portfolio(request: Request) -> Portfolio:
 
 def get_data(
         ticker: str,
-        path_data: Optional[Path] = Path("~/Desktop/Data").expanduser(),
+        path_data: Path = Path("~/Desktop/finance/data").expanduser(),
         step_size: Optional[int] = None,
         save: bool = True,
         **kwargs
 ) -> Data:
     try:
-        if path_data:
+        # Handle the existence of the path where the data should exists
+        if isinstance(path_data, (str, Path)):
             if isinstance(path_data, str):
                 path_data = Path(path_data).expanduser()
+            path_data.mkdir(parents=True, exist_ok=True)
+        else:
+            raise ValueError(f"The type of path, {type(path_data)}, is not supported")
 
-            ticker_path: Path = path_data / f"{ticker}.json"
-            if ticker_path.exists():
-                with open(ticker_path, "r") as f:
-                    data_json = json.load(f)
-                out: Data = Data.model_validate(data_json)
+        ticker_path: Path = path_data / f"{ticker}.json"
+        if ticker_path.exists():
+            with open(ticker_path, "r") as f:
+                data_json = json.load(f)
+            out: Data = Data.model_validate(data_json)
 
         else:
             ##### Data download #####

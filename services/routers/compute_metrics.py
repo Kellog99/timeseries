@@ -61,13 +61,49 @@ def create_plot(matrix: np.ndarray):
     image_base64 = base64.b64encode(buffer.read()).decode('utf-8')
     return f"data:image/png;base64,{image_base64}"
 
-def create_correlation_matrix(
-        tickers: list[str]
-        path_data: Optional[Path]= None
-):
-    ##################### CORRELATION FUNCTIONS #####################
-    out: list[list[float]] = torch.eye(len(tickers)).tolist()
 
+@router.get("/correlation")
+def get_correlation_matrix_service(
+        request: Request
+) -> str:
+    config: MainConfig = request.app.state.config
+    device = torch.device(config.device)
+
+    path_report = Path(config.path_report).expanduser() / "correlation_matrix.json"
+    matrix = None
+    if path_report.exists():
+        with open(path_report, "r") as f:
+            correlation_matrix = json.load(f)
+
+        # Use cache only if valid and tickers match
+        if (correlation_matrix.get("matrix") and
+                correlation_matrix.get("tickers") and
+                correlation_matrix["tickers"] == config.tickers):
+            matrix = np.array(correlation_matrix["matrix"])
+
+    # Compute if not cached or invalid
+    if matrix is None:
+        matrix = get_correlation_matrix(
+            tickers=config.tickers,
+            path_data=Path(config.path_data).expanduser(),
+            device=device
+        )
+        if config.save:
+            with open(path_report, "w") as f:
+                json.dump({
+                    "matrix": matrix.tolist(),
+                    "tickers": config.tickers
+                }, f)
+    return create_plot(matrix)
+
+
+def get_correlation_matrix(
+        tickers: list[str],
+        path_data: Optional[Path] = None,
+        device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+) -> np.ndarray:
+    ##################### CORRELATION FUNCTIONS #####################
+    out: np.ndarray = np.eye(len(tickers))
     #################################################################
 
     # Now I have to create
@@ -75,7 +111,7 @@ def create_correlation_matrix(
         ticker: {
             dailyValue.Date: torch.Tensor(list(dailyValue.model_dump(exclude={"Date", "Volume"}).values()))
             for dailyValue in get_data(
-                path_data=,
+                path_data=path_data,
                 ticker=ticker,
                 step_size=1
             ).history
@@ -85,7 +121,7 @@ def create_correlation_matrix(
 
     for i, ticker_i in tqdm(enumerate(tickers), desc="Computing the correlation"):
         dates_i: set[str] = set(data[ticker_i].keys())
-        for j, ticker_j in enumerate(config.tickers[i + 1:], start=i + 1):
+        for j, ticker_j in enumerate(tickers[i + 1:], start=i + 1):
             ################### Correlation functions ###################
             corr_cross = PearsonCorrelation().to(device)
             #############################################################
@@ -106,35 +142,7 @@ def create_correlation_matrix(
                 # save the results into the matrices
                 out[i][j] = corr
                 out[j][i] = corr
-            else:
-                print(ticker_i, ticker_j)
-    if config.save:
-        with open(path_report, "w") as f:
-            json.dump({
-                "tickers": config.tickers,
-                "matrix": out
-            }, f, indent=4)
-
-@router.get("/correlation")
-def compute_correlation(
-        request: Request
-) -> str:
-    config: MainConfig = request.app.state.config
-    device = torch.device(config.device)
-    path_report = Path(config.path_report).expanduser() / "correlation_matrix.json"
-    if path_report.exists():
-        with open(path_report, "r") as f:
-            matrix = json.load(f)
-        if matrix.get("matrix", False):
-            # Convert to numpy array for plotting
-            matrix = np.array(matrix["matrix"])
-
-            return create_plot(
-                matrix
-            )
-
-
-    return create_plot(np.array(out))
+    return np.array(out)
 
 
 @router.get("/corr_lead")
@@ -147,15 +155,23 @@ def get_leaderboard(
 ) -> list[list[float | str]]:
     config: MainConfig = request.app.state.config
     path_report = Path(config.path_report).expanduser() / "correlation_matrix.json"
+    matrix = None
     if path_report.exists():
         with open(path_report, "r") as f:
-            matrix: np.ndarray = np.array(json.load(f))
-        n = len(config.tickers)
-        flat_with_idx: list[list[float | str]] = [
-            [matrix[i, j], config.tickers[i], config.tickers[j]]
-            for i in range(n)
-            for j in range(n)
-        ]
-        k = min(k, len(flat_with_idx))
-        return heapq.nsmallest(k, flat_with_idx, key=lambda x: x[0])
-    return [[]]
+            correlation_matrix = json.load(f)
+        if correlation_matrix.get("tickers") and correlation_matrix.get("tickers") == config.tickers:
+            matrix = np.array(correlation_matrix.get("matrix"))
+
+    if matrix is None:
+        matrix = get_correlation_matrix(
+            tickers=config.tickers,
+            path_data=Path(config.path_data).expanduser()
+        )
+    n = len(config.tickers)
+    flat_with_idx: list[list[float | str]] = [
+        [config.tickers[i], config.tickers[j], matrix[i, j]]
+        for i in range(n)
+        for j in range(n)
+    ]
+    k = min(k, len(flat_with_idx))
+    return heapq.nsmallest(k, flat_with_idx, key=lambda x: x[2])
