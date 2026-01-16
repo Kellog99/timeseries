@@ -21,13 +21,9 @@ class MainConfig(BaseModel):
         description="Number of worker processes"
     )
     ####################### PATH #######################
-    path_portfolio: str = Field(
-        default="~/Desktop/finance/analysis.json",
-        description="Path to the analysis of the portfolio"
-    )
     path_report: str = Field(
         default="~/Desktop/finance/report",
-        description="Path to the portfolio benchmark"
+        description="Path to the folder where there are all the report about a specific portfolio benchmark"
     )
     path_data: str = Field(
         default="~/Desktop/finance/data/",
@@ -41,7 +37,7 @@ class MainConfig(BaseModel):
             "ALGN", "ALLE", "LNT", "ALL", "GOOGL", "GOOG", "MO", "AMZN", "AMCR", "AEE", "AEP", "AXP", "AIG", "AMT",
             "AWK", "AMP", "AME", "AMGN", "APH", "ADI", "AON", "APA", "APO", "AAPL", "AMAT", "APP", "APTV", "ACGL",
             "ADM", "ARES", "ANET", "AJG", "AIZ", "T", "ATO", "ADSK", "ADP", "AZO", "AVB", "AVY", "BKR",
-            "BALL", "BAC", "BAX", "BDX",  "BBY", "BIIB", "BLK", "BX", "XYZ", "BK", "BA", "BKNG",
+            "BALL", "BAC", "BAX", "BDX", "BBY", "BIIB", "BLK", "BX", "XYZ", "BK", "BA", "BKNG",
             "BSX", "BMY", "AVGO", "BR", "BRO", "BLDR", "BG", "BXP", "CHRW", "CDNS", "CPT", "CPB", "COF"
         ],
         description="Tickers that have been selected."
@@ -51,7 +47,7 @@ class MainConfig(BaseModel):
         description="It tells whether to save a ticker's data or not."
     )
     ####################### CHART #######################
-    step_lineChart: int = Field(
+    step_size: int = Field(
         default=200,
         description="Step size between points in the time series chart."
     )
@@ -64,7 +60,7 @@ class MainConfig(BaseModel):
     @model_validator(mode='after')
     def create_paths(self):
         """Create folders if they don't exist"""
-        for field_name in ['path_portfolio', 'path_report', 'path_data']:
+        for field_name in ['path_report', 'path_data']:
             path_str = getattr(self, field_name)
             path = Path(path_str).expanduser()
             if not path.is_file() and not path.exists():

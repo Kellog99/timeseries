@@ -1,12 +1,13 @@
-import logging
+from typing import Literal
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import api_router
 from routers.models.main_config import MainConfig, parsed_argument
 
+######################### FASTAPI #########################
 app = FastAPI(
     title='Financial analysis backend',
     description='This is the backend for the timeseries analysis.',
@@ -22,9 +23,7 @@ app.add_middleware(
 # Include routers
 app.include_router(api_router)
 
-# Configure logging
-logging.basicConfig(level=logging.WARNING)
-logger = logging.getLogger(__name__)
+###########################################################
 
 
 @app.get("/")

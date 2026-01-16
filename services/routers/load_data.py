@@ -3,55 +3,52 @@ from pathlib import Path
 from typing import Optional
 
 import yfinance as yf
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.params import Query
 
 from .models.data import Data, Portfolio, History
-from .models.main_config import MainConfig
+from .utils import validate_path, config_field
 
 router = APIRouter(prefix="/load")
 
 
 @router.get("/tickers")
-def get_tickers(request: Request) -> list[str]:
-    return request.app.state.config.tickers
+def get_tickers(tickers: list[str] = Depends(config_field("tickers"))) -> list[str]:
+    """
+    This returns the ticker list that have been saved in the config file.
+    """
+    return tickers
 
 
-@router.get("/data")
-def get_data_service(
-        request: Request,
-        ticker: str = Query(
-            default=...,
-            description="It represent the path to the ticker time series."
-        ),
-        step_size: Optional[int] = None
-):
-    config: MainConfig = request.app.state.config
-    return get_data(
-        ticker=ticker,
-        path_data=Path(config.path_data).expanduser(),
-        step_size=step_size if step_size is not None else config.step_lineChart,
-        save=config.save
-    )
+def evaluate_portfolio() -> Portfolio:
+    """
+    This function evaluates the portfolio and returns it.
+    """
+    return Portfolio()
 
 
 @router.get("/portfolio")
-def get_portfolio(request: Request) -> Portfolio:
-    config: MainConfig = request.app.state.config
-    path_portfolio: Path = Path(config.path_portfolio).expanduser()
+def get_portfolio_analysis(
+        path_report: Path | str = Depends(config_field("path_report")),
+) -> Portfolio:
+    path_portfolio: Path = validate_path(path_report) / "analysis.json"
     if path_portfolio.exists():
         with open(path_portfolio, "r") as f:
             data_json = json.load(f)
         return Portfolio.model_validate(data_json)
     else:
-        raise ValueError("The path to the portfolio analysis does not exists")
+        return evaluate_portfolio()
 
 
+@router.get("/data")
 def get_data(
-        ticker: str,
-        path_data: Path = Path("~/Desktop/finance/data").expanduser(),
-        step_size: Optional[int] = None,
-        save: bool = True,
+        ticker: str = Query(
+            default=...,
+            description="It represent the path to the ticker time series."
+        ),
+        path_data: Path | str = Depends(config_field("path_data")),
+        step_size: Optional[int] = Depends(config_field("step_size")),
+        save: bool = Depends(config_field("save")),
         **kwargs
 ) -> Data:
     try:
