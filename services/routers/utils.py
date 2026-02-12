@@ -1,25 +1,31 @@
 import base64
 from io import BytesIO
 from pathlib import Path
-from typing import Literal
+from typing import TypeVar, Callable
 
 import numpy as np
+import torch
+import torchmetrics
 from fastapi import Request
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 
 from .models.main_config import MainConfig
 
+T = TypeVar("T")
+
+
 ############################### Depends decorator ###############################
-attr_type = Literal[tuple(MainConfig.model_fields.keys())]
-
-
-def config_field(attr_name: attr_type):
+def config_field(attr_name: str) -> Callable[..., T]:
     """
     A function for extracting an attribute from a config object in the app state.
     """
 
-    def dependency(request: Request):
+    def dependency(request: Request) -> T:
         config: MainConfig = request.app.state.config
+        if not hasattr(config, attr_name):
+            raise ValueError(f"Configuration attribute '{attr_name}' not found")
+        print(f"{attr_name} = {getattr(config, attr_name)}")
         return getattr(config, attr_name)
 
     dependency.__name__ = f"get_{attr_name}"
@@ -80,3 +86,46 @@ def base64_plot_generator(matrix: np.ndarray):
     # Encode to base64
     image_base64 = base64.b64encode(buffer.read()).decode('utf-8')
     return f"data:image/png;base64,{image_base64}"
+
+
+def compute_correlation_matrix(
+        metric_type: type[torchmetrics.Metric],
+        data: dict[str, dict],
+        device: torch.device,
+        tickers: list[str]
+) -> np.ndarray:
+    """
+    This function has the role to compute the correlation matrix given
+    1. the metric `metric_type`.
+    2. the data
+
+    Returns:
+        np.ndarray of size len(tickers) x len(tickers)
+    """
+
+    matrix: np.ndarray = np.eye(len(tickers))
+    for i, ticker_i in tqdm(enumerate(tickers), desc="Computing the correlation"):
+        dates_i: set[str] = set(data[ticker_i].keys())
+        for j, ticker_j in enumerate(tickers[i + 1:], start=i + 1):
+            ################### Correlation functions ###################
+            metric: torchmetrics.Metric = metric_type().to(device)
+            #############################################################
+            dates_j: set[str] = set(data[ticker_j].keys())
+            common_dates: list[str] = list(dates_i.intersection(dates_j))
+
+            if len(common_dates) > 0:
+                values_i = torch.stack(
+                    [data[ticker_i].get(date) for date in common_dates]
+                )
+                values_j = torch.stack(
+                    [data[ticker_j].get(date) for date in common_dates]
+                )
+                with torch.no_grad():
+                    metric.update(values_i.to(device), values_j.to(device))
+                    corr: float = metric.compute()
+
+                # save the results into the matrices
+                matrix[i][j] = corr
+                matrix[j][i] = corr
+
+    return matrix

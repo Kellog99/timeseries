@@ -40,7 +40,7 @@ def get_portfolio_analysis(
         return evaluate_portfolio()
 
 
-@router.get("/data")
+@router.get("/ticker_ts")
 def get_data(
         ticker: str = Query(
             default=...,
@@ -48,11 +48,11 @@ def get_data(
         ),
         path_data: Path | str = Depends(config_field("path_data")),
         step_size: Optional[int] = Depends(config_field("step_size")),
-        save: bool = Depends(config_field("save")),
-        **kwargs
+        save: bool = Depends(config_field("save"))
 ) -> Data:
+    print("ticker = ", ticker)
     try:
-        # Handle the existence of the path where the data should exists
+        # Handle the existence of the path where the data should exist
         if isinstance(path_data, (str, Path)):
             if isinstance(path_data, str):
                 path_data = Path(path_data).expanduser()

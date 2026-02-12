@@ -33,12 +33,9 @@ class MainConfig(BaseModel):
 
     tickers: list[str] = Field(
         default=[
-            "AOS", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AES", "AFL", "A", "APD", "ABNB", "AKAM", "ALB", "ARE",
-            "ALGN", "ALLE", "LNT", "ALL", "GOOGL", "GOOG", "MO", "AMZN", "AMCR", "AEE", "AEP", "AXP", "AIG", "AMT",
-            "AWK", "AMP", "AME", "AMGN", "APH", "ADI", "AON", "APA", "APO", "AAPL", "AMAT", "APP", "APTV", "ACGL",
-            "ADM", "ARES", "ANET", "AJG", "AIZ", "T", "ATO", "ADSK", "ADP", "AZO", "AVB", "AVY", "BKR",
-            "BALL", "BAC", "BAX", "BDX", "BBY", "BIIB", "BLK", "BX", "XYZ", "BK", "BA", "BKNG",
-            "BSX", "BMY", "AVGO", "BR", "BRO", "BLDR", "BG", "BXP", "CHRW", "CDNS", "CPT", "CPB", "COF"
+            'AAPL', 'AMD',
+            'AMZN', 'ANET', 'APA', 'APO', 'APP', 'BBY', 'BDX', 'BG', 'BIIB',
+            'BKNG', 'BKR', 'BLDR', 'BMY', 'BXP', 'GOOGL', 'MO', 'T', 'XYZ'
         ],
         description="Tickers that have been selected."
     )
