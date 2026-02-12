@@ -8,6 +8,7 @@ import torch
 import torchmetrics
 from fastapi import Request
 from matplotlib import pyplot as plt
+from torchmetrics import PearsonCorrCoef
 from tqdm import tqdm
 
 from .models.main_config import MainConfig
@@ -25,7 +26,6 @@ def config_field(attr_name: str) -> Callable[..., T]:
         config: MainConfig = request.app.state.config
         if not hasattr(config, attr_name):
             raise ValueError(f"Configuration attribute '{attr_name}' not found")
-        print(f"{attr_name} = {getattr(config, attr_name)}")
         return getattr(config, attr_name)
 
     dependency.__name__ = f"get_{attr_name}"
@@ -89,43 +89,43 @@ def base64_plot_generator(matrix: np.ndarray):
 
 
 def compute_correlation_matrix(
-        metric_type: type[torchmetrics.Metric],
         data: dict[str, dict],
         device: torch.device,
-        tickers: list[str]
+        metric_type: type[torchmetrics.Metric] = PearsonCorrCoef,
 ) -> np.ndarray:
     """
     This function has the role to compute the correlation matrix given
     1. the metric `metric_type`.
     2. the data
-
+    Args:
+        metric_type: the type of metric to compute
+        data: this represents the dictionary of all the tickers that wants to be computed the correlation
+        device: torch device
     Returns:
         np.ndarray of size len(tickers) x len(tickers)
     """
 
-    matrix: np.ndarray = np.eye(len(tickers))
+    matrix: np.ndarray = np.eye(len(data))
+    tickers: list[str] = list(data.keys())
+    metric = metric_type().to(device)
+
     for i, ticker_i in tqdm(enumerate(tickers), desc="Computing the correlation"):
         dates_i: set[str] = set(data[ticker_i].keys())
         for j, ticker_j in enumerate(tickers[i + 1:], start=i + 1):
-            ################### Correlation functions ###################
-            metric: torchmetrics.Metric = metric_type().to(device)
-            #############################################################
+            ############# Resetting the correlation functions #############
+            metric.reset()
+            ###############################################################
             dates_j: set[str] = set(data[ticker_j].keys())
             common_dates: list[str] = list(dates_i.intersection(dates_j))
-
             if len(common_dates) > 0:
-                values_i = torch.stack(
-                    [data[ticker_i].get(date) for date in common_dates]
-                )
-                values_j = torch.stack(
-                    [data[ticker_j].get(date) for date in common_dates]
-                )
                 with torch.no_grad():
-                    metric.update(values_i.to(device), values_j.to(device))
+                    metric.update(
+                        preds=torch.tensor([data[ticker_i][cd] for cd in common_dates]).to(device),
+                        target=torch.tensor([data[ticker_j][cd] for cd in common_dates]).to(device)
+                    )
                     corr: float = metric.compute()
-
                 # save the results into the matrices
-                matrix[i][j] = corr
-                matrix[j][i] = corr
+                matrix[i][j] = abs(corr)
+                matrix[j][i] = abs(corr)
 
     return matrix

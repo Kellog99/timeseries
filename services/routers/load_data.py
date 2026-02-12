@@ -50,7 +50,6 @@ def get_data(
         step_size: Optional[int] = Depends(config_field("step_size")),
         save: bool = Depends(config_field("save"))
 ) -> Data:
-    print("ticker = ", ticker)
     try:
         # Handle the existence of the path where the data should exist
         if isinstance(path_data, (str, Path)):

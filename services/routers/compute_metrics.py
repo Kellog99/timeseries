@@ -1,6 +1,7 @@
 import heapq
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -9,9 +10,11 @@ import torch
 import torchmetrics
 from fastapi import APIRouter, Depends
 from fastapi.params import Query
+from torchmetrics import PearsonCorrCoef
 from tqdm import tqdm
 
 from .load_data import get_data
+from .models.data import Data
 from .utils import validate_path, base64_plot_generator, config_field, compute_correlation_matrix
 
 # Add project root to Python path
@@ -20,7 +23,7 @@ print(project_root)
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from timeseries.metrics.ts_correlation import PearsonCorrelation
+from timeseries.metrics.returns import get_daily_return
 
 router = APIRouter(prefix="/compute")
 
@@ -28,7 +31,6 @@ router = APIRouter(prefix="/compute")
 def get_cached_correlation_matrix(
         path_report: Path,
         path_data: Optional[Path] = None,
-        data: Optional[dict[str, dict]] = None,
         correlation: str = "pearson",
         device: str | torch.device = "cpu",
         tickers: Optional[list[str]] = None,
@@ -38,7 +40,7 @@ def get_cached_correlation_matrix(
     This function aims to handle all the loading of the information
     for executing the computation of the correlation matrix.
     """
-    ############# Correlation Metric #############
+    ############# Device #############
     if isinstance(device, (str, torch.device)):
         if isinstance(device, str):
             device = torch.device(device)
@@ -46,13 +48,12 @@ def get_cached_correlation_matrix(
         raise ValueError(
             f"The type of the device, {type(device)}, is not supported."
         )
-    ##############################################
+    ##################################
 
     ############# Correlation Metric #############
+    metric: type[torchmetrics.Metric] | None = None
     if correlation.lower() == "pearson":
-        metric: type[torchmetrics.Metric] = PearsonCorrelation
-    else:
-        metric = None
+        metric: type[torchmetrics.Metric] = PearsonCorrCoef
     ##############################################
 
     matrix: np.ndarray | None = None
@@ -71,28 +72,29 @@ def get_cached_correlation_matrix(
 
     # Compute the actual correlation matrix if not cached or invalid
     if matrix is None:
-        if data is None:
-            if tickers is None:
-                raise ValueError(
-                    "The matrix and the data are None. Hence the tickers are required for generating the matrix."
-                )
-            data: dict[str, dict] = {
-                ticker: {
-                    dailyValue.Date: torch.Tensor(list(dailyValue.model_dump(exclude={"Date", "Volume"}).values()))
-                    for dailyValue in get_data(
-                        path_data=path_data,
-                        ticker=ticker,
-                        step_size=1
-                    ).history
-                }
-                for ticker in tqdm(tickers, desc="loading the files")
-            }
+        # If the time series are not given
+        # They are upload from the device.
+        if tickers is None:
+            raise ValueError(
+                "The matrix and the data are None. Hence the tickers are required for generating the matrix."
+            )
+        data: dict[str, dict[datetime, float]] = {}
+        for ticker in tqdm(tickers, desc="loading the files"):
+            # getting the history for a certain ticker
+            ticker_data: Data = get_data(
+                path_data=path_data,
+                ticker=ticker,
+                step_size=1
+            )
+            daily_return: list[tuple[datetime, float]] = get_daily_return(
+                history=[(dv.Date, dv.Close) for dv in ticker_data.history]
+            )
+            data[ticker] = {date: day_return for [date, day_return] in daily_return}
 
         matrix: np.ndarray = compute_correlation_matrix(
             metric_type=metric,
             data=data,
             device=device,
-            tickers=tickers
         )
 
         if save:

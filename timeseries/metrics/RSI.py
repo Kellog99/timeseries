@@ -1,22 +1,42 @@
-import numpy as np
-import pandas as pd
+from collections import deque
+from datetime import datetime
+
+import torch
+from torchmetrics import Metric
 
 
-class RSI:
-    """Relative Strength Index"""
+class MovingSR(Metric):
+    def __init__(self, period: int = 14):
+        super(MovingSR, self).__init__()
+        """
+        Args:
+            period (int, optional): Defaults to 14. This represents the moving window to compute the sharpe ration in
+        """
+        self.period = period
+        self.windows = {}
 
-    @staticmethod
-    def calculate(data, period=14):
-        """Calculate RSI"""
-        deltas = np.diff(data)
+    def reset(self) -> None:
+        self.windows = {}
 
-        gains = np.where(deltas > 0, deltas, 0)
-        losses = np.where(deltas < 0, -deltas, 0)
+    def update(self, data: dict[datetime, float]):
+        self.windows.update(data)
 
-        avg_gain = pd.Series(gains).rolling(window=period).mean().values
-        avg_loss = pd.Series(losses).rolling(window=period).mean().values
+    def compute(self) -> torch.Tensor:
+        all_dates = list(self.windows.keys())
+        if len(all_dates) < self.period:
+            return torch.Tensor(0)
 
-        rs = avg_gain / (avg_loss + 1e-10)
-        rsi = 100 - (100 / (1 + rs))
+        all_dates.sort()
+        out = []
+        queue = deque(maxlen=self.period)
+        queue.append(self.windows[all_dates[0]])
+        for i in range(1, len(all_dates)):
+            queue.append(self.windows[all_dates[i]])
+            if len(queue) == self.period:
+                out.append(list(queue))
+                queue.clear()
+        values = torch.Tensor(out)
+        window_returns = (values[:, -1] - values[:, 0]) / values[:, 0]
+        window_std = torch.std(window_returns, dim=-1)
 
-        return np.concatenate([[np.nan], rsi])
+        return window_returns / window_std.pow(1 / self.period)
