@@ -39,6 +39,10 @@ class MainConfig(BaseModel):
         ],
         description="Tickers that have been selected."
     )
+    format: str = Field(
+        default="%Y-%m-%d",
+        description="Format of the timeseries' data."
+    )
     save: bool = Field(
         default=True,
         description="It tells whether to save a ticker's data or not."

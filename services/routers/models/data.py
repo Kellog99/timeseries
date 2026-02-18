@@ -20,6 +20,14 @@ class Data(BaseModel):
     history: list[History]
 
 
+class TickerReturn(BaseModel):
+    name: str
+    weeklyReturn: float
+    monthlyReturn: float
+    yearlyReturn: float
+    totalReturn: float
+
+
 class Holdings(BaseModel):
     stocks: Optional[float] = Field(
         default=None,

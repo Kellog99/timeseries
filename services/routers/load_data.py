@@ -1,10 +1,12 @@
 import json
+from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
 import yfinance as yf
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.params import Query
+from pandas import DataFrame
 
 from .models.data import Data, Portfolio, History
 from .utils import validate_path, config_field
@@ -50,41 +52,81 @@ def get_data(
         step_size: Optional[int] = Depends(config_field("step_size")),
         save: bool = Depends(config_field("save"))
 ) -> Data:
-    try:
-        # Handle the existence of the path where the data should exist
-        if isinstance(path_data, (str, Path)):
-            if isinstance(path_data, str):
-                path_data = Path(path_data).expanduser()
-            path_data.mkdir(parents=True, exist_ok=True)
+    """
+    This function create the structure associated with the Ticker's information
+    Args:
+        ticker
+        path_data
+        step_size
+        save
+
+    Return:
+        The data in the `Data` format
+    """
+
+    ############## Path Data ##############
+    # this part has a twofold role:
+    # 1) handle the typing of the variable
+    # 2) handle the existence of the folder
+    if isinstance(path_data, (str, Path)):
+        if isinstance(path_data, str):
+            path_data = Path(path_data).expanduser()
+        path_data.mkdir(parents=True, exist_ok=True)
+    else:
+        raise ValueError(f"The type of path, {type(path_data)}, is not supported")
+    #######################################
+
+    ############## Cached Ticker ##############
+    today_date: date = date.today()
+
+    ticker_path: Path = path_data / f"{ticker}.json"
+    out: Data | None = None
+    if ticker_path.exists():
+        with open(ticker_path, "r") as f:
+            data_json = json.load(f)
+        out = Data.model_validate(data_json)
+
+    last_date: date | None = None
+    if out is not None:
+        dates: list[date] = [datetime.strptime(d.Date, '%Y-%m-%d').date() for d in out.history]
+        last_date = max(dates)
+
+    if out is None or (last_date and today_date > last_date):
+
+        ##### Data download #####
+        tick = yf.Ticker(ticker)
+        if last_date is None:
+            print("it is necessary to download the data")
+            history: DataFrame = tick.history(period="max")
         else:
-            raise ValueError(f"The type of path, {type(path_data)}, is not supported")
+            print("it is necessary to update the data")
+            history: DataFrame = tick.history(start=last_date, end=today_date)
 
-        ticker_path: Path = path_data / f"{ticker}.json"
-        if ticker_path.exists():
-            with open(ticker_path, "r") as f:
-                data_json = json.load(f)
-            out: Data = Data.model_validate(data_json)
+        history.reset_index(inplace=True)
+        if "Date" in history.columns:
+            history.Date = history.Date.apply(
+                lambda x: x.strftime('%Y-%m-%d')
+            )
+        ##########################
+        miss_labelled = {
+            'date': 'Date',
+            'daily_min': 'Low',
+            'daily_max': 'High'
+        }
+        required_columns: list[str] = ["Date", "Open", "Close", "High", "Low", "Volume"]
 
+        for c in miss_labelled.keys():
+            if c in history.columns:
+                history.rename(columns={c: miss_labelled[c]})
+
+        if out is not None:
+            history: list[History] = [
+                History.model_validate(value) for value in
+                history[required_columns].to_dict(orient="records")
+            ]
+            # adding the missing history
+            out.history = out.history + history
         else:
-            ##### Data download #####
-            tick = yf.Ticker(ticker)
-            history = tick.history(period="max")
-            history.reset_index(inplace=True)
-            if "Date" in history.columns:
-                history.Date = history.Date.apply(
-                    lambda x: x.strftime('%Y-%m-%d')
-                )
-            ##########################
-            miss_labelled = {
-                'date': 'Date',
-                'daily_min': 'Low',
-                'daily_max': 'High'
-            }
-
-            for c in miss_labelled.keys():
-                if c in history.columns:
-                    history.rename(columns={c: miss_labelled[c]})
-
             ################# Description #################
             desc = "No description provided"
             try:
@@ -103,23 +145,15 @@ def get_data(
             out = Data(
                 name=ticker,
                 description=desc,
-                history=[History.model_validate(value) for value in
-                         history[[
-                             "Date",
-                             "Open",
-                             "Close",
-                             "High",
-                             "Low",
-                             "Volume"
-                         ]].to_dict(orient="records")]
+                history=[
+                    History.model_validate(value) for value in
+                    history[required_columns].to_dict(orient="records")
+                ]
             )
-            if save:
-                with open(ticker_path, "w") as f:
-                    json.dump(out.model_dump(), f)
+        if save:
+            with open(ticker_path, "w") as f:
+                json.dump(out.model_dump(), f)
 
-        # Reducing the dimensionality of the history array
-        out.history = [value for i, value in enumerate(out.history) if i % step_size == 0]
-        return out
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Reducing the dimensionality of the history array
+    out.history = [value for i, value in enumerate(out.history) if i % step_size == 0]
+    return out
