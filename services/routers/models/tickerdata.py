@@ -1,12 +1,13 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, List, Annotated
 
 from annotated_types import Ge
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class History(BaseModel):
-    Date: str
+    model_config = ConfigDict(extra='ignore')
+
     Low: float
     High: float
     Open: float
@@ -14,10 +15,10 @@ class History(BaseModel):
     Volume: int
 
 
-class Data(BaseModel):
+class TickerData(BaseModel):
     name: str
     description: str
-    history: list[History]
+    history: dict[str | date, History]
 
 
 class TickerReturn(BaseModel):

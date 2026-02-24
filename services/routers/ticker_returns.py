@@ -5,14 +5,14 @@ from fastapi import APIRouter, Depends
 from fastapi.params import Query, Body
 
 from services.routers.load_data import get_data
-from .models.data import History, TickerReturn
+from .models.tickerdata import History, TickerReturn
 from .utils import config_field
 
 router = APIRouter(prefix="/advance_info")
 
 
 @router.post("/returns", response_model=list[TickerReturn])
-def get_returns(
+def get_tickers_return(
         tickers: list[str] = Body(...),
         path_data: Path | str = Depends(config_field("path_data")),
         save: bool = True
@@ -26,23 +26,27 @@ def get_returns(
         save: flag that tells whether the data has to be stashed or not
     """
     return [
-        get_return(ticker, path_data, save)
-        for ticker in tickers
+        get_ticker_return(
+            ticker=ticker,
+            path_data=path_data,
+            save=save
+        ) for ticker in set(tickers)
     ]
 
 
 @router.get("/return")
-def get_return(
+def get_ticker_return(
         ticker: str = Query(
             default=...,
             description="tickers to analyse."
         ),
         path_data: Path | str = Depends(config_field("path_data")),
-        save: bool = True
+        save: bool = Depends(config_field("save"))
 ) -> TickerReturn:
     """
     This function compute the ticker's percentage return for different type of time windows
     """
+    print(f" {ticker} ".center(50, "#"))
     today_str: str = datetime.today().strftime(format="%Y-%m-%d")
     today_date: date = datetime.strptime(today_str, "%Y-%m-%d").date()
 
@@ -50,13 +54,12 @@ def get_return(
         # Now it is transformed in the closest saturday
         today_date -= timedelta(days=today_date.weekday() - 4)
 
-    data: list[History] = get_data(
+    data: dict[str | date, History] = get_data(
         ticker=ticker,
         path_data=path_data,
         step_size=1,
         save=save
     ).history
-
     if not data:
         return TickerReturn(
             name=ticker,
@@ -67,12 +70,12 @@ def get_return(
         )
 
     prices: dict[date, float] = {
-        datetime.strptime(h.Date, "%Y-%m-%d").date(): h.Close
-        for h in data
+        datetime.strptime(day, "%Y-%m-%d").date(): value.Close
+        for day, value in data.items()
     }
 
-    first_date = min(prices)
-    last_date = max(prices)
+    first_date = min(prices.keys())
+    last_date = max(prices.keys())
 
     today_value = prices.get(today_date, prices[last_date])
     if today_value is None:
@@ -84,8 +87,12 @@ def get_return(
             starting_date = first_date
         print("starting date = ", starting_date)
         starting_value = prices.get(starting_date, None)
+        # This means that the date is either a weekend or an holiday
+        # I search for the closest future date
         if starting_value is None:
-            return 0
+            while starting_value is None:
+                starting_date += timedelta(days=1)
+                starting_value = prices.get(starting_date, None)
 
         return (today_value - starting_value) / starting_value * 100
 
@@ -93,6 +100,6 @@ def get_return(
         name=ticker,
         weeklyReturn=get_daily_return(starting_date=today_date - timedelta(weeks=1)),
         monthlyReturn=get_daily_return(starting_date=today_date - timedelta(weeks=4)),
-        yearlyReturn=get_daily_return(starting_date=today_date - timedelta(days=52)),
+        yearlyReturn=get_daily_return(starting_date=today_date - timedelta(days=365)),
         totalReturn=get_daily_return(starting_date=first_date)
     )

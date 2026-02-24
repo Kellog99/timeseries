@@ -14,7 +14,7 @@ from torchmetrics import PearsonCorrCoef
 from tqdm import tqdm
 
 from .load_data import get_data
-from .models.data import Data
+from .models.tickerdata import TickerData
 from .utils import validate_path, base64_plot_generator, config_field, compute_correlation_matrix
 
 # Add project root to Python path
@@ -23,7 +23,7 @@ print(project_root)
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from timeseries.metrics.returns import get_daily_return
+from timeseries.metrics.returns import get_return
 
 router = APIRouter(prefix="/compute")
 
@@ -81,12 +81,12 @@ def get_cached_correlation_matrix(
         data: dict[str, dict[datetime, float]] = {}
         for ticker in tqdm(tickers, desc="loading the files"):
             # getting the history for a certain ticker
-            ticker_data: Data = get_data(
+            ticker_data: TickerData = get_data(
                 path_data=path_data,
                 ticker=ticker,
                 step_size=1
             )
-            daily_return: list[tuple[datetime, float]] = get_daily_return(
+            daily_return: list[tuple[datetime, float]] = get_return(
                 history=[(dv.Date, dv.Close) for dv in ticker_data.history]
             )
             data[ticker] = {date: day_return for [date, day_return] in daily_return}

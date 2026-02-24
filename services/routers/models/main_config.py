@@ -33,9 +33,9 @@ class MainConfig(BaseModel):
 
     tickers: list[str] = Field(
         default=[
-            'AAPL', 'AMD',
-            'AMZN', 'ANET', 'APA', 'APO', 'APP', 'BBY', 'BDX', 'BG', 'BIIB',
-            'BKNG', 'BKR', 'BLDR', 'BMY', 'BXP', 'GOOGL', 'MO', 'T', 'XYZ'
+            'AAPL', 'AMD', 'AMZN', 'ANET', 'APA', 'APO', 'APP',
+            'BBY', 'BDX', 'BG', 'BIIB', 'BKNG', 'BKR', 'BLDR',
+            'BMY', 'BXP', 'GOOGL', 'MO', 'T', 'XYZ'
         ],
         description="Tickers that have been selected."
     )
