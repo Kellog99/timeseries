@@ -52,6 +52,10 @@ class MainConfig(BaseModel):
         default=200,
         description="Step size between points in the time series chart."
     )
+    bins: int = Field(
+        default=200,
+        description="Number of bins to show in the histogram."
+    )
     #####################################################
     device: str = Field(
         default="cuda" if torch.cuda.is_available() else "cpu",

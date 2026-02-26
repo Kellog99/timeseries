@@ -55,10 +55,10 @@ def get_data(
     """
     This function create the structure associated with the Ticker's information
     Args:
-        ticker
-        path_data
-        step_size
-        save
+        ticker: The ticker that has to be load
+        path_data: path to the cached file
+        step_size: step size for the history
+        save: flag that tells whether the data has to be saved
 
     Return:
         The data in the `Data` format
@@ -68,36 +68,74 @@ def get_data(
     # this part has a twofold role:
     # 1) handle the typing of the variable
     # 2) handle the existence of the folder
+    if not path_data:
+        path_data: Path = Path("./data")
+
     if isinstance(path_data, (str, Path)):
         if isinstance(path_data, str):
             path_data = Path(path_data).expanduser()
         path_data.mkdir(parents=True, exist_ok=True)
     else:
         raise ValueError(f"The type of path, {type(path_data)}, is not supported")
+
     #######################################
 
-    ############## Cached Ticker ##############
+    ############## Load Cached Ticker ##############
     today_date: date = date.today()
     out: TickerData | None = None
 
     ticker_path: Path = path_data / f"{ticker}.json"
-    if ticker_path.exists():
-        with open(ticker_path, "r") as f:
-            data_json = json.load(f)
+    if ticker_path.exists() and ticker_path.is_file():
+        try:
+            # Trying to parse the json file
+            with open(ticker_path, "r", encoding="utf-8") as f:
+                data_json = json.load(f)
+
+        except json.JSONDecodeError as e:
+            print(f"\nJSON Error: {e}")
+            print(f"Position: {e.pos}")
+            print(f"Line: {e.lineno}, Column: {e.colno}")
         out = TickerData.model_validate(data_json)
 
-    last_date: date | None = None
-    if out is not None:
-        dates: list[date] = [datetime.strptime(x, '%Y-%m-%d').date() for x in out.history.keys()]
+    ################################################
+
+    last_date: date = today_date
+    if out:
+        # Creating a list of date
+        dates: list[date] = [
+            datetime.strptime(x, '%Y-%m-%d').date() if isinstance(x, str) else x
+            for x in out.history.keys()
+        ]
         last_date = max(dates)
 
     # Downloading the data in two cases:
     # 1) there is no cached ticker
     # 2) if the cached ticker is not updated
-    if not out or (last_date and today_date > last_date):
+    if not out or today_date > last_date:
         ##### Data download #####
         tick = yf.Ticker(ticker)
-        if last_date is None:
+        if not out:
+            ################# Description #################
+            desc = "No description provided"
+            try:
+                info = tick.info
+                if "longBusinessSummary" in info:
+                    desc = tick.info["longBusinessSummary"]
+
+            except Exception as e:
+                # Handle yfinance-specific errors
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"Unable to fetch data for {ticker}: {str(e)}"
+                )
+            ###############################################
+            out: TickerData = TickerData(
+                name=ticker,
+                description=desc,
+                history={}
+            )
+
+        if len(out.history) == 0:
             history: DataFrame = tick.history(period="max")
         else:
             history: DataFrame = tick.history(start=last_date, end=today_date)
@@ -123,41 +161,27 @@ def get_data(
         # These are the information that will be stored as value
         required_columns: list[str] = ["Open", "Close", "High", "Low", "Volume"]
 
-        if out is not None:
-            new_history: dict[str | date, History] = {
-                value.get("Date"): History.model_validate(value) for value in
-                history[required_columns + ["Date"]].to_dict(orient="records")
-            }
+        new_history: dict[str | date, History] = {
+            value.get("Date"): History.model_validate(value) for value in
+            history[required_columns + ["Date"]].to_dict(orient="records")
+        }
 
-            # adding the missing history
-            out.history = out.history | new_history
-        else:
-            ################# Description #################
-            desc = "No description provided"
-            try:
-                info = tick.info
-                if "longBusinessSummary" in info:
-                    desc = tick.info["longBusinessSummary"]
+        # adding the missing history
+        out.history = out.history | new_history
 
-            except Exception as e:
-                # Handle yfinance-specific errors
-                raise HTTPException(
-                    status_code=503,
-                    detail=f"Unable to fetch data for {ticker}: {str(e)}"
-                )
-            ###############################################
-
-            out = TickerData(
-                name=ticker,
-                description=desc,
-                history={
-                    value.get("Date"): History.model_validate(value) for value in
-                    history[required_columns + ["Date"]].to_dict(orient="records")
-                }
-            )
         if save:
-            with open(ticker_path, "w") as f:
-                json.dump(out.model_dump(), f)
+            with open(ticker_path, "w", encoding="utf-8") as f:
+                json.dump(
+                    obj={
+                        "name": out.name,
+                        "description": out.description,
+                        "history": {
+                            k.isoformat() if isinstance(k, date) else k: v.model_dump()
+                            for k, v in out.history.items()
+                        }
+                    },
+                    fp=f
+                )
 
     # Reducing the dimensionality of the history array
     keys = sorted(

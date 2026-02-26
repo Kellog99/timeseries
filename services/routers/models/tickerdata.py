@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional, List, Annotated
+from typing import Optional, List, Annotated, Union
 
 from annotated_types import Ge
 from pydantic import BaseModel, Field, ConfigDict
@@ -18,7 +18,7 @@ class History(BaseModel):
 class TickerData(BaseModel):
     name: str
     description: str
-    history: dict[str | date, History]
+    history: dict[Union[str, date], History]
 
 
 class TickerReturn(BaseModel):

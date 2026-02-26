@@ -38,7 +38,7 @@ This folder is composed of
 
 ## Timeseries
 
-This folder contains all the models that have been implemented
+This folder contains all the models that have been implemented.
 
 ## Tests
 
@@ -47,3 +47,4 @@ This contains all the main test for implementing a new model in the regime.
 ## Services
 
 This folder contains all the services that have to be used for sending all the information to the FE (front end).
+

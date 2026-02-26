@@ -1,10 +1,14 @@
 from datetime import datetime, timedelta, date
 from pathlib import Path
+from typing import Literal, Optional
 
+import matplotlib.pyplot as plt
 from fastapi import APIRouter, Depends
 from fastapi.params import Query, Body
+from tqdm import tqdm
 
 from services.routers.load_data import get_data
+from timeseries.metrics.returns import get_return
 from .models.tickerdata import History, TickerReturn
 from .utils import config_field
 
@@ -25,13 +29,24 @@ def get_tickers_return(
         path_data: path to the stashed data
         save: flag that tells whether the data has to be stashed or not
     """
-    return [
-        get_ticker_return(
-            ticker=ticker,
-            path_data=path_data,
-            save=save
-        ) for ticker in set(tickers)
-    ]
+    out: list[TickerReturn] = []
+    tickers_list = sorted(list(set(tickers)))
+    if len(tickers_list)>0:
+        pbar = tqdm(
+            iterable=tickers_list,
+            desc=f"Processing {tickers_list[0]}"
+        )
+
+        for ticker in pbar:
+            pbar.set_description(f"Processing {ticker}")
+            out.append(
+                get_ticker_return(
+                    ticker=ticker,
+                    path_data=path_data,
+                    save=save
+                )
+            )
+    return out
 
 
 @router.get("/return")
@@ -46,7 +61,6 @@ def get_ticker_return(
     """
     This function compute the ticker's percentage return for different type of time windows
     """
-    print(f" {ticker} ".center(50, "#"))
     today_str: str = datetime.today().strftime(format="%Y-%m-%d")
     today_date: date = datetime.strptime(today_str, "%Y-%m-%d").date()
 
@@ -85,7 +99,6 @@ def get_ticker_return(
 
         if starting_date < first_date:
             starting_date = first_date
-        print("starting date = ", starting_date)
         starting_value = prices.get(starting_date, None)
         # This means that the date is either a weekend or an holiday
         # I search for the closest future date
@@ -103,3 +116,39 @@ def get_ticker_return(
         yearlyReturn=get_daily_return(starting_date=today_date - timedelta(days=365)),
         totalReturn=get_daily_return(starting_date=first_date)
     )
+
+
+@router.get("/return_distribution")
+def get_return_distribution(
+        ticker: str = Query(
+            default=...,
+            descrption="tickers to analyse."
+        ),
+        path_data: Optional[Path | str] = Depends(config_field("path_data")),
+        save: bool = Depends(config_field("save")),
+        date_format: str = Depends(config_field("format")),
+        scale: Literal["plain", "abs", "exp"] = Query(
+            default=...,
+            description=""
+        ),
+        bins: int = Depends(config_field("bins")),
+        density: bool = True
+) -> list[float]:
+    """
+    In this function it is created the histogram of the ticker's returns
+    """
+    if scale not in ["plain", "abs", "exp"]:
+        raise ValueError("The chosen scale is not supported")
+    ticker_history: dict[str | date, History] = get_data(
+        ticker=ticker,
+        path_data=path_data,
+        save=save,
+        step_size=1
+    ).history
+    history = {day: value.Close for day, value in ticker_history.items()}
+    ticker_return: dict[date, float] = get_return(
+        history=history,
+        date_format=date_format,
+        scale=scale
+    )
+    return list(ticker_return.values())
