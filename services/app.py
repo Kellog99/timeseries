@@ -1,7 +1,5 @@
-from typing import Literal
-
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.routers import api_router
@@ -9,19 +7,20 @@ from services.routers.models.main_config import MainConfig, parsed_argument
 
 ######################### FASTAPI #########################
 app = FastAPI(
-    title='Financial analysis backend',
-    description='This is the backend for the timeseries analysis.',
+    title = 'Financial analysis backend',
+    description = 'This is the backend for the timeseries analysis.',
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins = ["*"],
+    allow_credentials = True,
+    allow_methods = ["*"],
+    allow_headers = ["*"],
 )
 # Include routers
 app.include_router(api_router)
+
 
 ###########################################################
 
@@ -37,7 +36,7 @@ if __name__ == "__main__":
     app.state.config = config
     uvicorn.run(
         app,  # Use the app object directly instead of string
-        host=config.host,
-        port=config.port,
-        workers=config.worker
+        host = config.host,
+        port = config.port,
+        workers = config.worker
     )

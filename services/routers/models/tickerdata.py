@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 
 class History(BaseModel):
-    model_config = ConfigDict(extra='ignore')
+    model_config = ConfigDict(extra = 'ignore')
 
     Low: float
     High: float
@@ -31,29 +31,29 @@ class TickerReturn(BaseModel):
 
 class Holdings(BaseModel):
     stocks: Optional[float] = Field(
-        default=None,
-        ge=0,
-        description="Value of stocks"
+        default = None,
+        ge = 0,
+        description = "Value of stocks"
     )
     bonds: Optional[float] = Field(
-        default=None,
-        ge=0,
-        description="Value of stocks"
+        default = None,
+        ge = 0,
+        description = "Value of stocks"
     )
     currency: Optional[float] = Field(
-        default=None,
-        ge=0,
-        description="Value of stocks"
+        default = None,
+        ge = 0,
+        description = "Value of stocks"
     )
     crypto: Optional[float] = Field(
-        default=None,
-        ge=0,
-        description="Value of stocks"
+        default = None,
+        ge = 0,
+        description = "Value of stocks"
     )
     etf: Optional[float] = Field(
-        default=None,
-        ge=0,
-        description="Value of stocks"
+        default = None,
+        ge = 0,
+        description = "Value of stocks"
     )
 
 
@@ -72,26 +72,26 @@ class InvestmentHistory(BaseModel):
 class Portfolio(BaseModel):
     """Complete portfolio model"""
     portfolio_id: str = Field(
-        default=...,
-        description="Unique portfolio identifier"
+        default = ...,
+        description = "Unique portfolio identifier"
     )
     last_updated: datetime = Field(
-        default=...,
-        description="Last update timestamp"
+        default = ...,
+        description = "Last update timestamp"
     )
     metrics: Metrics = Field(
-        default=...,
-        description="The metrics that have been computed on the portfolio."
+        default = ...,
+        description = "The metrics that have been computed on the portfolio."
     )
     holdings: Holdings = Field(
-        default=...,
-        description="The amount of money in the portfolio, for each category, value."
+        default = ...,
+        description = "The amount of money in the portfolio, for each category, value."
     )
     investment: Holdings = Field(
-        default=...,
-        description="The amount of money invested for each category."
+        default = ...,
+        description = "The amount of money invested for each category."
     )
     history: List[InvestmentHistory] = Field(
-        default=[],
-        description="Daily historical data"
+        default = [],
+        description = "Daily historical data"
     )

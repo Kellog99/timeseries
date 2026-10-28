@@ -12,39 +12,84 @@ from timeseries.base import Base
 class StepResult:
     loss: Tensor
     observations: int
-    metrics: dict[str, Tensor] = field(default_factory=dict)
+    metrics: dict[str, Tensor] = field(default_factory = dict)
 
 
 class TrainingAdapter(Protocol):
-    def step(self, model: nn.Module, batch: Any, index: int, *, training: bool, epoch: int) -> StepResult: ...
+    def step(
+            self,
+            model: nn.Module,
+            batch: Any,
+            index: int,
+            *,
+            training: bool,
+            epoch: int
+            ) -> StepResult: ...
 
 
 class ForecastAdapter:
-    def step(self, model: Base, batch, index, *, training, epoch):
+    def step(
+            self,
+            model: nn.Module,
+            batch,
+            index,
+            *,
+            training,
+            epoch
+            ):
+        if not isinstance(model, Base):
+            raise TypeError('ForecastAdapter requires a Base model.')
         loss = (model.training_step if training else model.validation_step)(batch, index)
         return StepResult(loss, batch['y'].shape[0])
 
 
 class GNNAdapter:
-    def __init__(self, loss_function=None, *, alpha=0.2, gamma=2e-3):
+    def __init__(
+            self,
+            loss_function = None,
+            *,
+            alpha = 0.2,
+            gamma = 2e-3
+            ):
         self.loss_function = loss_function if loss_function is not None else nn.MSELoss()
         self.alpha = alpha
         self.gamma = gamma
 
-    def step(self, model, batch, index, *, training, epoch):
+    def step(
+            self,
+            model,
+            batch,
+            index,
+            *,
+            training,
+            epoch
+            ):
         prediction, distances, adjacency = model(batch[0])
         reconstruction = (1 - self.alpha) * self.loss_function(prediction, batch[1].float())
         energy = self.alpha * 0.5 * torch.matmul(distances, adjacency).sum()
         frobenius = self.gamma * torch.norm(adjacency)
-        return StepResult(reconstruction + energy + frobenius, batch[1].shape[0],
-                          {'rec': reconstruction, 'energy': energy, 'frobenius': frobenius})
+        return StepResult(
+            reconstruction + energy + frobenius, batch[1].shape[0],
+            {'rec': reconstruction, 'energy': energy, 'frobenius': frobenius}
+            )
 
 
 class LegacyTFTAdapter:
-    def __init__(self, loss_function=None):
+    def __init__(
+            self,
+            loss_function = None
+            ):
         self.loss_function = loss_function if loss_function is not None else nn.L1Loss()
 
-    def step(self, model, batch, index, *, training, epoch):
+    def step(
+            self,
+            model,
+            batch,
+            index,
+            *,
+            training,
+            epoch
+            ):
         categorical, target = batch
         forward = model.iter_forward if not training or epoch % 5 == 3 else model
         output = forward(categorical[:, :, 1:], target)
@@ -55,7 +100,10 @@ class LegacyTFTAdapter:
         return StepResult(loss, target.shape[0])
 
 
-def move_to_device(batch, device):
+def move_to_device(
+        batch,
+        device
+        ):
     """Move dictionary and tuple datasets without changing integer feature types."""
     if isinstance(batch, Tensor):
         return batch.to(device)
@@ -68,7 +116,9 @@ def move_to_device(batch, device):
     return batch
 
 
-def get_adapter(model: nn.Module) -> TrainingAdapter:
+def get_adapter(
+        model: nn.Module
+        ) -> TrainingAdapter:
     if isinstance(model, Base):
         return ForecastAdapter()
     from timeseries.models.gnn.model import GNN

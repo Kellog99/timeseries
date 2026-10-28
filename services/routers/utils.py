@@ -1,30 +1,33 @@
-from collections.abc import Callable
-from timeseries.metrics import MetricRegister
-
 import base64
+from collections.abc import Callable
 from io import BytesIO
 from pathlib import Path
 from typing import TypeVar
 
 import numpy as np
 import torch
-from timeseries.utils.typing import Metric
 from fastapi import Request
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
+from timeseries.metrics import MetricRegister
+from timeseries.utils.typing import Metric
 from .models.main_config import MainConfig
 
 T = TypeVar("T")
 
 
 ############################### Depends decorator ###############################
-def config_field(attr_name: str) -> Callable[..., T]:
+def config_field(
+        attr_name: str
+        ) -> Callable[..., T]:
     """
     A function for extracting an attribute from a config object in the app state.
     """
 
-    def dependency(request: Request) -> T:
+    def dependency(
+            request: Request
+            ) -> T:
         config: MainConfig = request.app.state.config
         if not hasattr(config, attr_name):
             raise ValueError(f"Configuration attribute '{attr_name}' not found")
@@ -36,7 +39,10 @@ def config_field(attr_name: str) -> Callable[..., T]:
 
 #################################################################################
 
-def validate_path(path: str | Path, create: bool = True) -> Path:
+def validate_path(
+        path: str | Path,
+        create: bool = True
+        ) -> Path:
     """
     validate the path that are passed through the whole application
     """
@@ -47,28 +53,30 @@ def validate_path(path: str | Path, create: bool = True) -> Path:
         raise ValueError(f"The path variable has an unsupported type, {type(path)}.")
 
     if create:
-        path.mkdir(parents=True, exist_ok=True)
+        path.mkdir(parents = True, exist_ok = True)
     return path
 
 
-def base64_plot_generator(matrix: np.ndarray):
+def base64_plot_generator(
+        matrix: np.ndarray
+        ):
     """
     This function create the plot associated to the correlation matrix and transform it into a base64 image.
     """
     # Create the plot
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize = (10, 8))
 
     # Use imshow for matrix visualization with a colorbar
     im = ax.imshow(
         matrix,
-        cmap='coolwarm',
-        aspect='auto',
-        vmin=0,
-        vmax=1
+        cmap = 'coolwarm',
+        aspect = 'auto',
+        vmin = 0,
+        vmax = 1
     )
     # Add colorbar with white text
-    cbar = plt.colorbar(im, ax=ax)
-    cbar.ax.tick_params(labelcolor='white', color='white')
+    cbar = plt.colorbar(im, ax = ax)
+    cbar.ax.tick_params(labelcolor = 'white', color = 'white')
     cbar.ax.spines['outline'].set_edgecolor('white')
 
     # Remove axis if desired
@@ -76,12 +84,13 @@ def base64_plot_generator(matrix: np.ndarray):
 
     # Save plot to a BytesIO buffer
     buffer = BytesIO()
-    plt.savefig(buffer,
-                format='png',
-                bbox_inches='tight',
-                dpi=100,
-                transparent=True
-                )
+    plt.savefig(
+        buffer,
+        format = 'png',
+        bbox_inches = 'tight',
+        dpi = 100,
+        transparent = True
+        )
     buffer.seek(0)
     plt.close(fig)  # Close the figure to free memory
 
@@ -111,9 +120,9 @@ def compute_correlation_matrix(
     tickers: list[str] = list(data.keys())
     metric = (MetricRegister.create(metric_type) if isinstance(metric_type, str) else metric_type()).to(device)
 
-    for i, ticker_i in tqdm(enumerate(tickers), desc="Computing the correlation"):
+    for i, ticker_i in tqdm(enumerate(tickers), desc = "Computing the correlation"):
         dates_i: set[str] = set(data[ticker_i].keys())
-        for j, ticker_j in enumerate(tickers[i + 1:], start=i + 1):
+        for j, ticker_j in enumerate(tickers[i + 1:], start = i + 1):
             ############# Resetting the correlation functions #############
             metric.reset()
             ###############################################################
@@ -122,8 +131,12 @@ def compute_correlation_matrix(
             if len(common_dates) >= 2:
                 with torch.no_grad():
                     metric.update(
-                        torch.tensor([data[ticker_i][cd] for cd in common_dates], dtype=torch.float64, device=device),
-                        torch.tensor([data[ticker_j][cd] for cd in common_dates], dtype=torch.float64, device=device)
+                        torch.tensor(
+                            [data[ticker_i][cd] for cd in common_dates], dtype = torch.float64, device = device
+                            ),
+                        torch.tensor(
+                            [data[ticker_j][cd] for cd in common_dates], dtype = torch.float64, device = device
+                            )
                     )
                     corr: float = metric.compute()
                 # save the results into the matrices

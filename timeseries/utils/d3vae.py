@@ -1,14 +1,21 @@
 # -*-Encoding: utf-8 -*-
 
-from timeseries.utils.typing import Module
 import torch.distributed as dist
-def average_tensor(t, is_distributed):
+
+
+def average_tensor(
+        t,
+        is_distributed
+        ):
     if is_distributed:
         size = float(dist.get_world_size())
-        dist.all_reduce(t.data, op=dist.ReduceOp.SUM)
+        dist.all_reduce(t.data, op = dist.ReduceOp.SUM)
         t.data /= size
 
-def get_stride_for_cell_type(cell_type):
+
+def get_stride_for_cell_type(
+        cell_type
+        ):
     if cell_type.startswith('normal') or cell_type.startswith('combiner'):
         stride = 1
     elif cell_type.startswith('down'):
@@ -21,7 +28,9 @@ def get_stride_for_cell_type(cell_type):
     return stride
 
 
-def get_input_size(dataset):
+def get_input_size(
+        dataset
+        ):
     if dataset in {'mnist', 'omniglot'}:
         return 32
     elif dataset == 'cifar10':
@@ -34,7 +43,14 @@ def get_input_size(dataset):
     else:
         raise NotImplementedError
 
-def groups_per_scale(num_scales, num_groups_per_scale, is_adaptive, divider=2, minimum_groups=1):
+
+def groups_per_scale(
+        num_scales,
+        num_groups_per_scale,
+        is_adaptive,
+        divider = 2,
+        minimum_groups = 1
+        ):
     g = []
     n = num_groups_per_scale
     for s in range(num_scales):
@@ -46,8 +62,9 @@ def groups_per_scale(num_scales, num_groups_per_scale, is_adaptive, divider=2, m
     return g
 
 
-
-def get_arch_cells(arch_type):
+def get_arch_cells(
+        arch_type
+        ):
     if arch_type == 'res_elu':
         arch_cells = dict()
         arch_cells['normal_enc'] = ['res_elu', 'res_elu']
@@ -337,11 +354,14 @@ def kl_balancer_coeff(num_scales, groups_per_scale, fun):
     if fun == 'equal':
         coeff = torch.cat([torch.ones(groups_per_scale[num_scales - i - 1]) for i in range(num_scales)], dim=0).cuda()
     elif fun == 'linear':
-        coeff = torch.cat([(2 ** i) * torch.ones(groups_per_scale[num_scales - i - 1]) for i in range(num_scales)], dim=0).cuda()
+        coeff = torch.cat([(2 ** i) * torch.ones(groups_per_scale[num_scales - i - 1]) for i in range(num_scales)], 
+        dim=0).cuda()
     elif fun == 'sqrt':
-        coeff = torch.cat([np.sqrt(2 ** i) * torch.ones(groups_per_scale[num_scales - i - 1]) for i in range(num_scales)], dim=0).cuda()
+        coeff = torch.cat([np.sqrt(2 ** i) * torch.ones(groups_per_scale[num_scales - i - 1]) for i in range(
+        num_scales)], dim=0).cuda()
     elif fun == 'square':
-        coeff = torch.cat([np.square(2 ** i) / groups_per_scale[num_scales - i - 1] * torch.ones(groups_per_scale[num_scales - i - 1]) for i in range(num_scales)], dim=0).cuda()
+        coeff = torch.cat([np.square(2 ** i) / groups_per_scale[num_scales - i - 1] * torch.ones(groups_per_scale[
+        num_scales - i - 1]) for i in range(num_scales)], dim=0).cuda()
     else:
         raise NotImplementedError
     # convert min to 1.

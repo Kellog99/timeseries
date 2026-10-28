@@ -1,15 +1,15 @@
 """Streaming multivariate dependence metrics on paired observations."""
 
-from .register import MetricFactory
-
 from typing import ClassVar
 
 import torch
 from torch import Tensor
-from timeseries.utils.typing import Metric
 from torchmetrics import PearsonCorrCoef
 
-from .configs import CanonicalCorrelationConfig, DistanceCorrelationConfig, RVCoefficientConfig, PearsonCorrelationConfig
+from timeseries.utils.typing import Metric
+from .configs import CanonicalCorrelationConfig, DistanceCorrelationConfig, RVCoefficientConfig, \
+    PearsonCorrelationConfig
+from .register import MetricFactory
 
 
 class PairedMetric(Metric):
@@ -17,13 +17,19 @@ class PairedMetric(Metric):
     x_list: list[Tensor]
     y_list: list[Tensor]
 
-    def __init__(self) -> None:
+    def __init__(
+            self
+            ) -> None:
         super().__init__()
-        self.add_state("x_list", default=[], dist_reduce_fx="cat")
-        self.add_state("y_list", default=[], dist_reduce_fx="cat")
+        self.add_state("x_list", default = [], dist_reduce_fx = "cat")
+        self.add_state("y_list", default = [], dist_reduce_fx = "cat")
 
-    def update(self, x: Tensor, y: Tensor) -> None:
-        x, y = x.detach().to(self.device, dtype=torch.float64), y.detach().to(self.device, dtype=torch.float64)
+    def update(
+            self,
+            x: Tensor,
+            y: Tensor
+            ) -> None:
+        x, y = x.detach().to(self.device, dtype = torch.float64), y.detach().to(self.device, dtype = torch.float64)
         x = x.unsqueeze(1) if x.ndim == 1 else x
         y = y.unsqueeze(1) if y.ndim == 1 else y
         if x.ndim != 2 or y.ndim != 2 or x.shape[0] != y.shape[0] or min(x.shape[1], y.shape[1]) == 0:
@@ -35,7 +41,9 @@ class PairedMetric(Metric):
         self.x_list.append(x)
         self.y_list.append(y)
 
-    def values(self) -> tuple[Tensor, Tensor]:
+    def values(
+            self
+            ) -> tuple[Tensor, Tensor]:
         if not isinstance(self.x_list, Tensor) and not self.x_list:
             raise ValueError("Update the metric before computing it.")
         x = self.x_list if isinstance(self.x_list, Tensor) else torch.cat(self.x_list)
@@ -46,19 +54,23 @@ class PairedMetric(Metric):
 
 
 @MetricFactory.register(
-    name='CanonicalCorrelation',
-    description='Highest canonical correlation of paired feature matrices.',
-    id='canonical', domain='dependence', actions={"performance"},
+    name = 'CanonicalCorrelation',
+    description = 'Highest canonical correlation of paired feature matrices.',
+    id = 'canonical', domain = 'dependence', actions = {"performance"},
 )
 class CanonicalCorrelation(PairedMetric):
     CONFIG_T: ClassVar[type[CanonicalCorrelationConfig]] = CanonicalCorrelationConfig
 
-    def compute(self) -> Tensor:
+    def compute(
+            self
+            ) -> Tensor:
         x, y = self.values()
 
-        def basis(values: Tensor) -> Tensor:
+        def basis(
+                values: Tensor
+                ) -> Tensor:
             centered = values - values.mean(0)
-            u, _, _ = torch.linalg.svd(centered, full_matrices=False)
+            u, _, _ = torch.linalg.svd(centered, full_matrices = False)
             return u[:, :int(torch.linalg.matrix_rank(centered).item())]
 
         qx, qy = basis(x), basis(y)
@@ -68,14 +80,16 @@ class CanonicalCorrelation(PairedMetric):
 
 
 @MetricFactory.register(
-    name='RVCoefficient',
-    description='RV coefficient of paired feature matrices.',
-    id='rv', domain='dependence', actions={"performance"},
+    name = 'RVCoefficient',
+    description = 'RV coefficient of paired feature matrices.',
+    id = 'rv', domain = 'dependence', actions = {"performance"},
 )
 class RVCoefficient(PairedMetric):
     CONFIG_T: ClassVar[type[RVCoefficientConfig]] = RVCoefficientConfig
 
-    def compute(self) -> Tensor:
+    def compute(
+            self
+            ) -> Tensor:
         x, y = self.values()
         x, y = x - x.mean(0), y - y.mean(0)
         xx, yy = x @ x.T, y @ y.T
@@ -83,19 +97,23 @@ class RVCoefficient(PairedMetric):
 
 
 @MetricFactory.register(
-    name='DistanceCorrelation',
-    description='Distance correlation capturing nonlinear dependence.',
-    id='distance', domain='dependence', actions={"performance"},
+    name = 'DistanceCorrelation',
+    description = 'Distance correlation capturing nonlinear dependence.',
+    id = 'distance', domain = 'dependence', actions = {"performance"},
 )
 class DistanceCorrelation(PairedMetric):
     CONFIG_T: ClassVar[type[DistanceCorrelationConfig]] = DistanceCorrelationConfig
 
-    def compute(self) -> Tensor:
+    def compute(
+            self
+            ) -> Tensor:
         x, y = self.values()
 
-        def distances(values: Tensor) -> Tensor:
+        def distances(
+                values: Tensor
+                ) -> Tensor:
             matrix = torch.cdist(values, values)
-            return matrix - matrix.mean(1, keepdim=True) - matrix.mean(0, keepdim=True) + matrix.mean()
+            return matrix - matrix.mean(1, keepdim = True) - matrix.mean(0, keepdim = True) + matrix.mean()
 
         a, b = distances(x), distances(y)
         covariance = (a * b).mean().clamp_min(0)
@@ -104,12 +122,14 @@ class DistanceCorrelation(PairedMetric):
 
 
 @MetricFactory.register(
-    name='PearsonCorrelation',
-    description='Pearson correlation of paired univariate observations.',
-    id='pearson', domain='dependence', actions={"performance"},
+    name = 'PearsonCorrelation',
+    description = 'Pearson correlation of paired univariate observations.',
+    id = 'pearson', domain = 'dependence', actions = {"performance"},
 )
 class PearsonCorrelation(PearsonCorrCoef):
     CONFIG_T: ClassVar[type[PearsonCorrelationConfig]] = PearsonCorrelationConfig
 
-    def __init__(self) -> None:
+    def __init__(
+            self
+            ) -> None:
         super().__init__()

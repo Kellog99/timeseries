@@ -1,7 +1,6 @@
 import json
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 import yfinance as yf
 from fastapi import APIRouter, HTTPException, Depends
@@ -11,11 +10,13 @@ from pandas import DataFrame
 from .models.tickerdata import TickerData, Portfolio, History
 from .utils import validate_path, config_field
 
-router = APIRouter(prefix="/load")
+router = APIRouter(prefix = "/load")
 
 
 @router.get("/tickers")
-def get_tickers(tickers: list[str] = Depends(config_field("tickers"))) -> list[str]:
+def get_tickers(
+        tickers: list[str] = Depends(config_field("tickers"))
+        ) -> list[str]:
     """
     This returns the ticker list that have been saved in the config file.
     """
@@ -26,7 +27,7 @@ def evaluate_portfolio() -> Portfolio:
     """
     This function evaluates the portfolio and returns it.
     """
-    raise HTTPException(status_code=501, detail="Portfolio evaluation is not implemented.")
+    raise HTTPException(status_code = 501, detail = "Portfolio evaluation is not implemented.")
 
 
 @router.get("/portfolio")
@@ -45,8 +46,8 @@ def get_portfolio_analysis(
 @router.get("/ticker_ts")
 def get_data(
         ticker: str = Query(
-            default=...,
-            description="It represent the path to the ticker time series."
+            default = ...,
+            description = "It represent the path to the ticker time series."
         ),
         path_data: Path | str = Depends(config_field("path_data")),
         step_size: int = Depends(config_field("step_size")),
@@ -74,7 +75,7 @@ def get_data(
     if isinstance(path_data, (str, Path)):
         if isinstance(path_data, str):
             path_data = Path(path_data).expanduser()
-        path_data.mkdir(parents=True, exist_ok=True)
+        path_data.mkdir(parents = True, exist_ok = True)
     else:
         raise ValueError(f"The type of path, {type(path_data)}, is not supported")
 
@@ -88,7 +89,7 @@ def get_data(
     if ticker_path.exists() and ticker_path.is_file():
         try:
             # Trying to parse the json file
-            with open(ticker_path, "r", encoding="utf-8") as f:
+            with open(ticker_path, "r", encoding = "utf-8") as f:
                 data_json = json.load(f)
 
         except json.JSONDecodeError as e:
@@ -125,25 +126,26 @@ def get_data(
             except Exception as e:
                 # Handle yfinance-specific errors
                 raise HTTPException(
-                    status_code=503,
-                    detail=f"Unable to fetch data for {ticker}: {str(e)}"
+                    status_code = 503,
+                    detail = f"Unable to fetch data for {ticker}: {str(e)}"
                 )
             ###############################################
             out: TickerData = TickerData(
-                name=ticker,
-                description=desc,
-                history={}
+                name = ticker,
+                description = desc,
+                history = {}
             )
 
         if len(out.history) == 0:
-            history: DataFrame = tick.history(period="max")
+            history: DataFrame = tick.history(period = "max")
         else:
-            history: DataFrame = tick.history(start=last_date, end=today_date)
+            history: DataFrame = tick.history(start = last_date, end = today_date)
 
-        history.reset_index(inplace=True)
+        history.reset_index(inplace = True)
         if "Date" in history.columns:
             history["Date"] = history["Date"].apply(
-                lambda x: x.strftime('%Y-%m-%d')
+                lambda
+                    x: x.strftime('%Y-%m-%d')
             )
 
         ########################## Miss Labelled columns ##########################
@@ -154,7 +156,7 @@ def get_data(
         }
         for c in miss_labelled.keys():
             if c in history.columns:
-                history.rename(columns={c: miss_labelled[c]})
+                history.rename(columns = {c: miss_labelled[c]})
 
         ###########################################################################
 
@@ -163,16 +165,16 @@ def get_data(
 
         new_history: dict[str | date, History] = {
             str(value["Date"]): History.model_validate(value) for value in
-            history[required_columns + ["Date"]].to_dict(orient="records")
+            history[required_columns + ["Date"]].to_dict(orient = "records")
         }
 
         # adding the missing history
         out.history = out.history | new_history
 
         if save:
-            with open(ticker_path, "w", encoding="utf-8") as f:
+            with open(ticker_path, "w", encoding = "utf-8") as f:
                 json.dump(
-                    obj={
+                    obj = {
                         "name": out.name,
                         "description": out.description,
                         "history": {
@@ -180,13 +182,14 @@ def get_data(
                             for k, v in out.history.items()
                         }
                     },
-                    fp=f
+                    fp = f
                 )
 
     # Reducing the dimensionality of the history array
     keys = sorted(
         out.history.keys(),
-        key=lambda x: datetime.strptime(x, "%Y-%m-%d").date() if isinstance(x, str) else x
+        key = lambda
+            x: datetime.strptime(x, "%Y-%m-%d").date() if isinstance(x, str) else x
     )
 
     out.history = {

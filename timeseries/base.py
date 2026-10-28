@@ -1,5 +1,4 @@
 """Common state and loss computation for PyTorch forecasting models."""
-from timeseries.utils.typing import Module
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from typing import Any
@@ -9,6 +8,7 @@ from torch import Tensor, nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import StepLR
 
+from timeseries.utils.typing import Module
 from .configuration import BaseLoss
 from .utils.torch import QuantileLossMO, SinkhornDistance
 
@@ -60,30 +60,44 @@ class Base(Module, ABC):
             match self.loss_type:
                 case "mse":
                     self.loss = nn.MSELoss()
-                case "l1" | "smape" | "sinkhorn" | "high_order" | "linear_penalization" | "exponential_penalization" | "kl":
+                case "l1" | "smape" | "sinkhorn" | "high_order" | "linear_penalization" | "exponential_penalization" \
+                     | "kl":
                     # Architecture-specific training steps handle KL divergence.
                     self.loss = nn.L1Loss()
                 case _:
                     raise ValueError(f"Unsupported loss type: {self.loss_type!r}")
         # Parameter-free baselines must also follow model.to(device).
-        self.register_buffer("_device_anchor", torch.empty(0), persistent=False)
+        self.register_buffer("_device_anchor", torch.empty(0), persistent = False)
 
     @property
-    def device(self) -> torch.device:
+    def device(
+            self
+            ) -> torch.device:
         return next(self.parameters(), self._device_anchor).device
 
     @abstractmethod
-    def forward(self, batch: Batch) -> Tensor | tuple[Tensor, ...]:
+    def forward(
+            self,
+            batch: Batch
+            ) -> Tensor | tuple[Tensor, ...]:
         """Compute predictions or architecture-specific training outputs."""
         raise NotImplementedError
 
-    def inference(self, batch: Batch) -> Tensor:
+    def inference(
+            self,
+            batch: Batch
+            ) -> Tensor:
         return self(batch)
 
-    def configure_optimizers(self) -> OptimizerSetup:
+    def configure_optimizers(
+            self
+            ) -> OptimizerSetup:
         return self._configure_optimizer(self.parameters())
 
-    def _configure_optimizer(self, parameters: Iterable[nn.Parameter]) -> OptimizerSetup:
+    def _configure_optimizer(
+            self,
+            parameters: Iterable[nn.Parameter]
+            ) -> OptimizerSetup:
         trainable = [parameter for parameter in parameters if parameter.requires_grad]
         if not trainable:
             return None
@@ -96,13 +110,25 @@ class Base(Module, ABC):
             return optimizer, StepLR(optimizer, **self.scheduler_config)
         return optimizer
 
-    def training_step(self, batch: Batch, batch_idx: int = 0) -> Tensor:
+    def training_step(
+            self,
+            batch: Batch,
+            batch_idx: int = 0
+            ) -> Tensor:
         return self.compute_loss(batch, self(batch))
 
-    def validation_step(self, batch: Batch, batch_idx: int = 0) -> Tensor:
+    def validation_step(
+            self,
+            batch: Batch,
+            batch_idx: int = 0
+            ) -> Tensor:
         return self.compute_loss(batch, self(batch))
 
-    def compute_loss(self, batch: Batch, prediction: Tensor) -> Tensor:
+    def compute_loss(
+            self,
+            batch: Batch,
+            prediction: Tensor
+            ) -> Tensor:
         target = batch["y"]
         if self.is_classification:
             return self.loss(prediction.reshape(-1, self.n_classes), target.reshape(-1).long())
@@ -115,10 +141,10 @@ class Base(Module, ABC):
                 denominator = (point.abs() + target.abs()).clamp_min(torch.finfo(point.dtype).eps)
                 return (2 * (point - target).abs() / denominator).mean()
             case "sinkhorn":
-                return SinkhornDistance(eps=0.1, max_iter=100, reduction="mean").compute(point, target)
+                return SinkhornDistance(eps = 0.1, max_iter = 100, reduction = "mean").compute(point, target)
             case "high_order":
-                real_std = (target.var(dim=(0, 1), correction=0) + 1e-8).sqrt()
-                predicted_std = (point.var(dim=(0, 1), correction=0) + 1e-8).sqrt()
+                real_std = (target.var(dim = (0, 1), correction = 0) + 1e-8).sqrt()
+                predicted_std = (point.var(dim = (0, 1), correction = 0) + 1e-8).sqrt()
                 return initial_loss + self.persistence_weight * (real_std - predicted_std).abs().mean()
             case "linear_penalization" | "exponential_penalization":
                 indices = batch["idx_target"][0]

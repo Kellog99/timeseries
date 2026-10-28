@@ -10,24 +10,28 @@ class ConfigRegimeDetector(Configuration):
 
 
 @ModelFactory.register(
-    name='RegimeDetector',
-    description='Volatility-based regime classification.',
-    id='regimedetector',
-    domain='technical_analysis',
+    name = 'RegimeDetector',
+    description = 'Volatility-based regime classification.',
+    domain = 'technical_analysis',
 )
 class RegimeDetector:
     """Hidden Markov Model-style regime detection"""
     CONFIG_T = ConfigRegimeDetector
 
     @staticmethod
-    def detect_regimes(returns, n_regimes=2):
+    def detect_regimes(
+            returns,
+            n_regimes = 2
+    ):
         """Simple regime detection based on volatility clustering"""
         # Calculate rolling volatility
-        vol = pd.Series(returns).rolling(window=20).std().to_numpy()
+        vol = pd.Series(returns).rolling(window = 20).std().to_numpy()
 
         # K-means style clustering
-        thresholds = np.percentile(vol[~np.isnan(vol)],
-                                   np.linspace(0, 100, n_regimes + 1)[1:-1])
+        thresholds = np.percentile(
+            vol[~np.isnan(vol)],
+            np.linspace(0, 100, n_regimes + 1)[1:-1]
+        )
 
         regimes = np.digitize(vol, thresholds)
         return regimes

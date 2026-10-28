@@ -1,10 +1,9 @@
-
 import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from timeseries.models import ModelRegister
 from timeseries.metrics import MetricRegister
+from timeseries.models import ModelRegister
 from timeseries.registry import Configuration, Factory
 
 
@@ -21,16 +20,16 @@ def test_model_configurations_live_with_their_implementations():
 
 
 def test_factory_infers_config_and_revalidates_overrides_without_mutating_it():
-    config = ModelRegister.get_config("kalman", process_variance=0.2)
-    model = ModelRegister.create(config=config, process_variance=0.4)
+    config = ModelRegister.get_config("kalman", process_variance = 0.2)
+    model = ModelRegister.create(config = config, process_variance = 0.4)
     assert model.process_variance == 0.4
     assert config.process_variance == 0.2
     with pytest.raises(ValidationError):
-        ModelRegister.create(config=config, measurement_variance=0)
+        ModelRegister.create(config = config, measurement_variance = 0)
     with pytest.raises(ValidationError):
-        ModelRegister.create("kalman", typo=1)
+        ModelRegister.create("kalman", typo = 1)
     with pytest.raises(TypeError):
-        ModelRegister.create("garch", config=config)
+        ModelRegister.create("garch", config = config)
     with pytest.raises(ValueError):
         ModelRegister.create("missing")
     with pytest.raises(ValueError):
@@ -40,45 +39,100 @@ def test_factory_infers_config_and_revalidates_overrides_without_mutating_it():
 def test_decorator_and_registry_isolation():
     class First(Factory):
         pass
+
     class Second(Factory):
         pass
+
     class Config(Configuration):
         value: int = 1
-    @First.register("Example", "Test registration", domain="test")
+
+    @First.register("Example", "Test registration", domain = "forecasting")
     class Example:
         CONFIG_T = Config
-        def __init__(self, value: int = 1):
+
+        def __init__(
+                self,
+                value: int = 1
+                ):
             self.value = value
-    assert First.create(config=Config(value=3)).value == 3
+
+    assert First.create(config = Config(value = 3)).value == 3
     assert not Second.get_list_classes()
     assert "example" not in ModelRegister.get_list_classes()
-    with pytest.raises(ValueError, match="Duplicate"):
-        First.register("Example", "Duplicate registration", domain="test")(Example)
+    with pytest.raises(ValueError, match = "Duplicate"):
+        First.register("Example", "Duplicate registration", domain = "forecasting")(Example)
     assert "risk" not in ModelRegister.get_list_classes()
-    assert MetricRegister.get_list_classes(domain="risk")
+    assert MetricRegister.get_list_classes(domain = "risk")
+
+
+@pytest.mark.parametrize(
+    ('class_name', 'expected'), [
+        ('ExampleModel', 'example'), ('EXAMPLEMODEL', 'example'),
+        ('Example', 'example'), ('ModelExample', 'modelexample'),
+        ('ExampleModelModel', 'examplemodel'),
+    ]
+    )
+def test_default_id_uses_class_name_and_removes_only_trailing_model(
+        class_name,
+        expected
+        ):
+    class Registry(Factory):
+        pass
+
+    class Config(Configuration):
+        pass
+
+    implementation = type(class_name, (), {'CONFIG_T': Config})
+    Registry.register('Different display name', 'Example implementation', domain = 'forecasting')(implementation)
+    assert Registry.get_list_classes() == [expected]
+    assert type(Registry.create(expected)) is implementation
+
+
+def test_explicit_id_overrides_default_and_empty_id_is_rejected():
+    class Registry(Factory):
+        pass
+
+    class Config(Configuration):
+        pass
+
+    @Registry.register('Example', 'Custom identifier', id = 'CUSTOM', domain = 'forecasting')
+    class ExampleModel:
+        CONFIG_T = Config
+
+    assert Registry.get_info('custom').class_type is ExampleModel
+    with pytest.raises(ValidationError):
+        Registry.register('Empty', 'Invalid identifier', id = '', domain = 'forecasting')(ExampleModel)
+
+
+def test_domains_validate_metadata_and_filter_registries():
+    info = ModelRegister.get_info('regimedetector')
+    assert info.domain == 'technical_analysis'
+    assert 'regimedetector' in ModelRegister.get_list_classes(domain = {'technical_analysis', 'filtering'})
+    assert 'regimedetector' not in ModelRegister.get_list_classes(domain = 'forecasting')
+    with pytest.raises(ValidationError):
+        type(info).model_validate(info.model_dump() | {'domain': 'unknown'})
+    assert ModelRegister.get_info('my').class_type.__name__ == 'MyModel'
 
 
 def test_constraints_are_applied():
     with pytest.raises(ValidationError):
-        ModelRegister.get_config("garch", alpha=0.5, beta=0.6)
+        ModelRegister.get_config("garch", alpha = 0.5, beta = 0.6)
     with pytest.raises(ValidationError):
-        ModelRegister.get_config("arima", p=0)
+        ModelRegister.get_config("arima", p = 0)
     with pytest.raises(ValidationError):
-        MetricRegister.get_config("sharpe", periods_per_year=0)
+        MetricRegister.get_config("sharpe", periods_per_year = 0)
     with pytest.raises(ValidationError):
-        MetricRegister.get_config("moving_average", period=-1)
+        MetricRegister.get_config("moving_average", period = -1)
     with pytest.raises(ValidationError):
-        MetricRegister.get_config("omega", threshold=float("nan"))
+        MetricRegister.get_config("omega", threshold = float("nan"))
 
 
 def test_statistical_models_work_through_factory():
-    arima = ModelRegister.create("arima", p=2, d=0)
+    arima = ModelRegister.create("arima", p = 2, d = 0)
     data = np.array([2.0 ** i for i in range(10)])
     arima.fit(data)
-    np.testing.assert_allclose(arima.predict(data, steps=2), [1024, 2048])
-    assert np.isfinite(ModelRegister.create("garch").fit_predict([.1, -.1], steps=3)).all()
+    np.testing.assert_allclose(arima.predict(data, steps = 2), [1024, 2048])
+    assert np.isfinite(ModelRegister.create("garch").fit_predict([.1, -.1], steps = 3)).all()
     ensemble = ModelRegister.create("ensemble")
     first = ensemble.predict(np.arange(1., 40.))
     assert first == ensemble.predict(np.arange(1., 40.))
-
-

@@ -1,107 +1,129 @@
-from timeseries.utils.typing import Module
-from typing import Any
+import logging
+from typing import Any, ClassVar
+from typing import List
+
+import torch
 from pydantic import Field
+from torch import nn
+
+from timeseries.base import Base
 from timeseries.configuration import BaseLoss
 from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
 from timeseries.register import ModelFactory
-from typing import Any, ClassVar
-from torch import nn
-import torch
-from timeseries.base import  Base
 from timeseries.utils.torch import get_activation
-from typing import List
-import logging
+from timeseries.utils.typing import Module
 
 
 class ConfigLinearTS(ThreeQuantileConfiguration):
     """Linear and decomposition-based time series forecasting."""
-    past_steps: PositiveInt = Field(..., description='Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description='Number of future observations to predict.')
-    past_channels: PositiveInt = Field(..., description='Number of observed numerical input features.')
-    future_channels: NonNegativeInt = Field(..., description='Number of known future numerical features; zero is allowed.')
-    embs: list[PositiveInt] = Field(..., description='Cardinalities of the categorical input features.')
-    cat_emb_dim: PositiveInt = Field(..., description='Embedding dimension for each categorical variable.')
-    kernel_size: PositiveInt = Field(..., description='Convolution or moving-average kernel width.')
-    sum_emb: bool = Field(..., description='Sum categorical embeddings instead of concatenating them.')
-    out_channels: PositiveInt = Field(..., description='Number of target variables.')
-    hidden_size: PositiveInt = Field(..., description='Hidden size.')
-    dropout_rate: Probability = Field(0.1, description='Dropout rate.')
-    activation: str = Field('torch.nn.ReLU', description='Fully qualified torch activation class name.')
-    kind: str = Field('linear', description='Kind.')
-    use_bn: bool = Field(False, description='Use batch normalization in place of dropout.')
-    persistence_weight: float = Field(0.0, description='Weight applied to the persistence-based loss penalty.', ge=0)
-    loss_type: BaseLoss = Field('l1', description='Training loss selection.')
-    quantiles: list[Quantile] | None = Field(None, description='Three increasing output quantiles, or None/empty for point forecasts.')
-    n_classes: NonNegativeInt = Field(0, description='Number of classes; zero selects regression.')
-    optim: str | None = Field(None, description='Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description='Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description='Keyword arguments for the StepLR scheduler.')
-
-
+    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
+    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
+    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
+    future_channels: NonNegativeInt = Field(
+        ..., description = 'Number of known future numerical features; zero is allowed.'
+        )
+    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
+    cat_emb_dim: PositiveInt = Field(..., description = 'Embedding dimension for each categorical variable.')
+    kernel_size: PositiveInt = Field(..., description = 'Convolution or moving-average kernel width.')
+    sum_emb: bool = Field(..., description = 'Sum categorical embeddings instead of concatenating them.')
+    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
+    hidden_size: PositiveInt = Field(..., description = 'Hidden size.')
+    dropout_rate: Probability = Field(0.1, description = 'Dropout rate.')
+    activation: str = Field('torch.nn.ReLU', description = 'Fully qualified torch activation class name.')
+    kind: str = Field('linear', description = 'Kind.')
+    use_bn: bool = Field(False, description = 'Use batch normalization in place of dropout.')
+    persistence_weight: float = Field(
+        0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+        )
+    loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
+    quantiles: list[Quantile] | None = Field(
+        None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
+        )
+    n_classes: NonNegativeInt = Field(0, description = 'Number of classes; zero selects regression.')
+    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
+    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
+    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
 
 
 class moving_avg(Module):
     """
     Moving average block to highlight the trend of time series
     """
-    def __init__(self, kernel_size, stride):
+
+    def __init__(
+            self,
+            kernel_size,
+            stride
+            ):
         super(moving_avg, self).__init__()
         self.kernel_size = kernel_size
-        self.avg = nn.AvgPool1d(kernel_size=kernel_size, stride=stride, padding=0)
+        self.avg = nn.AvgPool1d(kernel_size = kernel_size, stride = stride, padding = 0)
 
-    def forward(self, x):
+    def forward(
+            self,
+            x
+            ):
         # padding on the both ends of time series
         front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)
         end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
-        x = torch.cat([front, x, end], dim=1)
+        x = torch.cat([front, x, end], dim = 1)
         x = self.avg(x.permute(0, 2, 1))
         x = x.permute(0, 2, 1)
         return x
+
 
 class series_decomp(Module):
     """
     Series decomposition block
     """
-    def __init__(self, kernel_size):
-        super(series_decomp, self).__init__()
-        self.moving_avg = moving_avg(kernel_size, stride=1)
 
-    def forward(self, x):
+    def __init__(
+            self,
+            kernel_size
+            ):
+        super(series_decomp, self).__init__()
+        self.moving_avg = moving_avg(kernel_size, stride = 1)
+
+    def forward(
+            self,
+            x
+            ):
         moving_mean = self.moving_avg(x)
         res = x - moving_mean
         return res, moving_mean
 
+
 @ModelFactory.register(
-    name='LinearTS',
-    description='Linear and decomposition-based time series forecasting.',
-    id='linearts', domain='forecasting',
+    name = 'LinearTS',
+    description = 'Linear and decomposition-based time series forecasting.',
+    domain = 'forecasting',
 )
 class LinearTS(Base):
     CONFIG_T: ClassVar[type[ConfigLinearTS]] = ConfigLinearTS
 
     def __init__(
-        self,
-        past_steps: int,
-        future_steps: int,
-        past_channels: int,
-        future_channels: int,
-        embs: list[int],
-        cat_emb_dim: int,
-        kernel_size: int,
-        sum_emb: bool,
-        out_channels: int,
-        hidden_size: int,
-        dropout_rate: float = 0.1,
-        activation: str = 'torch.nn.ReLU',
-        kind: str = 'linear',
-        use_bn: bool = False,
-        persistence_weight: float = 0.0,
-        loss_type: BaseLoss = 'l1',
-        quantiles: list[float] | None = None,
-        n_classes: int = 0,
-        optim: str | None = None,
-        optim_config: dict[str, Any] | None = None,
-        scheduler_config: dict[str, Any] | None = None,
+            self,
+            past_steps: int,
+            future_steps: int,
+            past_channels: int,
+            future_channels: int,
+            embs: list[int],
+            cat_emb_dim: int,
+            kernel_size: int,
+            sum_emb: bool,
+            out_channels: int,
+            hidden_size: int,
+            dropout_rate: float = 0.1,
+            activation: str = 'torch.nn.ReLU',
+            kind: str = 'linear',
+            use_bn: bool = False,
+            persistence_weight: float = 0.0,
+            loss_type: BaseLoss = 'l1',
+            quantiles: list[float] | None = None,
+            n_classes: int = 0,
+            optim: str | None = None,
+            optim_config: dict[str, Any] | None = None,
+            scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         """Linear model from https://github.com/cure-lab/LTSF-Linear/blob/main/run_longExp.py
 
@@ -120,79 +142,94 @@ class LinearTS(Base):
             activation (str, optional): activation fuction function pytorch. Default torch.nn.ReLU
             kind (str, optional): one among linear, dlinear (de-trending), nlinear (differential). Defaults to 'linear'.
             use_bn (bool, optional): if true BN layers will be added and dropouts will be removed. Default False
-            quantiles (List[int], optional):  we can use quantile loss il len(quantiles) = 0 (usually 0.1,0.5, 0.9) or L1loss in case len(quantiles)==0. Defaults to [].
+            quantiles (List[int], optional):  we can use quantile loss il len(quantiles) = 0 (usually 0.1,0.5,
+            0.9) or L1loss in case len(quantiles)==0. Defaults to [].
             persistence_weight (float):  weight controlling the divergence from persistence model. Default 0
-            loss_type (str, optional): this model uses custom losses or l1 or mse. Custom losses can be linear_penalization or exponential_penalization. Default l1,
+            loss_type (str, optional): this model uses custom losses or l1 or mse. Custom losses can be
+            linear_penalization or exponential_penalization. Default l1,
             n_classes (int): number of classes (0 in regression)
-            optim (str, optional): if not None it expects a pytorch optim method. Defaults to None that is mapped to Adam.
+            optim (str, optional): if not None it expects a pytorch optim method. Defaults to None that is mapped to
+            Adam.
             optim_config (dict, optional): configuration for Adam optimizer. Defaults to None.
             scheduler_config (dict, optional): configuration for stepLR scheduler. Defaults to None.
         """
         quantiles = [] if quantiles is None else quantiles
-  
+
         if activation == 'torch.nn.SELU':
             logging.info('SELU do not require BN')
             use_bn = False
-            
+
         activation_factory = get_activation(activation)
-        
+
         super().__init__(
-            past_steps=past_steps,
-            future_steps=future_steps,
-            past_channels=past_channels,
-            future_channels=future_channels,
-            out_channels=out_channels,
-            quantiles=quantiles,
-            loss_type=loss_type,
-            persistence_weight=persistence_weight,
-            n_classes=n_classes,
-            optim=optim,
-            optim_config=optim_config,
-            scheduler_config=scheduler_config,
+            past_steps = past_steps,
+            future_steps = future_steps,
+            past_channels = past_channels,
+            future_channels = future_channels,
+            out_channels = out_channels,
+            quantiles = quantiles,
+            loss_type = loss_type,
+            persistence_weight = persistence_weight,
+            n_classes = n_classes,
+            optim = optim,
+            optim_config = optim_config,
+            scheduler_config = scheduler_config,
         )
-        #self.device = get_device()
+        # self.device = get_device()
         self.kind = kind
         self.embs = nn.ModuleList()
         self.sum_emb = sum_emb
-            #assert out_channels==1, "Classification require only one channel"
-        
+        # assert out_channels==1, "Classification require only one channel"
+
         emb_channels = 0
 
         for k in embs:
-            self.embs.append(nn.Embedding(k+1,cat_emb_dim))
-            emb_channels+=cat_emb_dim
+            self.embs.append(nn.Embedding(k + 1, cat_emb_dim))
+            emb_channels += cat_emb_dim
 
-        if sum_emb and (emb_channels>0):
+        if sum_emb and (emb_channels > 0):
             emb_channels = cat_emb_dim
             logging.info('Using sum')
         else:
             logging.info('Using stacked')
-    
-        ## ne faccio uno per ogni canale
-        self.linear =  nn.ModuleList()
 
-        if kind=='dlinear':
-            self.decompsition = series_decomp(kernel_size)    
+        ## ne faccio uno per ogni canale
+        self.linear = nn.ModuleList()
+
+        if kind == 'dlinear':
+            self.decompsition = series_decomp(kernel_size)
             self.Linear_Trend = nn.ModuleList()
             for _ in range(out_channels):
-                self.Linear_Trend.append(nn.Linear(past_steps,future_steps))
+                self.Linear_Trend.append(nn.Linear(past_steps, future_steps))
 
         for _ in range(out_channels):
-            self.linear.append(nn.Sequential(nn.Linear(emb_channels*(past_steps+future_steps)+past_steps*past_channels+future_channels*future_steps,hidden_size),
-                                                activation_factory(),
-                                                nn.BatchNorm1d(hidden_size) if use_bn else nn.Dropout(dropout_rate) ,    
-                                                nn.Linear(hidden_size,hidden_size//2), 
-                                                activation_factory(),
-                                                nn.BatchNorm1d(hidden_size//2) if use_bn else nn.Dropout(dropout_rate) ,    
-                                                nn.Linear(hidden_size//2,hidden_size//4),
-                                                activation_factory(),
-                                                nn.BatchNorm1d(hidden_size//4) if use_bn else nn.Dropout(dropout_rate) ,    
-                                                nn.Linear(hidden_size//4,hidden_size//8),
-                                                activation_factory(),
-                                                nn.BatchNorm1d(hidden_size//8) if use_bn else nn.Dropout(dropout_rate) ,    
-                                                nn.Linear(hidden_size//8,self.future_steps*self.mul)))
-                               
-    def forward(self, batch):
+            self.linear.append(
+                nn.Sequential(
+                    nn.Linear(
+                        emb_channels * (
+                                    past_steps + future_steps) + past_steps * past_channels + future_channels *
+                        future_steps,
+                        hidden_size
+                        ),
+                    activation_factory(),
+                    nn.BatchNorm1d(hidden_size) if use_bn else nn.Dropout(dropout_rate),
+                    nn.Linear(hidden_size, hidden_size // 2),
+                    activation_factory(),
+                    nn.BatchNorm1d(hidden_size // 2) if use_bn else nn.Dropout(dropout_rate),
+                    nn.Linear(hidden_size // 2, hidden_size // 4),
+                    activation_factory(),
+                    nn.BatchNorm1d(hidden_size // 4) if use_bn else nn.Dropout(dropout_rate),
+                    nn.Linear(hidden_size // 4, hidden_size // 8),
+                    activation_factory(),
+                    nn.BatchNorm1d(hidden_size // 8) if use_bn else nn.Dropout(dropout_rate),
+                    nn.Linear(hidden_size // 8, self.future_steps * self.mul)
+                    )
+                )
+
+    def forward(
+            self,
+            batch
+            ):
         """It is mandatory to implement this method
 
         Args:
@@ -201,32 +238,31 @@ class LinearTS(Base):
         Returns:
             torch.tensor: result
         """
-        x =  batch['x_num_past'].to(self.device)
-        if self.kind=='nlinear':
+        x = batch['x_num_past'].to(self.device)
+        if self.kind == 'nlinear':
             idx_target = batch['idx_target'][0]
-            x_start = x[:,-1,idx_target].unsqueeze(1)
+            x_start = x[:, -1, idx_target].unsqueeze(1)
             ##BxC
-            x[:,:,idx_target]-=x_start
-        
-        if self.kind=='alinear':
-            idx_target = batch['idx_target'][0]
-            x[:,:,idx_target]=0
-        
-        if self.kind=='dlinear':
-            idx_target = batch['idx_target'][0]
-            x_start = x[:,:,idx_target]
+            x[:, :, idx_target] -= x_start
 
-            seasonal_init, trend_init = self.decompsition(x_start.permute(0,2,1))
-            seasonal_init, trend_init = seasonal_init.permute(0,2,1), trend_init.permute(0,2,1)
-            
-            x[:,:,idx_target] = seasonal_init
+        if self.kind == 'alinear':
+            idx_target = batch['idx_target'][0]
+            x[:, :, idx_target] = 0
+
+        if self.kind == 'dlinear':
+            idx_target = batch['idx_target'][0]
+            x_start = x[:, :, idx_target]
+
+            seasonal_init, trend_init = self.decompsition(x_start.permute(0, 2, 1))
+            seasonal_init, trend_init = seasonal_init.permute(0, 2, 1), trend_init.permute(0, 2, 1)
+
+            x[:, :, idx_target] = seasonal_init
 
             tmp = []
             for j in range(len(self.Linear_Trend)):
-               
-                tmp.append(self.Linear_Trend[j](trend_init[:,:,j]))
+                tmp.append(self.Linear_Trend[j](trend_init[:, :, j]))
 
-            trend = torch.stack(tmp,2)
+            trend = torch.stack(tmp, 2)
 
         if 'x_cat_future' in batch.keys():
             cat_future = batch['x_cat_future'].to(self.device)
@@ -236,58 +272,57 @@ class LinearTS(Base):
             x_future = batch['x_num_future'].to(self.device)
         else:
             x_future = None
-            
+
         tmp = [x]
-        
+
         for i in range(len(self.embs)):
             if self.sum_emb:
-                if i>0:
-                    tmp_emb+=self.embs[i](cat_past[:,:,i])
+                if i > 0:
+                    tmp_emb += self.embs[i](cat_past[:, :, i])
                 else:
-                    tmp_emb=self.embs[i](cat_past[:,:,i])
+                    tmp_emb = self.embs[i](cat_past[:, :, i])
             else:
-                tmp.append(self.embs[i](cat_past[:,:,i]))
-        if self.sum_emb and (len(self.embs)>0):
+                tmp.append(self.embs[i](cat_past[:, :, i]))
+        if self.sum_emb and (len(self.embs) > 0):
             tmp.append(tmp_emb)
         ##BxLxC
-        tot_past = torch.cat(tmp,2).flatten(1)
+        tot_past = torch.cat(tmp, 2).flatten(1)
 
         tmp = []
         for i in range(len(self.embs)):
             if self.sum_emb:
-                if i>0:
-                    tmp_emb+=self.embs[i](cat_future[:,:,i])
+                if i > 0:
+                    tmp_emb += self.embs[i](cat_future[:, :, i])
                 else:
-                    tmp_emb=self.embs[i](cat_future[:,:,i])
+                    tmp_emb = self.embs[i](cat_future[:, :, i])
             else:
-                tmp.append(self.embs[i](cat_future[:,:,i]))   
+                tmp.append(self.embs[i](cat_future[:, :, i]))
         if self.sum_emb and (len(self.embs)):
             tmp.append(tmp_emb)
-            
+
         if x_future is not None:
             tmp.append(x_future)
-        if len(tmp)>0:           
+        if len(tmp) > 0:
 
-            tot_future = torch.cat(tmp,2).flatten(1)
-            tot = torch.cat([tot_past,tot_future],1)
-            
+            tot_future = torch.cat(tmp, 2).flatten(1)
+            tot = torch.cat([tot_past, tot_future], 1)
+
         else:
             tot = tot_past
 
         res = []
         B = tot.shape[0]
         for j in range(len(self.linear)):
-            res.append(self.linear[j](tot).reshape(B,-1,self.mul))
+            res.append(self.linear[j](tot).reshape(B, -1, self.mul))
         ## BxLxCxMUL
-        res = torch.stack(res,2)
+        res = torch.stack(res, 2)
 
-        if self.kind=='nlinear':
-            #res BxLxCx3
-            #start BxCx1
-            res+=x_start.unsqueeze(1)
+        if self.kind == 'nlinear':
+            # res BxLxCx3
+            # start BxCx1
+            res += x_start.unsqueeze(1)
 
-        if self.kind=='dlinear':
-            res = res+trend.unsqueeze(3)
+        if self.kind == 'dlinear':
+            res = res + trend.unsqueeze(3)
 
         return res
-    

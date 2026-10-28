@@ -9,7 +9,9 @@ import requests
 from bs4 import BeautifulSoup as bs
 
 
-def strtobool(value: str) -> bool:
+def strtobool(
+        value: str
+        ) -> bool:
     value = value.lower()
     if value in {"y", "yes", "t", "true", "on", "1"}:
         return True
@@ -21,12 +23,14 @@ def strtobool(value: str) -> bool:
 import logging
 
 
-# Converts the contents in a .tsf file into a dataframe and returns it along with other meta-data of the dataset: frequency, horizon, whether the dataset contains missing values and whether the series have equal lengths
+# Converts the contents in a .tsf file into a dataframe and returns it along with other meta-data of the dataset:
+# frequency, horizon, whether the dataset contains missing values and whether the series have equal lengths
 #
 # Parameters
 # full_file_path_and_name - complete .tsf file path
 # replace_missing_vals_with - a term to indicate the missing values in series in the returning dataframe
-# value_column_name - Any name that is preferred to have as the name of the column containing series values in the returning dataframe
+# value_column_name - Any name that is preferred to have as the name of the column containing series values in the
+# returning dataframe
 def convert_tsf_to_dataframe(
         full_file_path_and_name: str,
         replace_missing_vals_with: str = "NaN",
@@ -59,7 +63,7 @@ def convert_tsf_to_dataframe(
     found_data_section = False
     started_reading_data_section = False
 
-    with open(full_file_path_and_name, "r", encoding="cp1252") as file:
+    with open(full_file_path_and_name, "r", encoding = "cp1252") as file:
         for line in file:
             # Strip white space from start/end of line
             line = line.strip()
@@ -126,7 +130,9 @@ def convert_tsf_to_dataframe(
 
                         if len(series) == 0:
                             raise Exception(
-                                "A given series should contains a set of comma separated numeric values. At least one numeric value should be there in a series. Missing values should be indicated with ? symbol"
+                                "A given series should contains a set of comma separated numeric values. At least one "
+                                "numeric value should be there in a series. Missing values should be indicated with ? "
+                                "symbol"
                             )
 
                         numeric_series = []
@@ -141,7 +147,8 @@ def convert_tsf_to_dataframe(
                                 numeric_series
                         ):
                             raise Exception(
-                                "All series values are missing. A given series should contains a set of comma separated numeric values. At least one numeric value should be there in a series."
+                                "All series values are missing. A given series should contains a set of comma "
+                                "separated numeric values. At least one numeric value should be there in a series."
                             )
 
                         all_series.append(pd.Series(numeric_series).array)
@@ -159,7 +166,8 @@ def convert_tsf_to_dataframe(
                             else:
                                 raise Exception(
                                     "Invalid attribute type."
-                                )  # Currently, the code supports only numeric, string and date types. Extend this as required.
+                                )  # Currently, the code supports only numeric, string and date types. Extend this as
+                                # required.
 
                             if att_val is None:
                                 raise Exception("Invalid attribute value.")
@@ -187,7 +195,9 @@ def convert_tsf_to_dataframe(
         )
 
 
-def get_freq(freq) -> str:
+def get_freq(
+        freq
+        ) -> str:
     """Get the frequency based on the string reported. I don't think there are all the possibilities here
 
     Args:
@@ -207,13 +217,18 @@ def get_freq(freq) -> str:
 class Monash():
 
     def __init__(
-            self, filename: str, baseUrl: str = 'https://forecastingdata.org/', rebuild: bool = False):
+            self,
+            filename: str,
+            baseUrl: str = 'https://forecastingdata.org/',
+            rebuild: bool = False
+    ):
         """Class for downloading datasets listed here https://forecastingdata.org/ 
 
         Args:
             filename (str):  name of the class, used for saving
             baseUrl (str, optional): url to the source page. Defaults to 'https://forecastingdata.org/'.
-            rebuild (bool, optional):  if true the table will be loaded from the webpage otherwise it will be loaded from the saved file. Defaults to False.
+            rebuild (bool, optional):  if true the table will be loaded from the webpage otherwise it will be loaded
+            from the saved file. Defaults to False.
         """
         self.baseUrl = baseUrl
         self.downloaded = {}
@@ -228,7 +243,10 @@ class Monash():
             self.get_table(baseUrl)
             self.save(filename)
 
-    def get_table(self, baseUrl):
+    def get_table(
+            self,
+            baseUrl
+            ):
         """   get table
         
         :meta private:
@@ -265,10 +283,16 @@ class Monash():
                 tot.append(row_to_insert)
 
         tot = pd.DataFrame(tot)
-        tot['id'] = tot.Download.apply(lambda x: int(x.split('/')[-1]))
+        tot['id'] = tot.Download.apply(
+            lambda
+                x: int(x.split('/')[-1])
+            )
         self.table = tot.copy()
 
-    def save(self, filename: str) -> None:
+    def save(
+            self,
+            filename: str
+            ) -> None:
         """Save the monarch structure
 
         Args:
@@ -282,7 +306,10 @@ class Monash():
             #        _ = params.pop(k)
             pickle.dump(params, f)
 
-    def load(self, filename: str) -> None:
+    def load(
+            self,
+            filename: str
+            ) -> None:
         """Load a monarch structure
 
         Args:
@@ -294,7 +321,12 @@ class Monash():
             for p in params:
                 setattr(self, p, params[p])
 
-    def download_dataset(self, path: str, id: int, rebuild=False) -> None:
+    def download_dataset(
+            self,
+            path: str,
+            id: int,
+            rebuild = False
+            ) -> None:
         """download a specific dataset 
 
         Args:
@@ -309,17 +341,25 @@ class Monash():
             os.mkdir(path)
         if os.path.exists(os.path.join(path, str(id))):
             if rebuild:
-                file = self._download(url=self.table.Download[self.table.id == id].values[0],
-                                      path=os.path.join(path, str(id)))
+                file = self._download(
+                    url = self.table.Download[self.table.id == id].values[0],
+                    path = os.path.join(path, str(id))
+                    )
                 self.downloaded[id] = f'{path}/{id}/{file}'
             else:
                 pass
         else:
-            file = self._download(url=self.table.Download[self.table.id == id].values[0],
-                                  path=os.path.join(path, str(id)))
+            file = self._download(
+                url = self.table.Download[self.table.id == id].values[0],
+                path = os.path.join(path, str(id))
+                )
             self.downloaded[id] = f'{path}/{id}/{file}'
 
-    def _download(self, url, path) -> str:
+    def _download(
+            self,
+            url,
+            path
+            ) -> str:
         """ get data
         
         :meta private:
@@ -337,7 +377,10 @@ class Monash():
         os.remove(path + '.zip')
         return os.listdir(path)[0]
 
-    def generate_dataset(self, id: int) -> tuple[pd.DataFrame, str | None, int | None, bool | None, bool | None] | None:
+    def generate_dataset(
+            self,
+            id: int
+            ) -> tuple[pd.DataFrame, str | None, int | None, bool | None, bool | None] | None:
         """Parse the id-th dataset in a convient format and return a pandas dataset
 
         Args:

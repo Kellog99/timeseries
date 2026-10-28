@@ -5,11 +5,15 @@ from pydantic import Field
 
 from timeseries.registry import Configuration
 
-Period = Annotated[int, Field(gt=0)] | Literal["max"] | None
+Period = Annotated[int, Field(gt = 0)] | Literal["max"] | None
 
 
 class WindowConfig(Configuration):
-    period: Period = Field(None, description="Non-overlapping window length; None or max uses all observations, including the final partial window.")
+    period: Period = Field(
+        None,
+        description = "Non-overlapping window length; None or max uses all observations, including the final partial "
+                      "window."
+        )
 
 
 class MovingAverageConfig(WindowConfig):
@@ -25,21 +29,29 @@ class MovingSRConfig(WindowConfig):
 
 
 class SharpeRatioConfig(Configuration):
-    risk_free_rate: float = Field(0.0, description="Risk-free decimal return per observation, in the same frequency as input returns.")
-    periods_per_year: int = Field(252, gt=0, description="Observations per year used for square-root annualization.")
+    risk_free_rate: float = Field(
+        0.0, description = "Risk-free decimal return per observation, in the same frequency as input returns."
+        )
+    periods_per_year: int = Field(
+        252, gt = 0, description = "Observations per year used for square-root annualization."
+        )
 
 
 class OmegaRatioConfig(Configuration):
-    threshold: float = Field(0.0, description="Minimum acceptable decimal return per observation.")
+    threshold: float = Field(0.0, description = "Minimum acceptable decimal return per observation.")
 
 
 class SortinoRatioConfig(Configuration):
-    target_return: float = Field(0.0, description="Minimum acceptable decimal return per observation.")
-    periods_per_year: int = Field(252, gt=0, description="Observations per year used for square-root annualization.")
+    target_return: float = Field(0.0, description = "Minimum acceptable decimal return per observation.")
+    periods_per_year: int = Field(
+        252, gt = 0, description = "Observations per year used for square-root annualization."
+        )
 
 
 class VolatilityConfig(Configuration):
-    periods_per_year: int = Field(252, gt=0, description="Observations per year used for square-root annualization.")
+    periods_per_year: int = Field(
+        252, gt = 0, description = "Observations per year used for square-root annualization."
+        )
 
 
 class MaxDrawdownConfig(Configuration):
@@ -47,7 +59,9 @@ class MaxDrawdownConfig(Configuration):
 
 
 class CalmarRatioConfig(Configuration):
-    periods_per_year: int = Field(252, gt=0, description="Observations per year used to annualize compounded returns.")
+    periods_per_year: int = Field(
+        252, gt = 0, description = "Observations per year used to annualize compounded returns."
+        )
 
 
 class TotalReturnConfig(Configuration):

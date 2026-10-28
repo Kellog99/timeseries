@@ -17,10 +17,12 @@ def get_return(
     Returns:
         list[tuple[datetime, float]]: this represents the daily return of a certain list
     """
-    sorted_days: list[date] = sorted([
-        day if isinstance(day, date) else datetime.strptime(day, date_format).date()
-        for day in history.keys()
-    ])
+    sorted_days: list[date] = sorted(
+        [
+            day if isinstance(day, date) else datetime.strptime(day, date_format).date()
+            for day in history.keys()
+        ]
+    )
     # I have to make sure to have the keys in a certain format
     history: dict[date, float] = {
         key if isinstance(key, date) else datetime.strptime(key, date_format).date(): value
@@ -35,9 +37,9 @@ def get_return(
             # I compute the return in this two cases:
             # 1) the time difference is 1 day
             # 2) the new date is monday and the previous is friday, hence the time difference is not 1
-            if (sorted_days[i] - sorted_days[i - 1] == timedelta(days=1) or
+            if (sorted_days[i] - sorted_days[i - 1] == timedelta(days = 1) or
                     (sorted_days[i].weekday() == 0 and sorted_days[i - 1].weekday() == 4 and sorted_days[i] -
-                     sorted_days[i - 1] == timedelta(days=3))):
+                     sorted_days[i - 1] == timedelta(days = 3))):
                 current_value: float = history[sorted_days[i]]
 
                 ############################ Scale of the return ############################

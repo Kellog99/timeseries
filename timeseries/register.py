@@ -1,6 +1,7 @@
 """Model factory; implementations register themselves through decorators."""
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, Literal, overload
+
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
@@ -25,7 +26,6 @@ if TYPE_CHECKING:
     from timeseries.models.RegimeDetector import RegimeDetector, ConfigRegimeDetector
     from timeseries.models.ensamble import EnsemblePredictor, ConfigEnsemblePredictor
 
-
 from timeseries.registry import Factory, Info
 
 
@@ -46,7 +46,7 @@ class ModelFactory(Factory[object]):
         'vqvaea': 'timeseries.models.VQVAEA',
         'rnn': 'timeseries.models.RNN',
         'linearts': 'timeseries.models.LinearTS',
-        'mymodel': 'timeseries.models.MyModel',
+        'my': 'timeseries.models.MyModel',
         'crossformer': 'timeseries.models.CrossFormer',
         'gnn': 'timeseries.models.gnn.model',
         'legacytft': 'timeseries.models.legacy_tft.model',
@@ -61,186 +61,436 @@ class ModelFactory(Factory[object]):
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["vva"], config: BaseModel | None = None, **kwargs: Any) -> "VVA": ...
+    def create(
+            cls,
+            class_id: Literal["vva"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "VVA":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["persistent"], config: BaseModel | None = None, **kwargs: Any) -> "Persistent": ...
+    def create(
+            cls,
+            class_id: Literal["persistent"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "Persistent":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["tft"], config: BaseModel | None = None, **kwargs: Any) -> "TFT": ...
+    def create(
+            cls,
+            class_id: Literal["tft"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "TFT":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["informer"], config: BaseModel | None = None, **kwargs: Any) -> "Informer": ...
+    def create(
+            cls,
+            class_id: Literal["informer"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "Informer":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["tft2"], config: BaseModel | None = None, **kwargs: Any) -> "TFT2": ...
+    def create(
+            cls,
+            class_id: Literal["tft2"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "TFT2":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["d3vae"], config: BaseModel | None = None, **kwargs: Any) -> "D3VAE": ...
+    def create(
+            cls,
+            class_id: Literal["d3vae"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "D3VAE":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["vqvaea"], config: BaseModel | None = None, **kwargs: Any) -> "VQVAEA": ...
+    def create(
+            cls,
+            class_id: Literal["vqvaea"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "VQVAEA":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["rnn"], config: BaseModel | None = None, **kwargs: Any) -> "RNN": ...
+    def create(
+            cls,
+            class_id: Literal["rnn"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "RNN":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["linearts"], config: BaseModel | None = None, **kwargs: Any) -> "LinearTS": ...
+    def create(
+            cls,
+            class_id: Literal["linearts"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "LinearTS":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["mymodel"], config: BaseModel | None = None, **kwargs: Any) -> "MyModel": ...
+    def create(
+            cls,
+            class_id: Literal["my"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "MyModel":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["crossformer"], config: BaseModel | None = None, **kwargs: Any) -> "CrossFormer": ...
+    def create(
+            cls,
+            class_id: Literal["crossformer"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "CrossFormer":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["gnn"], config: BaseModel | None = None, **kwargs: Any) -> "GNN": ...
+    def create(
+            cls,
+            class_id: Literal["gnn"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "GNN":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["legacytft"], config: BaseModel | None = None, **kwargs: Any) -> "Model": ...
+    def create(
+            cls,
+            class_id: Literal["legacytft"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "Model":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["arima"], config: BaseModel | None = None, **kwargs: Any) -> "ARIMAPredictor": ...
+    def create(
+            cls,
+            class_id: Literal["arima"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "ARIMAPredictor":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["garch"], config: BaseModel | None = None, **kwargs: Any) -> "SimpleGARCH": ...
+    def create(
+            cls,
+            class_id: Literal["garch"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "SimpleGARCH":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["kalman"], config: BaseModel | None = None, **kwargs: Any) -> "KalmanFilter": ...
+    def create(
+            cls,
+            class_id: Literal["kalman"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "KalmanFilter":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["movingaverages"], config: BaseModel | None = None, **kwargs: Any) -> "MovingAverages": ...
+    def create(
+            cls,
+            class_id: Literal["movingaverages"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "MovingAverages":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["bollingerbands"], config: BaseModel | None = None, **kwargs: Any) -> "BollingerBands": ...
+    def create(
+            cls,
+            class_id: Literal["bollingerbands"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "BollingerBands":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["regimedetector"], config: BaseModel | None = None, **kwargs: Any) -> "RegimeDetector": ...
+    def create(
+            cls,
+            class_id: Literal["regimedetector"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "RegimeDetector":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: Literal["ensemble"], config: BaseModel | None = None, **kwargs: Any) -> "EnsemblePredictor": ...
+    def create(
+            cls,
+            class_id: Literal["ensemble"],
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> "EnsemblePredictor":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: None = None, *, config: "ConfigKalmanFilter", **kwargs: Any) -> "KalmanFilter": ...
+    def create(
+            cls,
+            class_id: None = None,
+            *,
+            config: "ConfigKalmanFilter",
+            **kwargs: Any
+            ) -> "KalmanFilter":
+        ...
 
     @overload
     @classmethod
-    def create(cls, class_id: str | None = None, config: BaseModel | None = None, **kwargs: Any) -> object: ...
+    def create(
+            cls,
+            class_id: str | None = None,
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> object:
+        ...
 
     @classmethod
-    def create(cls, class_id: str | None = None, config: BaseModel | None = None, **kwargs: Any) -> object:
+    def create(
+            cls,
+            class_id: str | None = None,
+            config: BaseModel | None = None,
+            **kwargs: Any
+            ) -> object:
         return super().create(class_id, config, **kwargs)
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["vva"], **kwargs: Any) -> "ConfigVVA": ...
+    def get_config(
+            cls,
+            class_id: Literal["vva"],
+            **kwargs: Any
+            ) -> "ConfigVVA":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["persistent"], **kwargs: Any) -> "ConfigPersistent": ...
+    def get_config(
+            cls,
+            class_id: Literal["persistent"],
+            **kwargs: Any
+            ) -> "ConfigPersistent":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["tft"], **kwargs: Any) -> "ConfigTFT": ...
+    def get_config(
+            cls,
+            class_id: Literal["tft"],
+            **kwargs: Any
+            ) -> "ConfigTFT":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["informer"], **kwargs: Any) -> "ConfigInformer": ...
+    def get_config(
+            cls,
+            class_id: Literal["informer"],
+            **kwargs: Any
+            ) -> "ConfigInformer":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["tft2"], **kwargs: Any) -> "ConfigTFT2": ...
+    def get_config(
+            cls,
+            class_id: Literal["tft2"],
+            **kwargs: Any
+            ) -> "ConfigTFT2":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["d3vae"], **kwargs: Any) -> "ConfigD3VAE": ...
+    def get_config(
+            cls,
+            class_id: Literal["d3vae"],
+            **kwargs: Any
+            ) -> "ConfigD3VAE":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["vqvaea"], **kwargs: Any) -> "ConfigVQVAEA": ...
+    def get_config(
+            cls,
+            class_id: Literal["vqvaea"],
+            **kwargs: Any
+            ) -> "ConfigVQVAEA":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["rnn"], **kwargs: Any) -> "ConfigRNN": ...
+    def get_config(
+            cls,
+            class_id: Literal["rnn"],
+            **kwargs: Any
+            ) -> "ConfigRNN":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["linearts"], **kwargs: Any) -> "ConfigLinearTS": ...
+    def get_config(
+            cls,
+            class_id: Literal["linearts"],
+            **kwargs: Any
+            ) -> "ConfigLinearTS":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["mymodel"], **kwargs: Any) -> "ConfigMyModel": ...
+    def get_config(
+            cls,
+            class_id: Literal["my"],
+            **kwargs: Any
+            ) -> "ConfigMyModel":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["crossformer"], **kwargs: Any) -> "ConfigCrossFormer": ...
+    def get_config(
+            cls,
+            class_id: Literal["crossformer"],
+            **kwargs: Any
+            ) -> "ConfigCrossFormer":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["gnn"], **kwargs: Any) -> "ConfigGNN": ...
+    def get_config(
+            cls,
+            class_id: Literal["gnn"],
+            **kwargs: Any
+            ) -> "ConfigGNN":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["legacytft"], **kwargs: Any) -> "ConfigLegacyTFT": ...
+    def get_config(
+            cls,
+            class_id: Literal["legacytft"],
+            **kwargs: Any
+            ) -> "ConfigLegacyTFT":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["arima"], **kwargs: Any) -> "ConfigARIMAPredictor": ...
+    def get_config(
+            cls,
+            class_id: Literal["arima"],
+            **kwargs: Any
+            ) -> "ConfigARIMAPredictor":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["garch"], **kwargs: Any) -> "ConfigSimpleGARCH": ...
+    def get_config(
+            cls,
+            class_id: Literal["garch"],
+            **kwargs: Any
+            ) -> "ConfigSimpleGARCH":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["kalman"], **kwargs: Any) -> "ConfigKalmanFilter": ...
+    def get_config(
+            cls,
+            class_id: Literal["kalman"],
+            **kwargs: Any
+            ) -> "ConfigKalmanFilter":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["movingaverages"], **kwargs: Any) -> "ConfigMovingAverages": ...
+    def get_config(
+            cls,
+            class_id: Literal["movingaverages"],
+            **kwargs: Any
+            ) -> "ConfigMovingAverages":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["bollingerbands"], **kwargs: Any) -> "ConfigBollingerBands": ...
+    def get_config(
+            cls,
+            class_id: Literal["bollingerbands"],
+            **kwargs: Any
+            ) -> "ConfigBollingerBands":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["regimedetector"], **kwargs: Any) -> "ConfigRegimeDetector": ...
+    def get_config(
+            cls,
+            class_id: Literal["regimedetector"],
+            **kwargs: Any
+            ) -> "ConfigRegimeDetector":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: Literal["ensemble"], **kwargs: Any) -> "ConfigEnsemblePredictor": ...
+    def get_config(
+            cls,
+            class_id: Literal["ensemble"],
+            **kwargs: Any
+            ) -> "ConfigEnsemblePredictor":
+        ...
 
     @overload
     @classmethod
-    def get_config(cls, class_id: str, **kwargs: Any) -> BaseModel: ...
+    def get_config(
+            cls,
+            class_id: str,
+            **kwargs: Any
+            ) -> BaseModel:
+        ...
 
     @classmethod
-    def get_config(cls, class_id: str, **kwargs: Any) -> BaseModel:
+    def get_config(
+            cls,
+            class_id: str,
+            **kwargs: Any
+            ) -> BaseModel:
         return super().get_config(class_id, **kwargs)
 
     @classmethod
-    def _load_builtins(cls, class_id: str | None = None) -> None:
+    def _load_builtins(
+            cls,
+            class_id: str | None = None
+            ) -> None:
         modules = cls._modules.values() if class_id is None else [cls._modules.get(class_id)]
         for module in modules:
             if module is not None:

@@ -34,7 +34,7 @@ This folder is composed of
 1. **timeseries**: all the models that will be used for forecasting the timeseries
 2. **notebook**: for all the simple testing
 3. **tests**: this folder contains all the test for executing the timeseries library
-4. **services**: all the services that has to
+4. **services**: API services for market data, indicators and metrics
 
 ## Timeseries
 
@@ -48,6 +48,40 @@ This contains all the main test for implementing a new model in the regime.
 
 This folder contains all the services that have to be used for sending all the information to the FE (front end).
 
+## Model domains
+
+Models are grouped by their registered `domain`:
+
+| Domain               | Models                                                                                                                                         | Purpose                                                                     |
+|----------------------|------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| `forecasting`        | RNN (GRU/LSTM), LinearTS, Persistent, MyModel, TFT, TFT2, legacy TFT, Informer, CrossFormer, D3VAE, VVA, VQVAEA, GNN, ARIMA, EnsemblePredictor | Time series prediction, including multivariate and graph-based forecasting. |
+| `volatility`         | SimpleGARCH                                                                                                                                    | Conditional volatility estimation.                                          |
+| `filtering`          | KalmanFilter                                                                                                                                   | Signal filtering and smoothing.                                             |
+| `technical_analysis` | MovingAverages, BollingerBands, RegimeDetector                                                                                                 | Trend indicators, price bands and volatility-based regimes.                 |
+
+Use `ModelFactory.get_list_classes(domain="forecasting")` to filter the catalog.
+Metrics have separate domains: `risk`, `returns`, `statistics` and `dependence`.
+
+## Supported datasets
+
+- **Custom series**: univariate or multivariate pandas DataFrames with a `time`
+  column, numeric targets, past/future covariates and categorical variables,
+  loaded through `TimeSeries.load_signal()`.
+- **Synthetic series**: periodic signals with noise and additive or multiplicative
+  categorical effects, generated with `TimeSeries.generate_signal()` and `Categorical`.
+- **Public forecasting benchmarks**: `electricity`, `etth1`, `etth2`, `ettm1`,
+  `ettm2`, `exchange_rate`, `illness`, `traffic` and `weather`, loaded with
+  `read_public_dataset(path, dataset)` from `timeseries.data_management.public_datasets`.
+  Files must be downloaded and extracted under `path/all_six_datasets/` first.
+- **Monash archive**: dataset download helpers and `.tsf` parsing through
+  `Monash` and `convert_tsf_to_dataframe` in `timeseries.data_management.monash`.
+- **Financial data**: historical ticker prices from Yahoo Finance through the
+  service layer, with daily-return utilities in `timeseries.metrics.returns`.
+
+Training uses windowed PyTorch datasets (`MyDataset`); token-based VVA models
+use `VVADataset`. Legacy TFT and GNN workflows have dedicated data loaders.
+The Venice tide builder (`build_venice`) is separate: `venice` is currently
+excluded from the public dataset loader's accepted names.
 
 ## Model and metric factories
 
@@ -61,16 +95,16 @@ supported `actions`.
 from timeseries.models import ModelFactory
 from timeseries.metrics import MetricFactory
 
-config = ModelFactory.get_config("kalman", measurement_variance=0.05)
-model = ModelFactory.create(config=config)
+config = ModelFactory.get_config("kalman", measurement_variance = 0.05)
+model = ModelFactory.create(config = config)
 # Explicit overrides are validated without modifying config.
-model = ModelFactory.create("kalman", config=config, process_variance=0.001)
+model = ModelFactory.create("kalman", config = config, process_variance = 0.001)
 
 info = ModelFactory.get_info("d3vae")
 fields = ModelFactory.get_config_param("d3vae")
-risk_metrics = MetricFactory.get_list_classes(domain="risk", actions={"performance"})
+risk_metrics = MetricFactory.get_list_classes(domain = "risk", actions = {"performance"})
 
-sharpe = MetricFactory.create("sharpe", risk_free_rate=0.0, periods_per_year=252)
+sharpe = MetricFactory.create("sharpe", risk_free_rate = 0.0, periods_per_year = 252)
 sharpe.update([0.01, -0.02, 0.03])
 value = sharpe.compute()
 sharpe.reset()
@@ -88,17 +122,22 @@ from pydantic import Field
 from timeseries.registry import Configuration
 from timeseries.models import ModelFactory
 
+
 class ExampleConfig(Configuration):
-    window: int = Field(20, gt=0, description="Number of past observations.")
+    window: int = Field(20, gt = 0, description = "Number of past observations.")
+
 
 @ModelFactory.register(
-    name="Example", description="Example window-based model.",
-    id="example", domain="forecasting",
+    name = "Example", description = "Example window-based model.",
+    id = "example", domain = "forecasting",
 )
 class Example:
     CONFIG_T = ExampleConfig
 
-    def __init__(self, window: int = 20) -> None:
+    def __init__(
+            self,
+            window: int = 20
+            ) -> None:
         self.window = window
 ```
 
@@ -124,7 +163,6 @@ indicators. The ARIMA-style model currently fits AR coefficients only; `q` remai
 reserved parameter and differencing supports orders zero and one.
 
 Run the focused refactoring tests with `python -m pytest tests` in the project environment.
-
 
 ## Model layout and PyTorch training
 
@@ -160,14 +198,14 @@ from timeseries.models import ModelFactory
 from timeseries.training import train_model
 
 model = ModelFactory.create(
-    "linearts", past_steps=24, future_steps=6, past_channels=1,
-    future_channels=0, embs=[], cat_emb_dim=4, kernel_size=3,
-    sum_emb=False, out_channels=1, hidden_size=32,
-    optim_config={"lr": 0.001},
+    "linearts", past_steps = 24, future_steps = 6, past_channels = 1,
+    future_channels = 0, embs = [], cat_emb_dim = 4, kernel_size = 3,
+    sum_emb = False, out_channels = 1, hidden_size = 32,
+    optim_config = {"lr": 0.001},
 )
 history = train_model(
     model, train_loader, validation_loader,
-    epochs=20, device="cpu", checkpoint_dir="checkpoints",
+    epochs = 20, device = "cpu", checkpoint_dir = "checkpoints",
 )
 ```
 
@@ -181,7 +219,7 @@ epoch. Load model weights with:
 ```python
 import torch
 
-checkpoint = torch.load("checkpoints/best.pt", map_location="cpu", weights_only=True)
+checkpoint = torch.load("checkpoints/best.pt", map_location = "cpu", weights_only = True)
 model.load_state_dict(checkpoint["state_dict"])
 model.eval()
 ```
