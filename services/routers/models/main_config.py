@@ -9,63 +9,75 @@ from pydantic import BaseModel, Field, model_validator
 class MainConfig(BaseModel):
     ####################### CONFIG #######################
     port: int = Field(
-        default=8000,
-        description="Port number of the web server"
+        default = 8000,
+        description = "Port number of the web server"
     )
     host: str = Field(
-        default="localhost",
-        description="Host of the web server"
+        default = "localhost",
+        description = "Host of the web server"
     )
     worker: int = Field(
-        default=1,
-        description="Number of worker processes"
+        default = 1,
+        description = "Number of worker processes"
     )
     ####################### PATH #######################
     path_report: str = Field(
-        default="~/Desktop/finance/report",
-        description="Path to the folder where there are all the report about a specific portfolio benchmark"
+        default = "~/Desktop/finance/report",
+        description = "Path to the folder where there are all the report about a specific portfolio benchmark"
     )
     path_data: str = Field(
-        default="~/Desktop/finance/data/",
-        description="Path to the data already downloaded."
+        default = "~/Desktop/finance/data/",
+        description = "Path to the data already downloaded."
     )
     ####################################################
 
     tickers: list[str] = Field(
-        default=[
-            'AAPL', 'AMD',
-            'AMZN', 'ANET', 'APA', 'APO', 'APP', 'BBY', 'BDX', 'BG', 'BIIB',
-            'BKNG', 'BKR', 'BLDR', 'BMY', 'BXP', 'GOOGL', 'MO', 'T', 'XYZ'
+        default = [
+            'AAPL', 'AMD', 'AMZN', 'ANET', 'APA', 'APO', 'APP',
+            'BBY', 'BDX', 'BG', 'BIIB', 'BKNG', 'BKR', 'BLDR',
+            'BMY', 'BXP', 'GOOGL', 'MO', 'T', 'XYZ'
         ],
-        description="Tickers that have been selected."
+        description = "Tickers that have been selected."
+    )
+    format: str = Field(
+        default = "%Y-%m-%d",
+        description = "Format of the timeseries' data."
     )
     save: bool = Field(
-        default=True,
-        description="It tells whether to save a ticker's data or not."
+        default = True,
+        description = "It tells whether to save a ticker's data or not."
     )
     ####################### CHART #######################
     step_size: int = Field(
-        default=200,
-        description="Step size between points in the time series chart."
+        default = 200,
+        description = "Step size between points in the time series chart."
+    )
+    bins: int = Field(
+        default = 200,
+        description = "Number of bins to show in the histogram."
     )
     #####################################################
     device: str = Field(
-        default="cuda" if torch.cuda.is_available() else "cpu",
-        description="Device to run the operations on."
+        default = "cuda" if torch.cuda.is_available() else "cpu",
+        description = "Device to run the operations on."
     )
 
-    @model_validator(mode='after')
-    def create_paths(self):
+    @model_validator(mode = 'after')
+    def create_paths(
+            self
+            ):
         """Create folders if they don't exist"""
         for field_name in ['path_report', 'path_data']:
             path_str = getattr(self, field_name)
             path = Path(path_str).expanduser()
             if not path.is_file() and not path.exists():
-                path.mkdir(parents=True, exist_ok=True)
+                path.mkdir(parents = True, exist_ok = True)
         return self
 
 
-def parsed_argument(model_class) -> argparse.Namespace:
+def parsed_argument(
+        model_class
+        ) -> argparse.Namespace:
     """
     Add all fields from a Pydantic model to an argument parser
     """
@@ -81,8 +93,8 @@ def parsed_argument(model_class) -> argparse.Namespace:
             field_type = field_type.__args__[0]
         parser.add_argument(
             f"--{field_name}",
-            type=field_type,
-            default=default,
-            help=help_text
+            type = field_type,
+            default = default,
+            help = help_text
         )
     return parser.parse_args()

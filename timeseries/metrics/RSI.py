@@ -1,42 +1,96 @@
-from collections import deque
-from datetime import datetime
+"""Historical module name retained for the windowed metrics API."""
+
+from typing import ClassVar
 
 import torch
-from torchmetrics import Metric
+from torch import Tensor
+
+from .configs import MovingAverageConfig, MovingSRConfig, MovingVarianceConfig, Period, WindowConfig
+from .register import MetricFactory
+from .risk import ReturnMetric, divide
 
 
-class MovingSR(Metric):
-    def __init__(self, period: int = 14):
-        super(MovingSR, self).__init__()
-        """
-        Args:
-            period (int, optional): Defaults to 14. This represents the moving window to compute the sharpe ration in
-        """
-        self.period = period
-        self.windows = {}
+class WindowMetric(ReturnMetric):
+    CONFIG_T: ClassVar[type[WindowConfig]] = MovingAverageConfig
 
-    def reset(self) -> None:
-        self.windows = {}
+    def __init__(
+            self,
+            period: Period = None
+            ) -> None:
+        super().__init__()
+        self.period = self.CONFIG_T(period = period).period
 
-    def update(self, data: dict[datetime, float]):
-        self.windows.update(data)
+    def reduce(
+            self,
+            window: Tensor
+            ) -> Tensor:
+        raise NotImplementedError
 
-    def compute(self) -> torch.Tensor:
-        all_dates = list(self.windows.keys())
-        if len(all_dates) < self.period:
-            return torch.Tensor(0)
+    def compute(
+            self
+            ) -> list[float]:
+        values = self.values()
+        period = values.numel() if self.period is None or self.period == "max" else self.period
+        return [self.reduce(window).item() for window in values.split(period)]
 
-        all_dates.sort()
-        out = []
-        queue = deque(maxlen=self.period)
-        queue.append(self.windows[all_dates[0]])
-        for i in range(1, len(all_dates)):
-            queue.append(self.windows[all_dates[i]])
-            if len(queue) == self.period:
-                out.append(list(queue))
-                queue.clear()
-        values = torch.Tensor(out)
-        window_returns = (values[:, -1] - values[:, 0]) / values[:, 0]
-        window_std = torch.std(window_returns, dim=-1)
+    def update(
+            self,
+            data: Tensor | list[float]
+            ) -> None:
+        # Means and variances also accept arbitrary finite observations, not only returns.
+        values = torch.as_tensor(data, dtype = torch.float64, device = self.device)
+        if values.ndim != 1 or not torch.isfinite(values).all():
+            raise ValueError("Expected a finite one-dimensional sequence.")
+        self.returns.append(values.detach())
 
-        return window_returns / window_std.pow(1 / self.period)
+
+@MetricFactory.register(
+    name = 'MovingAverage',
+    description = 'Arithmetic mean in non-overlapping windows.',
+    id = 'moving_average', domain = 'statistics', actions = {"performance"},
+)
+class MovingAverage(WindowMetric):
+    CONFIG_T: ClassVar[type[WindowConfig]] = MovingAverageConfig
+
+    def reduce(
+            self,
+            window: Tensor
+            ) -> Tensor:
+        return window.mean()
+
+
+@MetricFactory.register(
+    name = 'MovingVariance',
+    description = 'Population variance in non-overlapping windows.',
+    id = 'moving_variance', domain = 'statistics', actions = {"performance"},
+)
+class MovingVariance(WindowMetric):
+    CONFIG_T: ClassVar[type[WindowConfig]] = MovingVarianceConfig
+
+    def reduce(
+            self,
+            window: Tensor
+            ) -> Tensor:
+        return window.var(correction = 0)
+
+
+@MetricFactory.register(
+    name = 'MovingSR',
+    description = 'Unannualized Sharpe ratio in non-overlapping windows.',
+    id = 'moving_sr', domain = 'risk', actions = {"performance"},
+)
+class MovingSR(WindowMetric):
+    CONFIG_T: ClassVar[type[WindowConfig]] = MovingSRConfig
+
+    def update(
+            self,
+            data: Tensor | list[float]
+            ) -> None:
+        ReturnMetric.update(self, data)
+
+    def reduce(
+            self,
+            window: Tensor
+            ) -> Tensor:
+        std = window.std() if window.numel() > 1 else window.new_tensor(float("nan"))
+        return divide(window.mean(), std)

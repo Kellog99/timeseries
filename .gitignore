@@ -4,3 +4,9 @@
 *.json
 
 *.sh
+
+*/__pychache__/*
+__pycache__/
+*.py[cod]
+.pytest_cache/
+uv.lock
