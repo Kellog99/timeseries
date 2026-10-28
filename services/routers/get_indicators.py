@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter
-from fastapi.params import Query
+from fastapi import Query
 
 from .models.indicators import Fundamentals
 

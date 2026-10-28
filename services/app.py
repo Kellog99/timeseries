@@ -4,8 +4,8 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import api_router
-from routers.models.main_config import MainConfig, parsed_argument
+from services.routers import api_router
+from services.routers.models.main_config import MainConfig, parsed_argument
 
 ######################### FASTAPI #########################
 app = FastAPI(

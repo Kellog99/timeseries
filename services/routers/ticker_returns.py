@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 import matplotlib.pyplot as plt
 from fastapi import APIRouter, Depends
-from fastapi.params import Query, Body
+from fastapi import Query, Body
 from tqdm import tqdm
 
 from services.routers.load_data import get_data
@@ -84,7 +84,7 @@ def get_ticker_return(
         )
 
     prices: dict[date, float] = {
-        datetime.strptime(day, "%Y-%m-%d").date(): value.Close
+        (datetime.strptime(day, "%Y-%m-%d").date() if isinstance(day, str) else day): value.Close
         for day, value in data.items()
     }
 
@@ -124,7 +124,7 @@ def get_return_distribution(
             default=...,
             descrption="tickers to analyse."
         ),
-        path_data: Optional[Path | str] = Depends(config_field("path_data")),
+        path_data: Path | str = Depends(config_field("path_data")),
         save: bool = Depends(config_field("save")),
         date_format: str = Depends(config_field("format")),
         scale: Literal["plain", "abs", "exp"] = Query(

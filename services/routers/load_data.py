@@ -5,7 +5,7 @@ from typing import Optional
 
 import yfinance as yf
 from fastapi import APIRouter, HTTPException, Depends
-from fastapi.params import Query
+from fastapi import Query
 from pandas import DataFrame
 
 from .models.tickerdata import TickerData, Portfolio, History
@@ -26,7 +26,7 @@ def evaluate_portfolio() -> Portfolio:
     """
     This function evaluates the portfolio and returns it.
     """
-    return Portfolio()
+    raise HTTPException(status_code=501, detail="Portfolio evaluation is not implemented.")
 
 
 @router.get("/portfolio")
@@ -49,7 +49,7 @@ def get_data(
             description="It represent the path to the ticker time series."
         ),
         path_data: Path | str = Depends(config_field("path_data")),
-        step_size: Optional[int] = Depends(config_field("step_size")),
+        step_size: int = Depends(config_field("step_size")),
         save: bool = Depends(config_field("save"))
 ) -> TickerData:
     """
@@ -69,7 +69,7 @@ def get_data(
     # 1) handle the typing of the variable
     # 2) handle the existence of the folder
     if not path_data:
-        path_data: Path = Path("./data")
+        path_data = Path("./data")
 
     if isinstance(path_data, (str, Path)):
         if isinstance(path_data, str):
@@ -142,7 +142,7 @@ def get_data(
 
         history.reset_index(inplace=True)
         if "Date" in history.columns:
-            history.Date = history.Date.apply(
+            history["Date"] = history["Date"].apply(
                 lambda x: x.strftime('%Y-%m-%d')
             )
 
@@ -162,7 +162,7 @@ def get_data(
         required_columns: list[str] = ["Open", "Close", "High", "Low", "Volume"]
 
         new_history: dict[str | date, History] = {
-            value.get("Date"): History.model_validate(value) for value in
+            str(value["Date"]): History.model_validate(value) for value in
             history[required_columns + ["Date"]].to_dict(orient="records")
         }
 
@@ -186,7 +186,7 @@ def get_data(
     # Reducing the dimensionality of the history array
     keys = sorted(
         out.history.keys(),
-        key=lambda x: datetime.strptime(x, "%Y-%m-%d").date()
+        key=lambda x: datetime.strptime(x, "%Y-%m-%d").date() if isinstance(x, str) else x
     )
 
     out.history = {

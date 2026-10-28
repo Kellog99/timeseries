@@ -1,7 +1,7 @@
 import heapq
 import json
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
@@ -9,7 +9,7 @@ import numpy as np
 import torch
 import torchmetrics
 from fastapi import APIRouter, Depends
-from fastapi.params import Query
+from fastapi import Query
 from torchmetrics import PearsonCorrCoef
 from tqdm import tqdm
 
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/compute")
 
 
 def get_cached_correlation_matrix(
-        path_report: Path,
+        path_report: Path | str,
         path_data: Optional[Path] = None,
         correlation: str = "pearson",
         device: str | torch.device = "cpu",
@@ -50,11 +50,10 @@ def get_cached_correlation_matrix(
         )
     ##################################
 
-    ############# Correlation Metric #############
-    metric: type[torchmetrics.Metric] | None = None
-    if correlation.lower() == "pearson":
-        metric: type[torchmetrics.Metric] = PearsonCorrCoef
-    ##############################################
+    from timeseries.metrics import MetricRegister
+    if correlation.lower() not in MetricRegister.get_list_classes(domain="dependence"):
+        raise ValueError(f"Unknown correlation metric: {correlation!r}")
+    metric = correlation.lower()
 
     matrix: np.ndarray | None = None
     #################### Checking if the matrix is cached ####################
@@ -78,7 +77,9 @@ def get_cached_correlation_matrix(
             raise ValueError(
                 "The matrix and the data are None. Hence the tickers are required for generating the matrix."
             )
-        data: dict[str, dict[datetime, float]] = {}
+        if path_data is None:
+            raise ValueError("path_data is required when the correlation matrix is not cached.")
+        data: dict[str, dict[date, float]] = {}
         for ticker in tqdm(tickers, desc="loading the files"):
             # getting the history for a certain ticker
             ticker_data: TickerData = get_data(
@@ -86,10 +87,9 @@ def get_cached_correlation_matrix(
                 ticker=ticker,
                 step_size=1
             )
-            daily_return: list[tuple[datetime, float]] = get_return(
-                history=[(dv.Date, dv.Close) for dv in ticker_data.history]
-            )
-            data[ticker] = {date: day_return for [date, day_return] in daily_return}
+            daily_return = get_return(history={day: value.Close for day, value in ticker_data.history.items()})
+            data[ticker] = daily_return
+
 
         matrix: np.ndarray = compute_correlation_matrix(
             metric_type=metric,

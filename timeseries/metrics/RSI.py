@@ -1,136 +1,74 @@
-from typing import Literal, Optional
+"""Historical module name retained for the windowed metrics API."""
+
+from .register import MetricFactory
+
+from typing import ClassVar
 
 import torch
-from torchmetrics import Metric
+from torch import Tensor
+
+from .configs import MovingAverageConfig, MovingSRConfig, MovingVarianceConfig, Period, WindowConfig
+from .risk import ReturnMetric, divide
 
 
-class MovingAverage(Metric):
-    def __init__(
-            self,
-            period: Optional[int | Literal["max"]] = None
-    ):
-        super(MovingAverage, self).__init__()
-        """
-        Args:
-            period (int, optional): Defaults to 14. This represents the moving window to compute the sharpe ration in
-        """
-        if not period:
-            period = "max"
-        else:
-            if isinstance(period, (int, float)):
-                # the period must be an integer and positive
-                period = abs(int(period))
-            if isinstance(period, str) and period != "max":
-                raise ValueError(f"The type of period, {type(period)}, is not invalid.")
-        self.period = "max" if not period or period == "max" else period
+class WindowMetric(ReturnMetric):
+    CONFIG_T: ClassVar[type[WindowConfig]] = MovingAverageConfig
 
-        self.values = []
+    def __init__(self, period: Period = None) -> None:
+        super().__init__()
+        self.period = self.CONFIG_T(period=period).period
 
-    def reset(self) -> None:
-        self.values = []
-
-    def update(self, data: list[float]) -> None:
-        self.values.extend(data)
+    def reduce(self, window: Tensor) -> Tensor:
+        raise NotImplementedError
 
     def compute(self) -> list[float]:
-        period = len(self.values) if self.period == "max" else self.period
-        out: list[float] = []
-        for i in range(len(self.values) // period):
-            window: torch.Tensor = torch.tensor(self.values[i * period: (i + 1) * period])
-            window_return = window[-1] - window[0]
-            out.append((window_return / window.std().clamp(1e-5)).item())
+        values = self.values()
+        period = values.numel() if self.period is None or self.period == "max" else self.period
+        return [self.reduce(window).item() for window in values.split(period)]
 
-        if len(self.values) > len(self.values) // period * period:
-            window: torch.Tensor = torch.tensor(self.values[len(self.values) // period * period: -1])
-            window_return = window[-1] - window[0]
-            out.append((window_return / window.std().clamp(1e-5)).item())
-
-        return out
+    def update(self, data: Tensor | list[float]) -> None:
+        # Means and variances also accept arbitrary finite observations, not only returns.
+        values = torch.as_tensor(data, dtype=torch.float64, device=self.device)
+        if values.ndim != 1 or not torch.isfinite(values).all():
+            raise ValueError("Expected a finite one-dimensional sequence.")
+        self.returns.append(values.detach())
 
 
-class MovingVariance(Metric):
-    def __init__(
-            self,
-            period: Optional[int | Literal["max"]] = None
-    ):
-        super(MovingVariance, self).__init__()
-        """
-        Args:
-            period (int, optional): Defaults to 14. This represents the moving window to compute the sharpe ration in
-        """
-        if not period:
-            period = "max"
-        else:
-            if isinstance(period, (int, float)):
-                # the period must be an integer and positive
-                period = abs(int(period))
-            if isinstance(period, str) and period != "max":
-                raise ValueError(f"The type of period, {type(period)}, is not invalid.")
-        self.period = "max" if not period or period == "max" else period
+@MetricFactory.register(
+    name='MovingAverage',
+    description='Arithmetic mean in non-overlapping windows.',
+    id='moving_average', domain='statistics', actions={"performance"},
+)
+class MovingAverage(WindowMetric):
+    CONFIG_T: ClassVar[type[WindowConfig]] = MovingAverageConfig
 
-        self.values = []
-
-    def reset(self) -> None:
-        self.values = []
-
-    def update(self, data: list[float]) -> None:
-        self.values.extend(data)
-
-    def compute(self) -> list[float]:
-        period = len(self.values) if self.period == "max" else self.period
-        out: list[float] = []
-        for i in range(len(self.values) // period):
-            window: torch.Tensor = torch.tensor(self.values[i * period: (i + 1) * period])
-            window_return = window[-1] - window[0]
-            out.append((window_return / window.std().clamp(1e-5)).item())
-
-        if len(self.values) > len(self.values) // period * period:
-            window: torch.Tensor = torch.tensor(self.values[len(self.values) // period * period: -1])
-            window_return = window[-1] - window[0]
-            out.append((window_return / window.std().clamp(1e-5)).item())
-
-        return out
+    def reduce(self, window: Tensor) -> Tensor:
+        return window.mean()
 
 
-class MovingSR(Metric):
-    def __init__(
-            self,
-            period: Optional[int | Literal["max"]] = None
-    ):
-        super(MovingSR, self).__init__()
-        """
-        Args:
-            period (int, optional): Defaults to 14. This represents the moving window to compute the sharpe ration in
-        """
-        if not period:
-            period = "max"
-        else:
-            if isinstance(period, (int, float)):
-                # the period must be an integer and positive
-                period = abs(int(period))
-            if isinstance(period, str) and period != "max":
-                raise ValueError(f"The type of period, {type(period)}, is not invalid.")
-        self.period = "max" if not period or period == "max" else period
+@MetricFactory.register(
+    name='MovingVariance',
+    description='Population variance in non-overlapping windows.',
+    id='moving_variance', domain='statistics', actions={"performance"},
+)
+class MovingVariance(WindowMetric):
+    CONFIG_T: ClassVar[type[WindowConfig]] = MovingVarianceConfig
 
-        self.values = []
+    def reduce(self, window: Tensor) -> Tensor:
+        return window.var(correction=0)
 
-    def reset(self) -> None:
-        self.values = []
 
-    def update(self, data: list[float]) -> None:
-        self.values.extend(data)
+@MetricFactory.register(
+    name='MovingSR',
+    description='Unannualized Sharpe ratio in non-overlapping windows.',
+    id='moving_sr', domain='risk', actions={"performance"},
+)
+class MovingSR(WindowMetric):
+    CONFIG_T: ClassVar[type[WindowConfig]] = MovingSRConfig
 
-    def compute(self) -> list[float]:
-        period = len(self.values) if self.period == "max" else self.period
-        out: list[float] = []
-        for i in range(len(self.values) // period):
-            window: torch.Tensor = torch.tensor(self.values[i * period: (i + 1) * period])
-            window_return = window[-1] - window[0]
-            out.append((window_return / window.std().clamp(1e-5)).item())
+    def update(self, data: Tensor | list[float]) -> None:
+        ReturnMetric.update(self, data)
 
-        if len(self.values) > len(self.values) // period * period:
-            window: torch.Tensor = torch.tensor(self.values[len(self.values) // period * period: -1])
-            window_return = window[-1] - window[0]
-            out.append((window_return / window.std().clamp(1e-5)).item())
-
-        return out
+    def reduce(self, window: Tensor) -> Tensor:
+        std = window.std() if window.numel() > 1 else window.new_tensor(float("nan"))
+        return divide(window.mean(), std)

@@ -1,14 +1,16 @@
+from collections.abc import Callable
+from timeseries.metrics import MetricRegister
+
 import base64
 from io import BytesIO
 from pathlib import Path
-from typing import TypeVar, Callable
+from typing import TypeVar
 
 import numpy as np
 import torch
-import torchmetrics
+from timeseries.utils.typing import Metric
 from fastapi import Request
 from matplotlib import pyplot as plt
-from torchmetrics import PearsonCorrCoef
 from tqdm import tqdm
 
 from .models.main_config import MainConfig
@@ -34,7 +36,7 @@ def config_field(attr_name: str) -> Callable[..., T]:
 
 #################################################################################
 
-def validate_path(path: str | Path, create: bool = True) -> Path | None:
+def validate_path(path: str | Path, create: bool = True) -> Path:
     """
     validate the path that are passed through the whole application
     """
@@ -67,7 +69,7 @@ def base64_plot_generator(matrix: np.ndarray):
     # Add colorbar with white text
     cbar = plt.colorbar(im, ax=ax)
     cbar.ax.tick_params(labelcolor='white', color='white')
-    cbar.outline.set_edgecolor('white')
+    cbar.ax.spines['outline'].set_edgecolor('white')
 
     # Remove axis if desired
     ax.set_axis_off()
@@ -91,7 +93,7 @@ def base64_plot_generator(matrix: np.ndarray):
 def compute_correlation_matrix(
         data: dict[str, dict],
         device: torch.device,
-        metric_type: type[torchmetrics.Metric] = PearsonCorrCoef,
+        metric_type: str | Callable[[], Metric] = "pearson",
 ) -> np.ndarray:
     """
     This function has the role to compute the correlation matrix given
@@ -107,7 +109,7 @@ def compute_correlation_matrix(
 
     matrix: np.ndarray = np.eye(len(data))
     tickers: list[str] = list(data.keys())
-    metric = metric_type().to(device)
+    metric = (MetricRegister.create(metric_type) if isinstance(metric_type, str) else metric_type()).to(device)
 
     for i, ticker_i in tqdm(enumerate(tickers), desc="Computing the correlation"):
         dates_i: set[str] = set(data[ticker_i].keys())
@@ -116,12 +118,12 @@ def compute_correlation_matrix(
             metric.reset()
             ###############################################################
             dates_j: set[str] = set(data[ticker_j].keys())
-            common_dates: list[str] = list(dates_i.intersection(dates_j))
-            if len(common_dates) > 0:
+            common_dates: list[str] = sorted(dates_i.intersection(dates_j))
+            if len(common_dates) >= 2:
                 with torch.no_grad():
                     metric.update(
-                        preds=torch.tensor([data[ticker_i][cd] for cd in common_dates]).to(device),
-                        target=torch.tensor([data[ticker_j][cd] for cd in common_dates]).to(device)
+                        torch.tensor([data[ticker_i][cd] for cd in common_dates], dtype=torch.float64, device=device),
+                        torch.tensor([data[ticker_j][cd] for cd in common_dates], dtype=torch.float64, device=device)
                     )
                     corr: float = metric.compute()
                 # save the results into the matrices
