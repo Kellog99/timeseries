@@ -1,4 +1,4 @@
-from .register import MetricFactory, MetricInfo, MetricRegister
+from timeseries.metric_register import MetricFactory, MetricInfo, MetricRegister
 from .risk import CalmarRatio, MaxDrawdown, OmegaRatio, SharpeRatio, SortinoRatio, TotalReturn, Volatility
 
 __all__ = [

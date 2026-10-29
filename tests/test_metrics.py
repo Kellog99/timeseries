@@ -4,8 +4,74 @@ from typing import Any
 import numpy as np
 import pytest
 import torch
+from torchmetrics import Metric
 
 from timeseries.metrics import MetricRegister
+
+
+def test_metric_parameters_are_independent_dictionaries_without_configs():
+    assert not hasattr(MetricRegister, 'get_config')
+    assert MetricRegister.get_config_param('sharpe') == {'risk_free_rate': 0.0, 'periods_per_year': 252}
+    assert MetricRegister.get_config_param('moving_average') == {'period': None}
+    assert MetricRegister.get_config_param('pearson') == {}
+    params = MetricRegister.get_config_param('sharpe')
+    params['periods_per_year'] = 12
+    metric = MetricRegister.create('sharpe', **params)
+    assert metric.periods_per_year == 12
+    assert MetricRegister.get_config_param('sharpe')['periods_per_year'] == 252
+    for class_id in MetricRegister.get_list_classes():
+        info = MetricRegister.get_info(class_id)
+        assert not hasattr(info, 'config_type')
+        assert not hasattr(info.class_type, 'CONFIG_T')
+        MetricRegister.create(class_id, **MetricRegister.get_config_param(class_id))
+    with pytest.raises(TypeError):
+        MetricRegister.create('sharpe', typo = 1)
+    with pytest.raises(TypeError):
+        MetricRegister.create('sharpe', config = {})
+
+
+def test_registration_does_not_require_a_metric_config():
+    class CustomFactory(MetricRegister):
+        pass
+
+    @CustomFactory.register('Custom', 'Metric without a configuration.', domain = 'statistics')
+    class Custom(Metric):
+        def __init__(self, scale: float = 2.0):
+            super().__init__()
+            self.scale = scale
+            self.add_state('total', default = torch.tensor(0.0), dist_reduce_fx = 'sum')
+
+        def update(self, value):
+            self.total += value * self.scale
+
+        def compute(self):
+            return self.total
+
+    assert CustomFactory.get_config_param('custom') == {'scale': 2.0}
+    metric = CustomFactory.create('custom', scale = 3)
+    metric.update(torch.tensor(2.0))
+    assert metric.compute().item() == 6
+    assert 'custom' not in MetricRegister.get_list_classes()
+
+
+@pytest.mark.parametrize('metric_id,kwargs', [
+    ('sharpe', {'risk_free_rate': float('nan')}),
+    ('sortino', {'target_return': float('inf')}),
+    ('omega', {'threshold': float('nan')}),
+    ('sharpe', {'periods_per_year': 0}),
+    ('sortino', {'periods_per_year': -1}),
+    ('volatility', {'periods_per_year': 1.5}),
+    ('calmar', {'periods_per_year': True}),
+    ('moving_average', {'period': 0}),
+    ('moving_variance', {'period': -1}),
+    ('moving_sr', {'period': 2.5}),
+])
+def test_metric_constructor_validation(metric_id, kwargs):
+    implementation = MetricRegister.get_info(metric_id).class_type
+    with pytest.raises(ValueError):
+        implementation(**kwargs)
+    with pytest.raises(ValueError):
+        MetricRegister.create(metric_id, **kwargs)
 
 
 @pytest.mark.parametrize(

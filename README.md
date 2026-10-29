@@ -58,9 +58,75 @@ Models are grouped by their registered `domain`:
 | `volatility`         | SimpleGARCH                                                                                                                                    | Conditional volatility estimation.                                          |
 | `filtering`          | KalmanFilter                                                                                                                                   | Signal filtering and smoothing.                                             |
 | `technical_analysis` | MovingAverages, BollingerBands, RegimeDetector                                                                                                 | Trend indicators, price bands and volatility-based regimes.                 |
+| `option_pricing`     | BlackScholes                                                                                                                                   | Analytical pricing of European call and put options.                         |
 
 Use `ModelFactory.get_list_classes(domain="forecasting")` to filter the catalog.
 Metrics have separate domains: `risk`, `returns`, `statistics` and `dependence`.
+
+### Black–Scholes equation modelling
+
+Black–Scholes provides a framework for pricing European call and put options.
+The `BlackScholes` model implements the analytical solution and is available
+through `ModelFactory` with identifier `blackscholes` and domain `option_pricing`.
+No training is required.
+
+```python
+from timeseries.models import ModelFactory
+
+model = ModelFactory.create("blackscholes", risk_free_rate = 0.05, volatility = 0.20)
+call = model.price(spot = 100, strike = 100, time_to_maturity = 1.0)  # 10.4506
+put = model.price(spot = 100, strike = 100, time_to_maturity = 1.0, option_type = "put")  # 5.5735
+calls = model.price(spot = [90, 100, 110], strike = 100, time_to_maturity = 1.0)
+```
+
+`price()` accepts NumPy-broadcastable spot, strike and maturity inputs. It returns
+a float for scalar inputs and a NumPy array otherwise. Inputs must be finite,
+spot and strike positive, and maturity nonnegative. Negative interest rates are
+supported. Expired options and zero volatility use their limiting payoffs.
+
+Assume a non-dividend-paying underlying asset whose price follows geometric
+Brownian motion under the risk-neutral measure:
+
+$$
+dS_t = rS_t\,dt + \sigma S_t\,dW_t,
+$$
+
+where $S_t$ is the asset price, $r$ is the continuously compounded risk-free
+interest rate, $\sigma$ is volatility and $W_t$ is a standard Brownian motion
+under that measure. For an option value $V(S,t)$, the Black–Scholes equation is
+
+$$
+\frac{\partial V}{\partial t}
++ \frac{1}{2}\sigma^2 S^2\frac{\partial^2 V}{\partial S^2}
++ rS\frac{\partial V}{\partial S} - rV = 0.
+$$
+
+The terminal conditions at maturity $T$, with strike price $K$, are
+$C(S,T)=\max(S-K,0)$ for a call and $P(S,T)=\max(K-S,0)$ for a put.
+For $\tau=T-t>0$ and $\sigma>0$, the analytical solutions are
+
+$$
+C(S,t) = S\Phi(d_1) - Ke^{-r\tau}\Phi(d_2),
+\qquad
+P(S,t) = Ke^{-r\tau}\Phi(-d_2) - S\Phi(-d_1),
+$$
+
+$$
+d_1 = \frac{\ln(S/K)+(r+\sigma^2/2)\tau}{\sigma\sqrt{\tau}},
+\qquad d_2 = d_1-\sigma\sqrt{\tau},
+$$
+
+where $\Phi$ is the standard normal cumulative distribution function and
+$S,K>0$. Time to maturity is expressed in years; the rate and volatility use
+the same annual basis, with decimal inputs (for example, `0.20` for 20%
+annualized volatility). At maturity, use the payoff directly; for zero
+volatility before maturity, use $C=\max(S-Ke^{-r\tau},0)$ and
+$P=\max(Ke^{-r\tau}-S,0)$.
+
+The model assumes constant interest rate and volatility, frictionless markets,
+continuous trading and European exercise. It supplies an option-pricing
+baseline rather than a forecast of future asset prices. Extensions for
+dividends, changing volatility or American exercise require additional modelling.
 
 ## Supported datasets
 
@@ -86,8 +152,9 @@ excluded from the public dataset loader's accepted names.
 ## Model and metric factories
 
 Public forecasting/statistical models use `ModelFactory`; metrics use an independent
-`MetricFactory`. Each implementation declares its Pydantic `CONFIG_T` and registers
-itself with a decorator. Metadata (`ModelInfo` / `MetricInfo`) stores the actual class,
+`MetricFactory`. Models declare a Pydantic `CONFIG_T`; metrics use constructor
+arguments directly and have no configuration classes. Both register with a decorator.
+Metadata (`ModelInfo` / `MetricInfo`) stores the actual class,
 identifier, name, description and application domain. Metric metadata also declares
 supported `actions`.
 
@@ -103,6 +170,8 @@ model = ModelFactory.create("kalman", config = config, process_variance = 0.001)
 info = ModelFactory.get_info("d3vae")
 fields = ModelFactory.get_config_param("d3vae")
 risk_metrics = MetricFactory.get_list_classes(domain = "risk", actions = {"performance"})
+metric_params = MetricFactory.get_config_param("sharpe")
+# {"risk_free_rate": 0.0, "periods_per_year": 252}
 
 sharpe = MetricFactory.create("sharpe", risk_free_rate = 0.0, periods_per_year = 252)
 sharpe.update([0.01, -0.02, 0.03])
@@ -110,10 +179,15 @@ value = sharpe.compute()
 sharpe.reset()
 ```
 
-`create()` passes validated configuration fields as constructor keyword arguments.
+`ModelFactory.create()` passes validated configuration fields as constructor keyword arguments.
 The constructor and `CONFIG_T` have matching parameter names and defaults. Unknown
 fields and invalid constraints raise Pydantic validation errors. `ModelRegister`
 and `MetricRegister` remain available as aliases.
+
+`MetricFactory.get_config_param()` returns a fresh dictionary of constructor
+defaults (`{}` for metrics without parameters). `MetricFactory.create(id, **params)`
+passes arguments directly to the metric constructor, which validates its inputs.
+Metrics do not provide `get_config()` or `CONFIG_T`.
 
 To add a model, declare an explicit configuration and decorate the implementation:
 
@@ -137,14 +211,18 @@ class Example:
     def __init__(
             self,
             window: int = 20
-            ) -> None:
+    ) -> None:
         self.window = window
 ```
 
-Import the implementation module to activate its decorator. Built-in model modules
-are imported by the factory on demand; listing the full model catalog imports all
-built-in models. The template above applies to `MetricFactory` as well; metric
-implementations inherit from `torchmetrics.Metric` and can declare `actions={"performance"}`.
+`timeseries/models/__init__.py` recursively imports model modules to activate their
+registration decorators, then exposes each registered model and its `CONFIG_T`
+configuration. For example, `from timeseries.models import BlackScholes, ConfigBlackScholes`.
+New model modules are discovered automatically without adding imports or module
+routing entries to `model_register.py`. Direct factory imports initialize the same model
+package on first use. To register a metric, use `MetricFactory.register` and define
+its constructor arguments without a configuration class. Metric implementations
+inherit from `torchmetrics.Metric` and can declare `actions={"performance"}`.
 
 Financial metrics consume **one-dimensional decimal simple returns**, not prices:
 `0.01` means +1%. `risk_free_rate` and `target_return` are **per-observation** decimal

@@ -12,7 +12,7 @@ from fastapi import Query
 from tqdm import tqdm
 
 from .load_data import get_data
-from .models.tickerdata import TickerData
+from services.models.tickerdata import TickerData
 from .utils import validate_path, base64_plot_generator, config_field, compute_correlation_matrix
 
 # Add project root to Python path

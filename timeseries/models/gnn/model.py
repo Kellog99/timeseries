@@ -5,7 +5,7 @@ import torch.nn as nn
 from pydantic import Field
 
 from timeseries.configuration import ForecastConfiguration, PositiveInt, NonNegativeInt
-from timeseries.register import ModelFactory
+from timeseries.model_register import ModelFactory
 from timeseries.utils.typing import Module
 
 

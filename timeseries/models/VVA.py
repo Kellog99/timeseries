@@ -11,7 +11,7 @@ from torch.nn import functional as F
 from timeseries.base import Base
 from timeseries.configuration import BaseLoss
 from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
-from timeseries.register import ModelFactory
+from timeseries.model_register import ModelFactory
 from .vva.minigpt import Block
 
 

@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from pydantic import Field, model_validator
 
-from timeseries.register import ModelFactory
+from timeseries.model_register import ModelFactory
 from timeseries.registry import Configuration
 
 

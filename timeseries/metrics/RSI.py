@@ -1,24 +1,30 @@
 """Historical module name retained for the windowed metrics API."""
 
-from typing import ClassVar
+
+from numbers import Integral
+from typing import Literal, Optional
 
 import torch
 from torch import Tensor
 
-from .configs import MovingAverageConfig, MovingSRConfig, MovingVarianceConfig, Period, WindowConfig
-from .register import MetricFactory
+from timeseries.metric_register import MetricFactory
 from .risk import ReturnMetric, divide
+
+Period = Optional[int | Literal["max"]]
 
 
 class WindowMetric(ReturnMetric):
-    CONFIG_T: ClassVar[type[WindowConfig]] = MovingAverageConfig
 
     def __init__(
             self,
             period: Period = None
             ) -> None:
         super().__init__()
-        self.period = self.CONFIG_T(period = period).period
+        if period is not None and period != "max":
+            if isinstance(period, bool) or not isinstance(period, Integral) or period <= 0:
+                raise ValueError("period must be a positive integer.")
+            period = int(period)
+        self.period = period
 
     def reduce(
             self,
@@ -50,7 +56,6 @@ class WindowMetric(ReturnMetric):
     id = 'moving_average', domain = 'statistics', actions = {"performance"},
 )
 class MovingAverage(WindowMetric):
-    CONFIG_T: ClassVar[type[WindowConfig]] = MovingAverageConfig
 
     def reduce(
             self,
@@ -65,7 +70,6 @@ class MovingAverage(WindowMetric):
     id = 'moving_variance', domain = 'statistics', actions = {"performance"},
 )
 class MovingVariance(WindowMetric):
-    CONFIG_T: ClassVar[type[WindowConfig]] = MovingVarianceConfig
 
     def reduce(
             self,
@@ -80,7 +84,6 @@ class MovingVariance(WindowMetric):
     id = 'moving_sr', domain = 'risk', actions = {"performance"},
 )
 class MovingSR(WindowMetric):
-    CONFIG_T: ClassVar[type[WindowConfig]] = MovingSRConfig
 
     def update(
             self,

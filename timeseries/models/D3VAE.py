@@ -7,7 +7,7 @@ from torch import nn
 from timeseries.base import Base
 from timeseries.configuration import BaseLoss
 from timeseries.configuration import ForecastConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
-from timeseries.register import ModelFactory
+from timeseries.model_register import ModelFactory
 from .d3vae.model import diffusion_generate, denoise_net, pred_net
 
 

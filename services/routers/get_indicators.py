@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter
 from fastapi import Query
 
-from .models.indicators import Fundamentals
+from services.models.indicators import Fundamentals
 
 router = APIRouter(prefix = "/indicators")
 

@@ -10,7 +10,7 @@ from torch import nn
 from timeseries.base import Base
 from timeseries.configuration import BaseLoss
 from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
-from timeseries.register import ModelFactory
+from timeseries.model_register import ModelFactory
 from .crossformer.cross_decoder import Decoder
 from .crossformer.cross_embed import DSW_embedding
 from .crossformer.cross_encoder import Encoder

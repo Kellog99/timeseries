@@ -1,7 +1,7 @@
 import pandas as pd
 
 from timeseries.models.MovingAverage import MovingAverages
-from timeseries.register import ModelFactory
+from timeseries.model_register import ModelFactory
 from timeseries.registry import Configuration
 
 

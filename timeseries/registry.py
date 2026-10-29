@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any, ClassVar, Generic, Literal, TypeVar, cast
+from typing import Any, ClassVar, Generic, Literal, Optional, TypeVar, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.fields import FieldInfo
@@ -8,7 +8,7 @@ T = TypeVar("T")
 
 Domain = Literal[
     "forecasting", "technical_analysis", "volatility", "filtering",
-    "dependence", "statistics", "risk", "returns",
+    "dependence", "statistics", "risk", "returns", "option_pricing",
 ]
 
 
@@ -32,6 +32,10 @@ class Info(BaseModel, Generic[T]):
     description: str = Field(min_length = 1, description = "Purpose and behavior of the component.")
     domain: Domain = Field(description = "Application domain of the component.")
 
+
+class ConfigInfo(Info[T]):
+    """Metadata for implementations declaring a Pydantic configuration."""
+
     @property
     def config_type(
             self
@@ -39,7 +43,7 @@ class Info(BaseModel, Generic[T]):
         return cast(type[BaseModel], getattr(self.class_type, "CONFIG_T"))
 
 
-class Factory(Generic[T]):
+class Registry(Generic[T]):
     _register: ClassVar[dict[str, Info]] = {}
     _info_type: ClassVar[type[Info]] = Info
 
@@ -53,7 +57,7 @@ class Factory(Generic[T]):
     @classmethod
     def _load_builtins(
             cls,
-            class_id: str | None = None
+            class_id: Optional[str] = None
     ) -> None:
         """Concrete factories may import their built-in implementations on demand."""
 
@@ -70,9 +74,6 @@ class Factory(Generic[T]):
         key = id.lower()
         if key in cls._register:
             raise ValueError(f"Duplicate registration: {key}")
-        config_type = getattr(class_type, "CONFIG_T", None)
-        if not isinstance(config_type, type) or not issubclass(config_type, BaseModel):
-            raise TypeError(f"{class_type.__name__} must declare a Pydantic CONFIG_T.")
         cls._register[key] = cls._info_type(
             class_type = class_type, id = key, name = name, description = description,
             domain = domain, **metadata,
@@ -83,7 +84,7 @@ class Factory(Generic[T]):
             cls,
             name: str,
             description: str,
-            id: str | None = None,
+            id: Optional[str] = None,
             *,
             domain: Domain,
             **metadata: Any,
@@ -116,9 +117,47 @@ class Factory(Generic[T]):
     def get_information(
             cls,
             id: str,
-            exclude: set[str] | None = None
+            exclude: Optional[set[str]] = None
     ) -> dict[str, Any]:
         return cls.get_info(id).model_dump(exclude = {"class_type"} if exclude is None else exclude)
+
+    @classmethod
+    def filter(
+            cls,
+            info: Info[T],
+            domain: Optional[Domain | set[Domain]] = None,
+            **kwargs: Any
+    ) -> bool:
+        return domain is None or info.domain in ({domain} if isinstance(domain, str) else domain)
+
+    @classmethod
+    def get_list_classes(
+            cls,
+            domain: Optional[Domain | set[Domain]] = None,
+            **kwargs: Any
+    ) -> list[str]:
+        cls._load_builtins()
+        return [key for key, info in cls._register.items() if cls.filter(info, domain = domain, **kwargs)]
+
+
+class Factory(Registry[T]):
+    """Factory for implementations with validated Pydantic configurations."""
+    _info_type = ConfigInfo
+
+    @classmethod
+    def __register__(
+            cls,
+            class_type: type[T],
+            id: str,
+            name: str,
+            description: str,
+            domain: Domain,
+            **metadata: Any,
+    ) -> None:
+        config_type = getattr(class_type, "CONFIG_T", None)
+        if not isinstance(config_type, type) or not issubclass(config_type, BaseModel):
+            raise TypeError(f"{class_type.__name__} must declare a Pydantic CONFIG_T.")
+        super().__register__(class_type, id, name, description, domain, **metadata)
 
     @classmethod
     def get_config(
@@ -132,7 +171,7 @@ class Factory(Generic[T]):
     def get_config_param(
             cls,
             id: str,
-            attribute_type: type | list[type] | tuple[type, ...] | None = None,
+            attribute_type: Optional[type | list[type] | tuple[type, ...]] = None,
     ) -> list[tuple[str, FieldInfo]]:
         types = (attribute_type,) if isinstance(attribute_type, type) else attribute_type
         if types is not None and not all(isinstance(item, type) for item in types):
@@ -141,28 +180,10 @@ class Factory(Generic[T]):
                 if types is None or field.annotation in types]
 
     @classmethod
-    def filter(
-            cls,
-            info: Info[T],
-            domain: Domain | set[Domain] | None = None,
-            **kwargs: Any
-    ) -> bool:
-        return domain is None or info.domain in ({domain} if isinstance(domain, str) else domain)
-
-    @classmethod
-    def get_list_classes(
-            cls,
-            domain: Domain | set[Domain] | None = None,
-            **kwargs: Any
-    ) -> list[str]:
-        cls._load_builtins()
-        return [key for key, info in cls._register.items() if cls.filter(info, domain = domain, **kwargs)]
-
-    @classmethod
     def create(
             cls,
-            class_id: str | None = None,
-            config: BaseModel | None = None,
+            class_id: Optional[str] = None,
+            config: Optional[BaseModel] = None,
             **kwargs: Any,
     ) -> T:
         """Validate constructor arguments and create a registered implementation.

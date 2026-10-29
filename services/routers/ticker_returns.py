@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from services.routers.load_data import get_data
 from timeseries.metrics.returns import get_return
-from .models.tickerdata import History, TickerReturn
+from services.models.tickerdata import History, TickerReturn
 from .utils import config_field
 
 router = APIRouter(prefix = "/advance_info")

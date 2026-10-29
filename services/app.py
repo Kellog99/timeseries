@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from services.routers import api_router
-from services.routers.models.main_config import MainConfig, parsed_argument
+from services.models.main_config import MainConfig, parsed_argument
 
 ######################### FASTAPI #########################
 app = FastAPI(

@@ -1,8 +1,8 @@
 import numpy as np
 from numpy.typing import ArrayLike
 
-from timeseries.register import ModelFactory
-from timeseries.register import ModelRegister
+from timeseries.model_register import ModelFactory
+from timeseries.model_register import ModelRegister
 from timeseries.registry import Configuration
 
 

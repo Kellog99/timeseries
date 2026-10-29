@@ -1,15 +1,12 @@
 """Streaming multivariate dependence metrics on paired observations."""
 
-from typing import ClassVar
 
 import torch
 from torch import Tensor
 from torchmetrics import PearsonCorrCoef
 
 from timeseries.utils.typing import Metric
-from .configs import CanonicalCorrelationConfig, DistanceCorrelationConfig, RVCoefficientConfig, \
-    PearsonCorrelationConfig
-from .register import MetricFactory
+from timeseries.metric_register import MetricFactory
 
 
 class PairedMetric(Metric):
@@ -59,7 +56,6 @@ class PairedMetric(Metric):
     id = 'canonical', domain = 'dependence', actions = {"performance"},
 )
 class CanonicalCorrelation(PairedMetric):
-    CONFIG_T: ClassVar[type[CanonicalCorrelationConfig]] = CanonicalCorrelationConfig
 
     def compute(
             self
@@ -85,7 +81,6 @@ class CanonicalCorrelation(PairedMetric):
     id = 'rv', domain = 'dependence', actions = {"performance"},
 )
 class RVCoefficient(PairedMetric):
-    CONFIG_T: ClassVar[type[RVCoefficientConfig]] = RVCoefficientConfig
 
     def compute(
             self
@@ -102,7 +97,6 @@ class RVCoefficient(PairedMetric):
     id = 'distance', domain = 'dependence', actions = {"performance"},
 )
 class DistanceCorrelation(PairedMetric):
-    CONFIG_T: ClassVar[type[DistanceCorrelationConfig]] = DistanceCorrelationConfig
 
     def compute(
             self
@@ -127,7 +121,6 @@ class DistanceCorrelation(PairedMetric):
     id = 'pearson', domain = 'dependence', actions = {"performance"},
 )
 class PearsonCorrelation(PearsonCorrCoef):
-    CONFIG_T: ClassVar[type[PearsonCorrelationConfig]] = PearsonCorrelationConfig
 
     def __init__(
             self

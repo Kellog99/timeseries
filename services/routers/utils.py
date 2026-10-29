@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from timeseries.metrics import MetricRegister
 from timeseries.utils.typing import Metric
-from .models.main_config import MainConfig
+from services.models import MainConfig
 
 T = TypeVar("T")
 

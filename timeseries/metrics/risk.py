@@ -5,18 +5,14 @@ square of negative target deviations over all observations. Ratios with a zero
 denominator return signed infinity, or NaN when the numerator is also zero.
 """
 
-from math import sqrt
-from typing import ClassVar
+from math import isfinite, sqrt
+from numbers import Integral
 
 import torch
 from torch import Tensor
 
 from timeseries.utils.typing import Metric
-from .configs import (
-    CalmarRatioConfig, MaxDrawdownConfig, OmegaRatioConfig, SharpeRatioConfig,
-    SortinoRatioConfig, TotalReturnConfig, VolatilityConfig,
-)
-from .register import MetricFactory
+from timeseries.metric_register import MetricFactory
 
 
 def as_returns(
@@ -80,7 +76,6 @@ class ReturnMetric(Metric):
     id = 'sharpe', domain = 'risk', actions = {"performance"},
 )
 class SharpeRatio(ReturnMetric):
-    CONFIG_T: ClassVar[type[SharpeRatioConfig]] = SharpeRatioConfig
 
     def __init__(
             self,
@@ -88,9 +83,12 @@ class SharpeRatio(ReturnMetric):
             periods_per_year: int = 252
             ) -> None:
         super().__init__()
-        config = self.CONFIG_T(risk_free_rate = risk_free_rate, periods_per_year = periods_per_year)
-        self.risk_free_rate = config.risk_free_rate
-        self.periods_per_year = config.periods_per_year
+        self.risk_free_rate = float(risk_free_rate)
+        if not isfinite(self.risk_free_rate):
+            raise ValueError("risk_free_rate must be finite.")
+        if isinstance(periods_per_year, bool) or not isinstance(periods_per_year, Integral) or periods_per_year <= 0:
+            raise ValueError("periods_per_year must be a positive integer.")
+        self.periods_per_year = int(periods_per_year)
 
     def compute(
             self
@@ -106,14 +104,15 @@ class SharpeRatio(ReturnMetric):
     id = 'omega', domain = 'risk', actions = {"performance"},
 )
 class OmegaRatio(ReturnMetric):
-    CONFIG_T: ClassVar[type[OmegaRatioConfig]] = OmegaRatioConfig
 
     def __init__(
             self,
             threshold: float = 0.0
             ) -> None:
         super().__init__()
-        self.threshold = self.CONFIG_T(threshold = threshold).threshold
+        self.threshold = float(threshold)
+        if not isfinite(self.threshold):
+            raise ValueError("threshold must be finite.")
 
     def compute(
             self
@@ -128,7 +127,6 @@ class OmegaRatio(ReturnMetric):
     id = 'sortino', domain = 'risk', actions = {"performance"},
 )
 class SortinoRatio(ReturnMetric):
-    CONFIG_T: ClassVar[type[SortinoRatioConfig]] = SortinoRatioConfig
 
     def __init__(
             self,
@@ -136,9 +134,12 @@ class SortinoRatio(ReturnMetric):
             periods_per_year: int = 252
             ) -> None:
         super().__init__()
-        config = self.CONFIG_T(target_return = target_return, periods_per_year = periods_per_year)
-        self.target_return = config.target_return
-        self.periods_per_year = config.periods_per_year
+        self.target_return = float(target_return)
+        if not isfinite(self.target_return):
+            raise ValueError("target_return must be finite.")
+        if isinstance(periods_per_year, bool) or not isinstance(periods_per_year, Integral) or periods_per_year <= 0:
+            raise ValueError("periods_per_year must be a positive integer.")
+        self.periods_per_year = int(periods_per_year)
 
     def compute(
             self
@@ -154,14 +155,15 @@ class SortinoRatio(ReturnMetric):
     id = 'volatility', domain = 'risk', actions = {"performance"},
 )
 class Volatility(ReturnMetric):
-    CONFIG_T: ClassVar[type[VolatilityConfig]] = VolatilityConfig
 
     def __init__(
             self,
             periods_per_year: int = 252
             ) -> None:
         super().__init__()
-        self.periods_per_year = self.CONFIG_T(periods_per_year = periods_per_year).periods_per_year
+        if isinstance(periods_per_year, bool) or not isinstance(periods_per_year, Integral) or periods_per_year <= 0:
+            raise ValueError("periods_per_year must be a positive integer.")
+        self.periods_per_year = int(periods_per_year)
 
     def compute(
             self
@@ -176,7 +178,6 @@ class Volatility(ReturnMetric):
     id = 'max_drawdown', domain = 'risk', actions = {"performance"},
 )
 class MaxDrawdown(ReturnMetric):
-    CONFIG_T: ClassVar[type[MaxDrawdownConfig]] = MaxDrawdownConfig
 
     def compute(
             self
@@ -190,14 +191,15 @@ class MaxDrawdown(ReturnMetric):
     id = 'calmar', domain = 'risk', actions = {"performance"},
 )
 class CalmarRatio(ReturnMetric):
-    CONFIG_T: ClassVar[type[CalmarRatioConfig]] = CalmarRatioConfig
 
     def __init__(
             self,
             periods_per_year: int = 252
             ) -> None:
         super().__init__()
-        self.periods_per_year = self.CONFIG_T(periods_per_year = periods_per_year).periods_per_year
+        if isinstance(periods_per_year, bool) or not isinstance(periods_per_year, Integral) or periods_per_year <= 0:
+            raise ValueError("periods_per_year must be a positive integer.")
+        self.periods_per_year = int(periods_per_year)
 
     def compute(
             self
@@ -213,7 +215,6 @@ class CalmarRatio(ReturnMetric):
     id = 'total_return', domain = 'returns', actions = {"performance"},
 )
 class TotalReturn(ReturnMetric):
-    CONFIG_T: ClassVar[type[TotalReturnConfig]] = TotalReturnConfig
 
     def compute(
             self

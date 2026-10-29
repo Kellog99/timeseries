@@ -1,3 +1,7 @@
+import subprocess
+import sys
+from pathlib import Path
+
 import numpy as np
 import pytest
 from pydantic import ValidationError
@@ -5,6 +9,30 @@ from pydantic import ValidationError
 from timeseries.metrics import MetricRegister
 from timeseries.models import ModelRegister
 from timeseries.registry import Configuration, Factory
+
+
+@pytest.mark.parametrize('entrypoint', ['timeseries.models', 'timeseries.model_register'])
+def test_model_package_initializes_and_exports_catalog_in_fresh_process(entrypoint):
+    result = subprocess.run(
+        [sys.executable, '-B', '-c', f'''
+import importlib
+
+entrypoint = importlib.import_module({entrypoint!r})
+factory = entrypoint.ModelFactory
+catalog = factory.get_list_classes()
+assert {{'blackscholes', 'gnn', 'legacytft', 'rnn', 'arima'}} <= set(catalog)
+models = importlib.import_module('timeseries.models')
+for class_id in catalog:
+    info = factory.get_info(class_id)
+    assert getattr(models, info.class_type.__name__) is info.class_type
+    assert getattr(models, info.config_type.__name__) is info.config_type
+assert factory.get_list_classes() == catalog
+assert type(factory.create(config=models.ConfigBlackScholes())) is models.BlackScholes
+'''],
+        cwd = Path(__file__).resolve().parents[1],
+        capture_output = True, text = True, timeout = 60,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_model_configurations_live_with_their_implementations():
@@ -119,12 +147,12 @@ def test_constraints_are_applied():
         ModelRegister.get_config("garch", alpha = 0.5, beta = 0.6)
     with pytest.raises(ValidationError):
         ModelRegister.get_config("arima", p = 0)
-    with pytest.raises(ValidationError):
-        MetricRegister.get_config("sharpe", periods_per_year = 0)
-    with pytest.raises(ValidationError):
-        MetricRegister.get_config("moving_average", period = -1)
-    with pytest.raises(ValidationError):
-        MetricRegister.get_config("omega", threshold = float("nan"))
+    with pytest.raises(ValueError):
+        MetricRegister.create("sharpe", periods_per_year = 0)
+    with pytest.raises(ValueError):
+        MetricRegister.create("moving_average", period = -1)
+    with pytest.raises(ValueError):
+        MetricRegister.create("omega", threshold = float("nan"))
 
 
 def test_statistical_models_work_through_factory():

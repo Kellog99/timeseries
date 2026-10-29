@@ -9,7 +9,7 @@ from torch import nn
 from timeseries.base import Base
 from timeseries.configuration import BaseLoss
 from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
-from timeseries.register import ModelFactory
+from timeseries.model_register import ModelFactory
 from timeseries.utils.torch import get_activation
 from timeseries.utils.typing import Module
 

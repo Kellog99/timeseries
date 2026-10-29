@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from timeseries.register import ModelFactory
+from timeseries.model_register import ModelFactory
 from timeseries.registry import Configuration
 
 

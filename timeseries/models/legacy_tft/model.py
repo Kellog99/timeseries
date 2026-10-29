@@ -16,7 +16,7 @@ from timeseries.models.legacy_tft.embedding_nn import (
     embedding_cat_variables, embedding_target, postTransformer,
 )
 from timeseries.models.legacy_tft.encoder import Encoder
-from timeseries.register import ModelFactory
+from timeseries.model_register import ModelFactory
 from timeseries.utils.typing import Module
 
 

@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi import Query
 from pandas import DataFrame
 
-from .models.tickerdata import TickerData, Portfolio, History
+from services.models.tickerdata import TickerData, Portfolio, History
 from .utils import validate_path, config_field
 
 router = APIRouter(prefix = "/load")
