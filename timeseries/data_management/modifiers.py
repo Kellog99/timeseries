@@ -14,15 +14,15 @@ from .utils import MyDataset
 class VVADataset(Dataset):
 
     def __init__(
-            self,
-            x,
-            y,
-            y_orig,
-            t,
-            length_in,
-            length_out,
-            num_digits
-            ):
+        self,
+        x,
+        y,
+        y_orig,
+        t,
+        length_in,
+        length_out,
+        num_digits
+    ):
         self.length_in = length_in
         self.length_out = length_out
         self.num_digits = num_digits
@@ -32,8 +32,8 @@ class VVADataset(Dataset):
         self.t = t
 
     def __len__(
-            self
-            ):
+        self
+    ):
         """
         
         :meta private:
@@ -41,8 +41,8 @@ class VVADataset(Dataset):
         return len(self.x_emb)  # ...
 
     def get_vocab_size(
-            self
-            ):
+        self
+    ):
         """
         
         :meta private:
@@ -50,8 +50,8 @@ class VVADataset(Dataset):
         return self.num_digits
 
     def get_block_size(
-            self
-            ):
+        self
+    ):
         """
         
         :meta private:
@@ -59,9 +59,9 @@ class VVADataset(Dataset):
         return self.length_in + self.length_out - 1
 
     def __getitem__(
-            self,
-            index
-            ):
+        self,
+        index
+    ):
         idx = index
         """
         :meta private:
@@ -81,9 +81,9 @@ class VVADataset(Dataset):
 
 class Modifier(ABC):
     def __init__(
-            self,
-            **kwargs
-            ):
+        self,
+        **kwargs
+    ):
         """In the constructor you can store some parameters of the modifier. It will be saved when the timeseries is
         saved.
         """
@@ -92,10 +92,10 @@ class Modifier(ABC):
 
     @abstractmethod
     def fit_transform(
-            self,
-            train: MyDataset,
-            val: MyDataset
-            ) -> tuple[Dataset, Dataset]:
+        self,
+        train: MyDataset,
+        val: MyDataset
+    ) -> tuple[Dataset, Dataset]:
         """This funtion is called before the training procedure and it should tasnform the standard Dataset into the
         new Dataset
 
@@ -110,9 +110,9 @@ class Modifier(ABC):
 
     @abstractmethod
     def transform(
-            self,
-            test: MyDataset
-            ) -> Dataset:
+        self,
+        test: MyDataset
+    ) -> Dataset:
         """Similar to `fit_transform` but only transformation task will be performed, it is used in the inference
         function before calling the inference method
         Args:
@@ -125,10 +125,10 @@ class Modifier(ABC):
 
     @abstractmethod
     def inverse_transform(
-            self,
-            res: np.ndarray,
-            real: np.ndarray
-            ) -> tuple[np.ndarray, np.ndarray]:
+        self,
+        res: np.ndarray,
+        real: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """The results must be reverted respect to the prediction task
 
         Args:
@@ -149,11 +149,11 @@ class ModifierVVA(Modifier):
     """
 
     def __init__(
-            self,
-            token_split: int,
-            max_voc_size: int,
-            **kwargs: Any
-            ) -> None:
+        self,
+        token_split: int,
+        max_voc_size: int,
+        **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
         if token_split <= 0 or max_voc_size <= 0:
             raise ValueError("token_split and max_voc_size must be positive.")
@@ -161,10 +161,10 @@ class ModifierVVA(Modifier):
         self.max_voc_size = max_voc_size
 
     def fit_transform(
-            self,
-            train: MyDataset,
-            val: MyDataset
-            ) -> tuple[Dataset, Dataset]:
+        self,
+        train: MyDataset,
+        val: MyDataset
+    ) -> tuple[Dataset, Dataset]:
         """BisectingKMeans is used on segments of length `token_split`
 
         Args:
@@ -198,11 +198,11 @@ class ModifierVVA(Modifier):
                     bootstrap_ci = bootstrap(
                         (data[:, j],), np.median, n_resamples = 50, confidence_level = 0.9, random_state = 1,
                         method = 'percentile'
-                        )
+                    )
                     res.append(
                         [bootstrap_ci.confidence_interval.low, np.median(data[:, j]),
                          bootstrap_ci.confidence_interval.high]
-                        )
+                    )
                 self.centroids.append(np.array(res))
             else:
                 self.centroids.append(np.repeat(data.T, 3, axis = 1))
@@ -213,28 +213,28 @@ class ModifierVVA(Modifier):
         samples = train.data['y'].shape[0]
         y_train = cl.predict(
             train.data['y'].squeeze().reshape(samples, -1, self.token_split).reshape(-1, self.token_split)
-            ).reshape(-1, length_out)
+        ).reshape(-1, length_out)
         samples = val.data['y'].shape[0]
         y_validation = cl.predict(
             val.data['y'].squeeze().reshape(samples, -1, self.token_split).reshape(-1, self.token_split)
-            ).reshape(-1, length_out)
+        ).reshape(-1, length_out)
         x_validation = cl.predict(
             val.data['x_num_past'][:, :, idx_target[0]].reshape(samples, -1, self.token_split).reshape(
                 -1, self.token_split
-                )
-            ).reshape(-1, length_in)
+            )
+        ).reshape(-1, length_in)
         train_dataset = VVADataset(
             x_train, y_train, train.data['y'].squeeze(), train.t, length_in, length_out, self.max_voc_size
-            )
+        )
         validation_dataset = VVADataset(
             x_validation, y_validation, val.data['y'].squeeze(), val.t, length_in, length_out, self.max_voc_size
-            )
+        )
         return train_dataset, validation_dataset
 
     def transform(
-            self,
-            test: MyDataset
-            ) -> Dataset:
+        self,
+        test: MyDataset
+    ) -> Dataset:
         """Similar to `fit_transform` but only transformation task will be performed
         Args:
             test (MyDataset): test val `Dataset`
@@ -256,15 +256,15 @@ class ModifierVVA(Modifier):
         x = clusters.reshape(-1, length_in)
         y = self.cl.predict(
             test.data['y'].squeeze().reshape(samples, -1, self.token_split).reshape(-1, self.token_split)
-            ).reshape(-1, length_out)
+        ).reshape(-1, length_out)
 
         return VVADataset(x, y, test.data['y'].squeeze(), test.t, length_in, length_out, self.max_voc_size)
 
     def inverse_transform(
-            self,
-            res: np.ndarray,
-            real: np.ndarray
-            ) -> tuple[np.ndarray, np.ndarray]:
+        self,
+        res: np.ndarray,
+        real: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         """The results must be reverted respect to the prediction task
 
         Args:

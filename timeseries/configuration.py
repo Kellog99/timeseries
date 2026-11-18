@@ -18,8 +18,8 @@ BaseLoss = ForecastLoss | Literal["kl"]
 class ForecastConfiguration(Configuration):
     @model_validator(mode = "after")
     def validate_quantiles(
-            self
-            ) -> Self:
+        self
+    ) -> Self:
         quantiles = getattr(self, "quantiles", None)
         if quantiles and quantiles != sorted(set(quantiles)):
             raise ValueError("Forecasting quantiles must be distinct increasing probabilities.")
@@ -29,8 +29,8 @@ class ForecastConfiguration(Configuration):
 class ThreeQuantileConfiguration(ForecastConfiguration):
     @model_validator(mode = "after")
     def validate_quantile_count(
-            self
-            ) -> Self:
+        self
+    ) -> Self:
         quantiles = getattr(self, "quantiles", None)
         if quantiles and len(quantiles) != 3:
             raise ValueError("This architecture requires three quantiles or an empty sequence.")

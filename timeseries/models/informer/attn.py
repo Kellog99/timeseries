@@ -9,32 +9,32 @@ from timeseries.utils.typing import Module
 
 class TriangularCausalMask():
     def __init__(
-            self,
-            B,
-            L,
-            device
-            ):
+        self,
+        B,
+        L,
+        device
+    ):
         mask_shape = [B, 1, L, L]
         with torch.no_grad():
             self._mask = torch.triu(torch.ones(mask_shape, dtype = torch.bool), diagonal = 1).to(device)
 
     @property
     def mask(
-            self
-            ):
+        self
+    ):
         return self._mask
 
 
 class ProbMask():
     def __init__(
-            self,
-            B,
-            H,
-            L,
-            index,
-            scores,
-            device
-            ):
+        self,
+        B,
+        H,
+        L,
+        index,
+        scores,
+        device
+    ):
         _mask = torch.ones(L, scores.shape[-1], dtype = torch.bool).triu(1).to(device)
         _mask_ex = _mask[None, None, :].expand(B, H, L, scores.shape[-1])
         indicator = _mask_ex[torch.arange(B)[:, None, None], torch.arange(H)[None, :, None], index, :]
@@ -42,20 +42,20 @@ class ProbMask():
 
     @property
     def mask(
-            self
-            ):
+        self
+    ):
         return self._mask
 
 
 class FullAttention(Module):
     def __init__(
-            self,
-            mask_flag = True,
-            factor = 5,
-            scale = None,
-            attention_dropout = 0.1,
-            output_attention = False
-            ):
+        self,
+        mask_flag = True,
+        factor = 5,
+        scale = None,
+        attention_dropout = 0.1,
+        output_attention = False
+    ):
         super(FullAttention, self).__init__()
         self.scale = scale
         self.mask_flag = mask_flag
@@ -63,12 +63,12 @@ class FullAttention(Module):
         self.dropout = nn.Dropout(attention_dropout)
 
     def forward(
-            self,
-            queries,
-            keys,
-            values,
-            attn_mask
-            ):
+        self,
+        queries,
+        keys,
+        values,
+        attn_mask
+    ):
         B, L, H, E = queries.shape
         _, S, _, D = values.shape
         scale = self.scale or 1. / sqrt(E)
@@ -91,13 +91,13 @@ class FullAttention(Module):
 
 class ProbAttention(Module):
     def __init__(
-            self,
-            mask_flag = True,
-            factor = 5,
-            scale = None,
-            attention_dropout = 0.1,
-            output_attention = False
-            ):
+        self,
+        mask_flag = True,
+        factor = 5,
+        scale = None,
+        attention_dropout = 0.1,
+        output_attention = False
+    ):
         super(ProbAttention, self).__init__()
         self.factor = factor
         self.scale = scale
@@ -106,12 +106,12 @@ class ProbAttention(Module):
         self.dropout = nn.Dropout(attention_dropout)
 
     def _prob_QK(
-            self,
-            Q,
-            K,
-            sample_k,
-            n_top
-            ):  # n_top: c*ln(L_q)
+        self,
+        Q,
+        K,
+        sample_k,
+        n_top
+    ):  # n_top: c*ln(L_q)
         # Q [B, H, L, D]
         B, H, L_K, E = K.shape
         _, _, L_Q, _ = Q.shape
@@ -135,10 +135,10 @@ class ProbAttention(Module):
         return Q_K, M_top
 
     def _get_initial_context(
-            self,
-            V,
-            L_Q
-            ):
+        self,
+        V,
+        L_Q
+    ):
         B, H, L_V, D = V.shape
         if not self.mask_flag:
             # V_sum = V.sum(dim=-2)
@@ -150,14 +150,14 @@ class ProbAttention(Module):
         return contex
 
     def _update_context(
-            self,
-            context_in,
-            V,
-            scores,
-            index,
-            L_Q,
-            attn_mask
-            ):
+        self,
+        context_in,
+        V,
+        scores,
+        index,
+        L_Q,
+        attn_mask
+    ):
         B, H, L_V, D = V.shape
 
         if self.mask_flag:
@@ -177,12 +177,12 @@ class ProbAttention(Module):
             return (context_in, None)
 
     def forward(
-            self,
-            queries,
-            keys,
-            values,
-            attn_mask
-            ):
+        self,
+        queries,
+        keys,
+        values,
+        attn_mask
+    ):
         B, L_Q, H, D = queries.shape
         _, L_K, _, _ = keys.shape
 
@@ -212,14 +212,14 @@ class ProbAttention(Module):
 
 class AttentionLayer(Module):
     def __init__(
-            self,
-            attention,
-            d_model,
-            n_heads,
-            d_keys = None,
-            d_values = None,
-            mix = False
-            ):
+        self,
+        attention,
+        d_model,
+        n_heads,
+        d_keys = None,
+        d_values = None,
+        mix = False
+    ):
         super(AttentionLayer, self).__init__()
 
         d_keys = d_keys or (d_model // n_heads)
@@ -234,12 +234,12 @@ class AttentionLayer(Module):
         self.mix = mix
 
     def forward(
-            self,
-            queries,
-            keys,
-            values,
-            attn_mask
-            ):
+        self,
+        queries,
+        keys,
+        values,
+        attn_mask
+    ):
         B, L, _ = queries.shape
         _, S, _ = keys.shape
         H = self.n_heads

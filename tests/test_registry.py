@@ -12,7 +12,9 @@ from timeseries.registry import Configuration, Factory
 
 
 @pytest.mark.parametrize('entrypoint', ['timeseries.models', 'timeseries.model_register'])
-def test_model_package_initializes_and_exports_catalog_in_fresh_process(entrypoint):
+def test_model_package_initializes_and_exports_catalog_in_fresh_process(
+    entrypoint
+):
     result = subprocess.run(
         [sys.executable, '-B', '-c', f'''
 import importlib
@@ -79,9 +81,9 @@ def test_decorator_and_registry_isolation():
         CONFIG_T = Config
 
         def __init__(
-                self,
-                value: int = 1
-                ):
+            self,
+            value: int = 1
+        ):
             self.value = value
 
     assert First.create(config = Config(value = 3)).value == 3
@@ -99,11 +101,11 @@ def test_decorator_and_registry_isolation():
         ('Example', 'example'), ('ModelExample', 'modelexample'),
         ('ExampleModelModel', 'examplemodel'),
     ]
-    )
+)
 def test_default_id_uses_class_name_and_removes_only_trailing_model(
-        class_name,
-        expected
-        ):
+    class_name,
+    expected
+):
     class Registry(Factory):
         pass
 

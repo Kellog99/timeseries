@@ -23,16 +23,16 @@ class EnsemblePredictor:
     CONFIG_T = ConfigEnsemblePredictor
 
     def __init__(
-            self
-            ) -> None:
+        self
+    ) -> None:
         self.kalman = ModelRegister.create("kalman")
         self.arima = ModelRegister.create("arima")
 
     def predict(
-            self,
-            data: ArrayLike,
-            weights: list[float] | None = None
-            ) -> float:
+        self,
+        data: ArrayLike,
+        weights: list[float] | None = None
+    ) -> float:
         weights_array = np.asarray([0.3, 0.3, 0.4] if weights is None else weights, dtype = float)
         if weights_array.shape != (3,) or not np.isfinite(weights_array).all() or (
                 weights_array < 0).any() or not np.isclose(weights_array.sum(), 1):

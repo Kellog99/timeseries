@@ -36,15 +36,23 @@ def test_registration_does_not_require_a_metric_config():
 
     @CustomFactory.register('Custom', 'Metric without a configuration.', domain = 'statistics')
     class Custom(Metric):
-        def __init__(self, scale: float = 2.0):
+        def __init__(
+            self,
+            scale: float = 2.0
+        ):
             super().__init__()
             self.scale = scale
             self.add_state('total', default = torch.tensor(0.0), dist_reduce_fx = 'sum')
 
-        def update(self, value):
+        def update(
+            self,
+            value
+        ):
             self.total += value * self.scale
 
-        def compute(self):
+        def compute(
+            self
+        ):
             return self.total
 
     assert CustomFactory.get_config_param('custom') == {'scale': 2.0}
@@ -54,19 +62,24 @@ def test_registration_does_not_require_a_metric_config():
     assert 'custom' not in MetricRegister.get_list_classes()
 
 
-@pytest.mark.parametrize('metric_id,kwargs', [
-    ('sharpe', {'risk_free_rate': float('nan')}),
-    ('sortino', {'target_return': float('inf')}),
-    ('omega', {'threshold': float('nan')}),
-    ('sharpe', {'periods_per_year': 0}),
-    ('sortino', {'periods_per_year': -1}),
-    ('volatility', {'periods_per_year': 1.5}),
-    ('calmar', {'periods_per_year': True}),
-    ('moving_average', {'period': 0}),
-    ('moving_variance', {'period': -1}),
-    ('moving_sr', {'period': 2.5}),
-])
-def test_metric_constructor_validation(metric_id, kwargs):
+@pytest.mark.parametrize(
+    'metric_id,kwargs', [
+        ('sharpe', {'risk_free_rate': float('nan')}),
+        ('sortino', {'target_return': float('inf')}),
+        ('omega', {'threshold': float('nan')}),
+        ('sharpe', {'periods_per_year': 0}),
+        ('sortino', {'periods_per_year': -1}),
+        ('volatility', {'periods_per_year': 1.5}),
+        ('calmar', {'periods_per_year': True}),
+        ('moving_average', {'period': 0}),
+        ('moving_variance', {'period': -1}),
+        ('moving_sr', {'period': 2.5}),
+    ]
+    )
+def test_metric_constructor_validation(
+    metric_id,
+    kwargs
+):
     implementation = MetricRegister.get_info(metric_id).class_type
     with pytest.raises(ValueError):
         implementation(**kwargs)
@@ -76,10 +89,10 @@ def test_metric_constructor_validation(metric_id, kwargs):
 
 @pytest.mark.parametrize(
     "metric_id", ["sharpe", "omega", "sortino", "volatility", "max_drawdown", "calmar", "total_return"]
-    )
+)
 def test_financial_formulas_streaming_and_reset(
-        metric_id
-        ):
+    metric_id
+):
     returns = np.array([.10, -.20, .05, .03])
     annualization = 12
     wealth = np.r_[1., (1 + returns).cumprod()]
@@ -121,8 +134,8 @@ def test_thresholds_and_initial_loss():
 
 @pytest.mark.parametrize("values", [[float("nan")], [float("inf")], [-1.01], [[.1, .2]]])
 def test_invalid_returns(
-        values
-        ):
+    values
+):
     with pytest.raises(ValueError):
         MetricRegister.create("sharpe").update(values)
 
@@ -144,9 +157,9 @@ def test_empty_and_degenerate_returns():
 
 @pytest.mark.parametrize("metric_id, expected", [("moving_average", [2., 5.]), ("moving_variance", [2 / 3, 1.])])
 def test_windows_include_entire_partial_tail(
-        metric_id,
-        expected
-        ):
+    metric_id,
+    expected
+):
     metric = MetricRegister.create(metric_id, period = 3)
     metric.update([1., 2.])
     metric.update([3., 4., 6.])
@@ -158,8 +171,8 @@ def test_windows_include_entire_partial_tail(
 
 @pytest.mark.parametrize("metric_id", ["canonical", "rv", "distance", "pearson"])
 def test_dependence_metrics(
-        metric_id
-        ):
+    metric_id
+):
     metric = MetricRegister.create(metric_id)
     values = torch.arange(6.)
     metric.update(values[:3], values[:3] * 2)

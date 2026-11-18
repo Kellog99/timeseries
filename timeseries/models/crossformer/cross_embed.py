@@ -6,19 +6,19 @@ from timeseries.utils.typing import Module
 
 class DSW_embedding(Module):
     def __init__(
-            self,
-            seg_len,
-            d_model
-            ):
+        self,
+        seg_len,
+        d_model
+    ):
         super(DSW_embedding, self).__init__()
         self.seg_len = seg_len
 
         self.linear = nn.Linear(seg_len, d_model)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         batch, ts_len, ts_dim = x.shape
 
         x_segment = rearrange(x, 'b (seg_num seg_len) d -> (b d seg_num) seg_len', seg_len = self.seg_len)

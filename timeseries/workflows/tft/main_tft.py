@@ -14,7 +14,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-m", "--model_name", type = str, default = 'default0',
         help = 'String to set the name of the model, must be unique in works/ to avoid overwriting'
-        )
+    )
     args = parser.parse_args()
     if args.train:
         dictConf = dictConfiguration(args.model_name)

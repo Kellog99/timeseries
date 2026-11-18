@@ -21,7 +21,7 @@ class ConfigLinearTS(ThreeQuantileConfiguration):
     past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
     future_channels: NonNegativeInt = Field(
         ..., description = 'Number of known future numerical features; zero is allowed.'
-        )
+    )
     embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
     cat_emb_dim: PositiveInt = Field(..., description = 'Embedding dimension for each categorical variable.')
     kernel_size: PositiveInt = Field(..., description = 'Convolution or moving-average kernel width.')
@@ -34,11 +34,11 @@ class ConfigLinearTS(ThreeQuantileConfiguration):
     use_bn: bool = Field(False, description = 'Use batch normalization in place of dropout.')
     persistence_weight: float = Field(
         0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
-        )
+    )
     loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
     quantiles: list[Quantile] | None = Field(
         None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
-        )
+    )
     n_classes: NonNegativeInt = Field(0, description = 'Number of classes; zero selects regression.')
     optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
     optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
@@ -51,18 +51,18 @@ class moving_avg(Module):
     """
 
     def __init__(
-            self,
-            kernel_size,
-            stride
-            ):
+        self,
+        kernel_size,
+        stride
+    ):
         super(moving_avg, self).__init__()
         self.kernel_size = kernel_size
         self.avg = nn.AvgPool1d(kernel_size = kernel_size, stride = stride, padding = 0)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         # padding on the both ends of time series
         front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)
         end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
@@ -78,16 +78,16 @@ class series_decomp(Module):
     """
 
     def __init__(
-            self,
-            kernel_size
-            ):
+        self,
+        kernel_size
+    ):
         super(series_decomp, self).__init__()
         self.moving_avg = moving_avg(kernel_size, stride = 1)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         moving_mean = self.moving_avg(x)
         res = x - moving_mean
         return res, moving_mean
@@ -102,28 +102,28 @@ class LinearTS(Base):
     CONFIG_T: ClassVar[type[ConfigLinearTS]] = ConfigLinearTS
 
     def __init__(
-            self,
-            past_steps: int,
-            future_steps: int,
-            past_channels: int,
-            future_channels: int,
-            embs: list[int],
-            cat_emb_dim: int,
-            kernel_size: int,
-            sum_emb: bool,
-            out_channels: int,
-            hidden_size: int,
-            dropout_rate: float = 0.1,
-            activation: str = 'torch.nn.ReLU',
-            kind: str = 'linear',
-            use_bn: bool = False,
-            persistence_weight: float = 0.0,
-            loss_type: BaseLoss = 'l1',
-            quantiles: list[float] | None = None,
-            n_classes: int = 0,
-            optim: str | None = None,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        past_steps: int,
+        future_steps: int,
+        past_channels: int,
+        future_channels: int,
+        embs: list[int],
+        cat_emb_dim: int,
+        kernel_size: int,
+        sum_emb: bool,
+        out_channels: int,
+        hidden_size: int,
+        dropout_rate: float = 0.1,
+        activation: str = 'torch.nn.ReLU',
+        kind: str = 'linear',
+        use_bn: bool = False,
+        persistence_weight: float = 0.0,
+        loss_type: BaseLoss = 'l1',
+        quantiles: list[float] | None = None,
+        n_classes: int = 0,
+        optim: str | None = None,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         """Linear model from https://github.com/cure-lab/LTSF-Linear/blob/main/run_longExp.py
 
@@ -207,10 +207,10 @@ class LinearTS(Base):
                 nn.Sequential(
                     nn.Linear(
                         emb_channels * (
-                                    past_steps + future_steps) + past_steps * past_channels + future_channels *
+                                past_steps + future_steps) + past_steps * past_channels + future_channels *
                         future_steps,
                         hidden_size
-                        ),
+                    ),
                     activation_factory(),
                     nn.BatchNorm1d(hidden_size) if use_bn else nn.Dropout(dropout_rate),
                     nn.Linear(hidden_size, hidden_size // 2),
@@ -223,13 +223,13 @@ class LinearTS(Base):
                     activation_factory(),
                     nn.BatchNorm1d(hidden_size // 8) if use_bn else nn.Dropout(dropout_rate),
                     nn.Linear(hidden_size // 8, self.future_steps * self.mul)
-                    )
                 )
+            )
 
     def forward(
-            self,
-            batch
-            ):
+        self,
+        batch
+    ):
         """It is mandatory to implement this method
 
         Args:

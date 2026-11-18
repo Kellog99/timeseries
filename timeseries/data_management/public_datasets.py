@@ -9,9 +9,9 @@ from bs4 import BeautifulSoup as bs
 
 
 def build_venice(
-        path: str,
-        url = 'https://www.comune.venezia.it/it/content/archivio-storico-livello-marea-venezia-1'
-        ) -> None:
+    path: str,
+    url = 'https://www.comune.venezia.it/it/content/archivio-storico-livello-marea-venezia-1'
+) -> None:
     with requests.Session() as s:
         r = s.get(url)
     soup = bs(r.content)
@@ -19,8 +19,8 @@ def build_venice(
     print('CARE THE STRUCTURE OF THE SITE CAN BE CHANGED')
 
     def cast_string(
-            x
-            ):
+        x
+    ):
         if np.isfinite(x) == False:
             return x
         if x < 10:
@@ -29,45 +29,45 @@ def build_venice(
             return f'{int(x)}:00'
 
     def cast_month(
-            x
-            ):
+        x
+    ):
         try:
             return x.replace('gen', '01').replace('feb', '02').replace('mar', '03').replace('apr', '04').replace(
                 'mag', '05'
-                ).replace(
+            ).replace(
                 'giu', '06'
-                ).replace('lug', '07').replace('ago', '08').replace('set', '09').replace('ott', '10').replace(
+            ).replace('lug', '07').replace('ago', '08').replace('set', '09').replace('ott', '10').replace(
                 'nov', '11'
-                ).replace(
+            ).replace(
                 'dic', '12'
-                )
+            )
         except:
             return x
 
     def remove_float(
-            table,
-            column
-            ):
+        table,
+        column
+    ):
         if table[column].dtype in [int, float]:
             table[column] = table[column].apply(
                 lambda
                     x: cast_string(x)
-                )
+            )
         else:
             pass
 
     def remove_str(
-            table,
-            column
-            ):
+        table,
+        column
+    ):
         table[column] = table[column].apply(
             lambda
                 x: cast_month(x)
-            )
+        )
 
     def normalize(
-            table
-            ):
+        table
+    ):
         columns = table.columns
         if 'Data_ora(solare)' in columns:
             table['time'] = table['Data_ora(solare)']
@@ -113,9 +113,9 @@ def build_venice(
 
 
 def read_public_dataset(
-        path: str,
-        dataset: str
-        ) -> Tuple[pd.DataFrame, List[str]] | tuple[None, None]:
+    path: str,
+    dataset: str
+) -> Tuple[pd.DataFrame, List[str]] | tuple[None, None]:
     """    Returns the public dataset chosen. Pleas download the dataset from here
     https://drive.google.com/drive/folders/1ZOYpTUa82_jCcxIdTmyr0LXQfvaM9vIy or ask to agobbi@fbk.eu.
     Extract the data and leave the name all_six_datasets in the path folder
@@ -143,7 +143,7 @@ def read_public_dataset(
         logging.error(
             'Please dowload the zip file form here and unzip it '
             'https://drive.google.com/drive/folders/1ZOYpTUa82_jCcxIdTmyr0LXQfvaM9vIy'
-            )
+        )
         return None, None
 
     if dataset not in ['electricity', 'etth1', 'etth2', 'ettm1', 'ettm2', 'exchange_rate', 'illness', 'traffic',
@@ -154,39 +154,39 @@ def read_public_dataset(
     if dataset == 'electricity':
         frame = pd.read_csv(
             os.path.join(path, 'all_six_datasets/electricity/electricity.csv'), sep = ',', na_values = ["-9999"]
-            )
+        )
     elif dataset == 'etth1':
         frame = pd.read_csv(
             os.path.join(path, 'all_six_datasets/ETT-small/ETTh1.csv'), sep = ',', na_values = ["-9999"]
-            )
+        )
     elif dataset == 'etth2':
         frame = pd.read_csv(
             os.path.join(path, 'all_six_datasets/ETT-small/ETTh2.csv'), sep = ',', na_values = ["-9999"]
-            )
+        )
     elif dataset == 'ettm1':
         frame = pd.read_csv(
             os.path.join(path, 'all_six_datasets/ETT-small/ETTm1.csv'), sep = ',', na_values = ["-9999"]
-            )
+        )
     elif dataset == 'ettm2':
         frame = pd.read_csv(
             os.path.join(path, 'all_six_datasets/ETT-small/ETTm2.csv'), sep = ',', na_values = ["-9999"]
-            )
+        )
     elif dataset == 'exchange_rate':
         frame = pd.read_csv(
             os.path.join(path, 'all_six_datasets/exchange_rate/exchange_rate.csv'), sep = ',', na_values = ["-9999"]
-            )
+        )
     elif dataset == 'illness':
         frame = pd.read_csv(
             os.path.join(path, 'all_six_datasets/illness/national_illness.csv'), sep = ',', na_values = ["-9999"]
-            )
+        )
     elif dataset == 'traffic':
         frame = pd.read_csv(
             os.path.join(path, 'all_six_datasets/traffic/traffic.csv'), sep = ',', na_values = ["-9999"]
-            )
+        )
     elif dataset == 'weather':
         frame = pd.read_csv(
             os.path.join(path, 'all_six_datasets/weather/weather.csv'), sep = ',', na_values = ["-9999"]
-            )
+        )
     elif dataset == 'venice':
         if os.path.isfile(os.path.join(path, 'venice.csv')):
             frame = pd.read_csv(os.path.join(path, 'venice.csv'))
@@ -194,7 +194,7 @@ def read_public_dataset(
             logging.info('I WILL TRY TO DOWNLOAD IT, if there are errors please have a look to `build_venice` function')
             build_venice(
                 path, url = 'https://www.comune.venezia.it/it/content/archivio-storico-livello-marea-venezia-1'
-                )
+            )
             frame = pd.read_csv(os.path.join(path, 'venice.csv'))
     else:
         logging.error(f'Dataset {dataset} not found')

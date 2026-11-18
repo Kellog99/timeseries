@@ -13,7 +13,7 @@ Domain = Literal[
 
 
 def remove_suffix(
-        name: str
+    name: str
 ) -> str:
     """Derive a default id from a class or configuration name."""
     return name.lower().removesuffix("model")
@@ -38,7 +38,7 @@ class ConfigInfo(Info[T]):
 
     @property
     def config_type(
-            self
+        self
     ) -> type[BaseModel]:
         return cast(type[BaseModel], getattr(self.class_type, "CONFIG_T"))
 
@@ -48,28 +48,28 @@ class Registry(Generic[T]):
     _info_type: ClassVar[type[Info]] = Info
 
     def __init_subclass__(
-            cls,
-            **kwargs: Any
+        cls,
+        **kwargs: Any
     ) -> None:
         super().__init_subclass__(**kwargs)
         cls._register = {}
 
     @classmethod
     def _load_builtins(
-            cls,
-            class_id: Optional[str] = None
+        cls,
+        class_id: Optional[str] = None
     ) -> None:
         """Concrete factories may import their built-in implementations on demand."""
 
     @classmethod
     def __register__(
-            cls,
-            class_type: type[T],
-            id: str,
-            name: str,
-            description: str,
-            domain: Domain,
-            **metadata: Any,
+        cls,
+        class_type: type[T],
+        id: str,
+        name: str,
+        description: str,
+        domain: Domain,
+        **metadata: Any,
     ) -> None:
         key = id.lower()
         if key in cls._register:
@@ -81,18 +81,18 @@ class Registry(Generic[T]):
 
     @classmethod
     def register[ClassT: type](
-            cls,
-            name: str,
-            description: str,
-            id: Optional[str] = None,
-            *,
-            domain: Domain,
-            **metadata: Any,
+        cls,
+        name: str,
+        description: str,
+        id: Optional[str] = None,
+        *,
+        domain: Domain,
+        **metadata: Any,
     ) -> Callable[[ClassT], ClassT]:
         """Register a class, defaulting its id to its lowercase name without a trailing 'model'."""
 
         def decorator(
-                class_type: ClassT
+            class_type: ClassT
         ) -> ClassT:
             cls.__register__(
                 class_type = cast(type[T], class_type), id = remove_suffix(class_type.__name__) if id is None else id,
@@ -104,8 +104,8 @@ class Registry(Generic[T]):
 
     @classmethod
     def get_info(
-            cls,
-            id: str
+        cls,
+        id: str
     ) -> Info[T]:
         key = id.lower()
         cls._load_builtins(key)
@@ -115,26 +115,26 @@ class Registry(Generic[T]):
 
     @classmethod
     def get_information(
-            cls,
-            id: str,
-            exclude: Optional[set[str]] = None
+        cls,
+        id: str,
+        exclude: Optional[set[str]] = None
     ) -> dict[str, Any]:
         return cls.get_info(id).model_dump(exclude = {"class_type"} if exclude is None else exclude)
 
     @classmethod
     def filter(
-            cls,
-            info: Info[T],
-            domain: Optional[Domain | set[Domain]] = None,
-            **kwargs: Any
+        cls,
+        info: Info[T],
+        domain: Optional[Domain | set[Domain]] = None,
+        **kwargs: Any
     ) -> bool:
         return domain is None or info.domain in ({domain} if isinstance(domain, str) else domain)
 
     @classmethod
     def get_list_classes(
-            cls,
-            domain: Optional[Domain | set[Domain]] = None,
-            **kwargs: Any
+        cls,
+        domain: Optional[Domain | set[Domain]] = None,
+        **kwargs: Any
     ) -> list[str]:
         cls._load_builtins()
         return [key for key, info in cls._register.items() if cls.filter(info, domain = domain, **kwargs)]
@@ -146,13 +146,13 @@ class Factory(Registry[T]):
 
     @classmethod
     def __register__(
-            cls,
-            class_type: type[T],
-            id: str,
-            name: str,
-            description: str,
-            domain: Domain,
-            **metadata: Any,
+        cls,
+        class_type: type[T],
+        id: str,
+        name: str,
+        description: str,
+        domain: Domain,
+        **metadata: Any,
     ) -> None:
         config_type = getattr(class_type, "CONFIG_T", None)
         if not isinstance(config_type, type) or not issubclass(config_type, BaseModel):
@@ -161,17 +161,17 @@ class Factory(Registry[T]):
 
     @classmethod
     def get_config(
-            cls,
-            class_id: str,
-            **kwargs: Any
+        cls,
+        class_id: str,
+        **kwargs: Any
     ) -> BaseModel:
         return cls.get_info(class_id).config_type(**kwargs)
 
     @classmethod
     def get_config_param(
-            cls,
-            id: str,
-            attribute_type: Optional[type | list[type] | tuple[type, ...]] = None,
+        cls,
+        id: str,
+        attribute_type: Optional[type | list[type] | tuple[type, ...]] = None,
     ) -> list[tuple[str, FieldInfo]]:
         types = (attribute_type,) if isinstance(attribute_type, type) else attribute_type
         if types is not None and not all(isinstance(item, type) for item in types):
@@ -181,10 +181,10 @@ class Factory(Registry[T]):
 
     @classmethod
     def create(
-            cls,
-            class_id: Optional[str] = None,
-            config: Optional[BaseModel] = None,
-            **kwargs: Any,
+        cls,
+        class_id: Optional[str] = None,
+        config: Optional[BaseModel] = None,
+        **kwargs: Any,
     ) -> T:
         """Validate constructor arguments and create a registered implementation.
 

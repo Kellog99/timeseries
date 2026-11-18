@@ -31,21 +31,21 @@ class SinkhornDistance():
     """
 
     def __init__(
-            self,
-            eps,
-            max_iter,
-            reduction = 'none'
-            ):
+        self,
+        eps,
+        max_iter,
+        reduction = 'none'
+    ):
         super(SinkhornDistance, self).__init__()
         self.eps = eps
         self.max_iter = max_iter
         self.reduction = reduction
 
     def compute(
-            self,
-            x,
-            y
-            ):
+        self,
+        x,
+        y
+    ):
         # The Sinkhorn algorithm takes as input three variables :
         C = self._cost_matrix(x, y).to(x.device)  # Wasserstein cost function
         x_points = x.shape[-2]
@@ -59,11 +59,11 @@ class SinkhornDistance():
         mu = torch.empty(
             batch_size, x_points, dtype = torch.float,
             requires_grad = False
-            ).fill_(1.0 / x_points).squeeze().to(x.device)
+        ).fill_(1.0 / x_points).squeeze().to(x.device)
         nu = torch.empty(
             batch_size, y_points, dtype = torch.float,
             requires_grad = False
-            ).fill_(1.0 / y_points).squeeze().to(x.device)
+        ).fill_(1.0 / y_points).squeeze().to(x.device)
 
         u = torch.zeros_like(mu).to(x.device)
         v = torch.zeros_like(nu).to(x.device)
@@ -98,21 +98,21 @@ class SinkhornDistance():
         return cost  # , pi, C
 
     def M(
-            self,
-            C,
-            u,
-            v
-            ):
+        self,
+        C,
+        u,
+        v
+    ):
         "Modified cost for logarithmic updates"
         r"$M_{ij} = (-c_{ij} + u_i + v_j) / \epsilon$"
         return (-C + u.unsqueeze(-1) + v.unsqueeze(-2)) / self.eps
 
     @staticmethod
     def _cost_matrix(
-            x,
-            y,
-            p = 2
-            ):
+        x,
+        y,
+        p = 2
+    ):
         "Returns the matrix of $|x_i-y_j|^p$."
         x_col = x.unsqueeze(-2)
         y_lin = y.unsqueeze(-3)
@@ -121,10 +121,10 @@ class SinkhornDistance():
 
     @staticmethod
     def ave(
-            u,
-            u1,
-            tau
-            ):
+        u,
+        u1,
+        tau
+    ):
         "Barycenter subroutine, used by kinetic acceleration through extrapolation."
         return tau * u + (1 - tau) * u1
 
@@ -134,17 +134,17 @@ class QuantileLossMO(Module):
     """
 
     def __init__(
-            self,
-            quantiles
-            ):
+        self,
+        quantiles
+    ):
         super().__init__()
         self.quantiles = quantiles
 
     def forward(
-            self,
-            preds,
-            target
-            ):
+        self,
+        preds,
+        target
+    ):
 
         assert not target.requires_grad
         assert preds.size(0) == target.size(0)
@@ -167,41 +167,41 @@ class L1Loss(Module):
     """
 
     def __init__(
-            self
-            ):
+        self
+    ):
         super().__init__()
         self.f = nn.L1Loss()
 
     def forward(
-            self,
-            preds,
-            target
-            ):
+        self,
+        preds,
+        target
+    ):
         return self.f(preds[:, :, :, 0], target)
 
 
 class Permute(Module):
     def __init__(
-            self
-            ):
+        self
+    ):
         super().__init__()
 
     def forward(
-            self,
-            input
-            ):
+        self,
+        input
+    ):
         return torch.permute(input, (0, 2, 1))
 
 
 def get_activation(
-        activation
-        ):
+    activation
+):
     return eval(activation)
 
 
 def weight_init(
-        m
-        ):
+    m
+):
     """
     Usage:
         model = Model()
@@ -265,8 +265,8 @@ def weight_init(
         for names in m._all_weights:
             for name in filter(
                     lambda
-                            n: "bias" in n, names
-                    ):
+                        n: "bias" in n, names
+            ):
                 bias = getattr(m, name)
                 n = bias.size(0)
                 bias.data[:n // 3].fill_(-1.)

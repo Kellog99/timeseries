@@ -64,8 +64,8 @@ class MainConfig(BaseModel):
 
     @model_validator(mode = 'after')
     def create_paths(
-            self
-            ):
+        self
+    ):
         """Create folders if they don't exist"""
         for field_name in ['path_report', 'path_data']:
             path_str = getattr(self, field_name)
@@ -76,8 +76,8 @@ class MainConfig(BaseModel):
 
 
 def parsed_argument(
-        model_class
-        ) -> argparse.Namespace:
+    model_class
+) -> argparse.Namespace:
     """
     Add all fields from a Pydantic model to an argument parser
     """

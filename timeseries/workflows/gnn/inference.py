@@ -11,12 +11,12 @@ from tqdm import tqdm
 
 
 def get_results(
-        model,
-        dataloader: DataLoader,
-        scaler,
-        hour,
-        config
-        ):
+    model,
+    dataloader: DataLoader,
+    scaler,
+    hour,
+    config
+):
     model.eval()
     out_real = torch.tensor([], device = "cpu")
     out_pred = torch.tensor([], device = "cpu")
@@ -35,33 +35,33 @@ def get_results(
 
 
 def get_lag(
-        model,
-        dataloader,
-        scaler,
-        config
-        ):
+    model,
+    dataloader,
+    scaler,
+    config
+):
     y, yh = get_results(
         model = model,
         dataloader = dataloader,
         scaler = scaler,
         hour = range(65),
         config = config
-        )
+    )
     err = torch.sqrt(torch.mean((y - yh) ** 2, 0))
     return err.cpu().numpy()
 
 
 def print_csv(
-        model,
-        config: ConfigParser,
-        ds: dict[str, Dataset]
-        ):
+    model,
+    config: ConfigParser,
+    ds: dict[str, Dataset]
+):
     with open(os.path.join(config['paths']['dataset'], f"scaler_min_max.pkl"), 'rb') as f:
         scaler = pickle.load(f)
     dataloader = DataLoader(
         ConcatDataset(list(ds.values())),
         batch_size = config.getint('dataset', 'batch_size')
-        )
+    )
 
     real, pred = get_results(
         model = model,
@@ -69,7 +69,7 @@ def print_csv(
         scaler = scaler,
         hour = range(65),
         config = config
-        )
+    )
     real = pd.DataFrame(real).astype("float")
     pred = pd.DataFrame(pred).astype("float")
     real.to_csv(os.path.join(config['paths']['prediction'], f"{config['model']['id_model']}_real.csv"))
@@ -77,11 +77,11 @@ def print_csv(
 
 
 def get_plot(
-        model,
-        config: ConfigParser,
-        ds: dict,
-        show = False
-        ):
+    model,
+    config: ConfigParser,
+    ds: dict,
+    show = False
+):
     id_model = config['model']['id_model']
 
     ################## Carico i file che mi servono ################
@@ -106,7 +106,7 @@ def get_plot(
             ds[key],
             batch_size = batch_size,
             shuffle = False
-            )
+        )
 
     fig, ax = plt.subplots(4, 2, figsize = (40, 20), constrained_layout = True)
     fig.suptitle(f'results of the model ({id_model})', fontsize = 30)
@@ -121,7 +121,7 @@ def get_plot(
             dataloader = dl[key],
             scaler = scaler,
             config = config
-            )
+        )
         lag[key] = err
 
     ##################### train loss  #####################
@@ -188,7 +188,7 @@ def get_plot(
             Subset(ds[key], [i for i in range(len(ds[key])) if i in index_list]),
             batch_size = batch_size,
             shuffle = False
-            )
+        )
 
         y, yh = get_results(
             model = model,
@@ -196,7 +196,7 @@ def get_plot(
             scaler = scaler,
             hour = [x - 1 for x in hour],
             config = config
-            )
+        )
 
         for i, h in enumerate(hour):
             ax[2 + j, i].plot(yh[:, i], label = f"pred hour {h}")

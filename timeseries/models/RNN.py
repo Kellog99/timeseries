@@ -24,7 +24,7 @@ class ConfigRNN(ThreeQuantileConfiguration):
     future_channels: NonNegativeInt = Field(
         ...,
         description = 'Number of known future numerical features; zero is allowed.'
-        )
+    )
     embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
     cat_emb_dim: PositiveInt = Field(..., description = 'Embedding dimension for each categorical variable.')
     hidden_RNN: PositiveInt = Field(..., description = 'Hidden recurrent state dimension.')
@@ -39,12 +39,12 @@ class ConfigRNN(ThreeQuantileConfiguration):
     use_bn: bool = Field(False, description = 'Use batch normalization in place of dropout.')
     persistence_weight: float = Field(
         0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
-        )
+    )
     loss_type: RNNLoss = Field('l1', description = 'Training loss selection.')
     quantiles: list[Quantile] | None = Field(
         None,
         description = 'Three increasing output quantiles, or None/empty for point forecasts.'
-        )
+    )
     n_classes: NonNegativeInt = Field(0, description = 'Number of classes; zero selects regression.')
     optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
     optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
@@ -53,16 +53,16 @@ class ConfigRNN(ThreeQuantileConfiguration):
 
 class MyBN(Module):
     def __init__(
-            self,
-            channels
-            ):
+        self,
+        channels
+    ):
         super(MyBN, self).__init__()
         self.BN = nn.BatchNorm1d(channels)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.BN(x.permute(0, 2, 1)).permute(0, 2, 1)
 
 
@@ -75,30 +75,30 @@ class RNN(Base):
     CONFIG_T: ClassVar[type[ConfigRNN]] = ConfigRNN
 
     def __init__(
-            self,
-            past_steps: int,
-            future_steps: int,
-            past_channels: int,
-            future_channels: int,
-            embs: list[int],
-            cat_emb_dim: int,
-            hidden_RNN: int,
-            num_layers_RNN: int,
-            kind: RNNKind,
-            kernel_size: int,
-            sum_emb: bool,
-            out_channels: int,
-            activation: str = 'torch.nn.ReLU',
-            remove_last: bool = False,
-            dropout_rate: float = 0.1,
-            use_bn: bool = False,
-            persistence_weight: float = 0.0,
-            loss_type: RNNLoss = 'l1',
-            quantiles: list[float] | None = None,
-            n_classes: int = 0,
-            optim: str | None = None,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        past_steps: int,
+        future_steps: int,
+        past_channels: int,
+        future_channels: int,
+        embs: list[int],
+        cat_emb_dim: int,
+        hidden_RNN: int,
+        num_layers_RNN: int,
+        kind: RNNKind,
+        kernel_size: int,
+        sum_emb: bool,
+        out_channels: int,
+        activation: str = 'torch.nn.ReLU',
+        remove_last: bool = False,
+        dropout_rate: float = 0.1,
+        use_bn: bool = False,
+        persistence_weight: float = 0.0,
+        loss_type: RNNLoss = 'l1',
+        quantiles: list[float] | None = None,
+        n_classes: int = 0,
+        optim: str | None = None,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         """ Recurrent model with an encoder decoder structure
 
@@ -190,7 +190,7 @@ class RNN(Base):
             activation_type(),
             MyBN(8) if use_bn else nn.Dropout(dropout_rate),
             nn.Linear(8, hidden_RNN // 8)
-            )
+        )
         self.initial_linear_decoder = nn.Sequential(
             nn.Linear(future_channels, 4),
             activation_type(),
@@ -199,15 +199,15 @@ class RNN(Base):
             activation_type(),
             MyBN(8) if use_bn else nn.Dropout(dropout_rate),
             nn.Linear(8, hidden_RNN // 8)
-            )
+        )
 
         self.conv_encoder = nn.Sequential(
             Permute(),
             nn.Conv1d(
                 emb_channels + hidden_RNN // 8, hidden_RNN // 8, kernel_size,
                 stride = 1, padding = 'same'
-                ), Permute(), nn.Dropout(0.3)
-            )
+            ), Permute(), nn.Dropout(0.3)
+        )
 
         if future_channels + emb_channels == 0:
             ## occhio che vuol dire che non ho futuro , per ora ci metto una pezza e uso hidden dell'encoder
@@ -216,25 +216,25 @@ class RNN(Base):
                 nn.Conv1d(
                     hidden_RNN, hidden_RNN // 8, kernel_size = kernel_size, stride = 1,
                     padding = 'same'
-                    ), Permute()
-                )
+                ), Permute()
+            )
         else:
             self.conv_decoder = nn.Sequential(
                 Permute(), nn.Conv1d(
                     future_channels + emb_channels, hidden_RNN // 8,
                     kernel_size = kernel_size, stride = 1, padding = 'same'
-                    ),
+                ),
                 Permute()
-                )
+            )
 
         self.Encoder = recurrent_type(
             input_size = hidden_RNN // 8, hidden_size = hidden_RNN,
             num_layers = num_layers_RNN, batch_first = True
-            )
+        )
         self.Decoder = recurrent_type(
             input_size = hidden_RNN // 8, hidden_size = hidden_RNN,
             num_layers = num_layers_RNN, batch_first = True
-            )
+        )
         self.final_linear = nn.ModuleList()
         for _ in range(out_channels * self.mul):
             self.final_linear.append(
@@ -249,13 +249,13 @@ class RNN(Base):
                     activation_type(),
                     MyBN(hidden_RNN // 8) if use_bn else nn.Dropout(dropout_rate),
                     nn.Linear(hidden_RNN // 8, 1)
-                    )
                 )
+            )
 
     def forward(
-            self,
-            batch
-            ):
+        self,
+        batch
+    ):
         """It is mandatory to implement this method
 
         Args:

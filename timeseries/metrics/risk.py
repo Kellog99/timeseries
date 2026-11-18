@@ -11,13 +11,13 @@ from numbers import Integral
 import torch
 from torch import Tensor
 
-from timeseries.utils.typing import Metric
 from timeseries.metric_register import MetricFactory
+from timeseries.utils.typing import Metric
 
 
 def as_returns(
-        data: Tensor | list[float]
-        ) -> Tensor:
+    data: Tensor | list[float]
+) -> Tensor:
     values = torch.as_tensor(data, dtype = torch.float64)
     if values.ndim != 1:
         raise ValueError("Expected a one-dimensional sequence of decimal returns.")
@@ -27,16 +27,16 @@ def as_returns(
 
 
 def divide(
-        numerator: Tensor,
-        denominator: Tensor
-        ) -> Tensor:
+    numerator: Tensor,
+    denominator: Tensor
+) -> Tensor:
     # IEEE division preserves undefined and infinite results without hiding them.
     return numerator / denominator
 
 
 def max_drawdown(
-        returns: Tensor
-        ) -> Tensor:
+    returns: Tensor
+) -> Tensor:
     wealth = torch.cat((returns.new_ones(1), (1 + returns).cumprod(0)))
     peaks = wealth.cummax(0).values
     return (1 - wealth / peaks).max()
@@ -47,20 +47,20 @@ class ReturnMetric(Metric):
     returns: list[Tensor]
 
     def __init__(
-            self
-            ) -> None:
+        self
+    ) -> None:
         super().__init__()
         self.add_state("returns", default = [], dist_reduce_fx = "cat")
 
     def update(
-            self,
-            data: Tensor | list[float]
-            ) -> None:
+        self,
+        data: Tensor | list[float]
+    ) -> None:
         self.returns.append(as_returns(data).detach().to(self.device))
 
     def values(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         # TorchMetrics may concatenate list states during distributed sync.
         values = self.returns if isinstance(self.returns, Tensor) else (
             torch.cat(self.returns) if self.returns else torch.empty(0, device = self.device, dtype = torch.float64)
@@ -78,10 +78,10 @@ class ReturnMetric(Metric):
 class SharpeRatio(ReturnMetric):
 
     def __init__(
-            self,
-            risk_free_rate: float = 0.0,
-            periods_per_year: int = 252
-            ) -> None:
+        self,
+        risk_free_rate: float = 0.0,
+        periods_per_year: int = 252
+    ) -> None:
         super().__init__()
         self.risk_free_rate = float(risk_free_rate)
         if not isfinite(self.risk_free_rate):
@@ -91,8 +91,8 @@ class SharpeRatio(ReturnMetric):
         self.periods_per_year = int(periods_per_year)
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         excess = self.values() - self.risk_free_rate
         std = excess.std() if excess.numel() > 1 else excess.new_tensor(float("nan"))
         return divide(excess.mean(), std) * sqrt(self.periods_per_year)
@@ -106,17 +106,17 @@ class SharpeRatio(ReturnMetric):
 class OmegaRatio(ReturnMetric):
 
     def __init__(
-            self,
-            threshold: float = 0.0
-            ) -> None:
+        self,
+        threshold: float = 0.0
+    ) -> None:
         super().__init__()
         self.threshold = float(threshold)
         if not isfinite(self.threshold):
             raise ValueError("threshold must be finite.")
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         excess = self.values() - self.threshold
         return divide(excess.clamp_min(0).sum(), (-excess).clamp_min(0).sum())
 
@@ -129,10 +129,10 @@ class OmegaRatio(ReturnMetric):
 class SortinoRatio(ReturnMetric):
 
     def __init__(
-            self,
-            target_return: float = 0.0,
-            periods_per_year: int = 252
-            ) -> None:
+        self,
+        target_return: float = 0.0,
+        periods_per_year: int = 252
+    ) -> None:
         super().__init__()
         self.target_return = float(target_return)
         if not isfinite(self.target_return):
@@ -142,8 +142,8 @@ class SortinoRatio(ReturnMetric):
         self.periods_per_year = int(periods_per_year)
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         excess = self.values() - self.target_return
         downside = excess.clamp_max(0).square().mean().sqrt()
         return divide(excess.mean(), downside) * sqrt(self.periods_per_year)
@@ -157,17 +157,17 @@ class SortinoRatio(ReturnMetric):
 class Volatility(ReturnMetric):
 
     def __init__(
-            self,
-            periods_per_year: int = 252
-            ) -> None:
+        self,
+        periods_per_year: int = 252
+    ) -> None:
         super().__init__()
         if isinstance(periods_per_year, bool) or not isinstance(periods_per_year, Integral) or periods_per_year <= 0:
             raise ValueError("periods_per_year must be a positive integer.")
         self.periods_per_year = int(periods_per_year)
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         values = self.values()
         return (values.std() if values.numel() > 1 else values.new_tensor(float("nan"))) * sqrt(self.periods_per_year)
 
@@ -180,8 +180,8 @@ class Volatility(ReturnMetric):
 class MaxDrawdown(ReturnMetric):
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         return max_drawdown(self.values())
 
 
@@ -193,17 +193,17 @@ class MaxDrawdown(ReturnMetric):
 class CalmarRatio(ReturnMetric):
 
     def __init__(
-            self,
-            periods_per_year: int = 252
-            ) -> None:
+        self,
+        periods_per_year: int = 252
+    ) -> None:
         super().__init__()
         if isinstance(periods_per_year, bool) or not isinstance(periods_per_year, Integral) or periods_per_year <= 0:
             raise ValueError("periods_per_year must be a positive integer.")
         self.periods_per_year = int(periods_per_year)
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         values = self.values()
         annual_return = (1 + values).prod().pow(self.periods_per_year / values.numel()) - 1
         return divide(annual_return, max_drawdown(values))
@@ -217,6 +217,6 @@ class CalmarRatio(ReturnMetric):
 class TotalReturn(ReturnMetric):
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         return (1 + self.values()).prod() - 1

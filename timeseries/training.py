@@ -13,19 +13,19 @@ if TYPE_CHECKING:
 
 
 def train_model(
-        model: nn.Module,
-        train_loader: DataLoader,
-        validation_loader: DataLoader,
-        *,
-        epochs: int,
-        device: str | torch.device = 'cpu',
-        checkpoint_dir: str | Path | None = None,
-        gradient_clip_val: float | None = None,
-        gradient_clip_algorithm: str = 'norm',
-        adapter: TrainingAdapter | None = None,
-        optimizer: torch.optim.Optimizer | None = None,
-        scheduler = None,
-        scheduler_interval: int = 1,
+    model: nn.Module,
+    train_loader: DataLoader,
+    validation_loader: DataLoader,
+    *,
+    epochs: int,
+    device: str | torch.device = 'cpu',
+    checkpoint_dir: str | Path | None = None,
+    gradient_clip_val: float | None = None,
+    gradient_clip_algorithm: str = 'norm',
+    adapter: TrainingAdapter | None = None,
+    optimizer: torch.optim.Optimizer | None = None,
+    scheduler = None,
+    scheduler_interval: int = 1,
 ) -> list[dict[str, float]]:
     """Run one optimization/validation loop, with sample-weighted epoch metrics.
 
@@ -62,10 +62,10 @@ def train_model(
     best_loss = float('inf')
 
     def run_epoch(
-            loader: DataLoader,
-            training: bool,
-            epoch: int
-            ) -> dict[str, float]:
+        loader: DataLoader,
+        training: bool,
+        epoch: int
+    ) -> dict[str, float]:
         model.train(training)
         totals: dict[str, float] = {}
         observations = 0
@@ -84,8 +84,8 @@ def train_model(
                 if training and optimizer is not None:
                     loss.backward()
                     if gradient_clip_val is not None:
-                        clip = torch.nn.utils.clip_grad_norm_ if gradient_clip_algorithm == 'norm' else
-                        torch.nn.utils.clip_grad_value_
+                        clip = (torch.nn.utils.clip_grad_norm_ if gradient_clip_algorithm == 'norm'
+                                else torch.nn.utils.clip_grad_value_)
                         clip(model.parameters(), gradient_clip_val)
                     optimizer.step()
                 for name, value in metrics.items():
@@ -121,18 +121,18 @@ def train_model(
 
 
 def train_timeseries(
-        series: 'TimeSeries',
-        dirpath: str,
-        split_params: dict,
-        *,
-        batch_size: int = 100,
-        num_workers: int = 0,
-        max_epochs: int = 500,
-        device: str | torch.device | None = None,
-        gradient_clip_val: float | None = None,
-        gradient_clip_algorithm: str = 'norm',
-        modifier: str | None = None,
-        modifier_params: dict | None = None,
+    series: 'TimeSeries',
+    dirpath: str,
+    split_params: dict,
+    *,
+    batch_size: int = 100,
+    num_workers: int = 0,
+    max_epochs: int = 500,
+    device: str | torch.device | None = None,
+    gradient_clip_val: float | None = None,
+    gradient_clip_algorithm: str = 'norm',
+    modifier: str | None = None,
+    modifier_params: dict | None = None,
 ) -> float:
     """Prepare splits/modifiers and train a forecasting workflow."""
     import os
@@ -171,13 +171,13 @@ def train_timeseries(
 
 
 def train_gnn(
-        model,
-        dataloader_train,
-        dataloader_validation,
-        optimizer,
-        scheduler,
-        config
-        ):
+    model,
+    dataloader_train,
+    dataloader_validation,
+    optimizer,
+    scheduler,
+    config
+):
     """Train a GNN and export artifacts consumed by the existing plotting tools."""
     import pickle
     from .workflows.adapters import GNNAdapter
@@ -207,14 +207,14 @@ def train_gnn(
 
 
 def train_legacy_tft(
-        model,
-        epochs,
-        dl_training,
-        dl_validation,
-        cost_func,
-        optimizer,
-        scheduler
-        ):
+    model,
+    epochs,
+    dl_training,
+    dl_validation,
+    cost_func,
+    optimizer,
+    scheduler
+):
     """Train legacy TFT using the common loop and retain its report file format."""
     import pickle
     from .workflows.adapters import LegacyTFTAdapter
@@ -231,7 +231,7 @@ def train_legacy_tft(
         checkpoint = torch.load(
             path.parent / f'{path.name}_checkpoints' / f'{kind}.pt',
             map_location = 'cpu', weights_only = True
-            )
+        )
         torch.save(checkpoint['state_dict'], f'{path}_{kind}.pt')
     config = None
     if Path(f'{path}.pkl').exists():
@@ -244,8 +244,8 @@ def train_legacy_tft(
 
 
 def run_gnn(
-        config
-        ) -> None:
+    config
+) -> None:
     import os
     import pickle
     from .models.gnn.model import GNN
@@ -268,7 +268,7 @@ def run_gnn(
             ds[key],
             batch_size = batch_size,
             shuffle = key == 'train'
-            )
+        )
 
         config['dataset'][f'n_obs_{key}'] = f"{len(ds[key])}"
 
@@ -284,7 +284,7 @@ def run_gnn(
 
     print(
         f'{f" Configuration (hid_out_features1, hid_out_features2, num_layer1, num_layer2, nfeat_out_gnn, lr, weight_decay) = ({id_model})":=^60s}'
-        )
+    )
     model = GNN(
         in_feat = params_model["in_feat"],
         past_steps = 200,
@@ -302,18 +302,18 @@ def run_gnn(
         past = 200,
         future = 65,
         device = str(device)
-        )
+    )
 
     model.to(model.device)
     optimizer = torch.optim.Adam(
         model.parameters(),
         lr = config.getfloat('optimizer', 'lr'),
         weight_decay = config.getfloat('optimizer', 'weight_decay')
-        )
+    )
     scheduler = torch.optim.lr_scheduler.ExponentialLR(
         optimizer,
         gamma = config.getfloat('optimizer', 'gamma')
-        )
+    )
     train_gnn(
         model = model,
         dataloader_train = dl['train'],
@@ -321,7 +321,7 @@ def run_gnn(
         optimizer = optimizer,
         scheduler = scheduler,
         config = config
-        )
+    )
 
     print(f'{" Creating the plot for the LAG ":=^60s}')
 
@@ -332,14 +332,14 @@ def run_gnn(
         model = model,
         config = config,
         ds = ds
-        )
+    )
 
 
 def run_legacy_tft(
-        cluster: bool,
-        run_train: bool,
-        conf_params
-        ):
+    cluster: bool,
+    run_train: bool,
+    conf_params
+):
     import os
     import pickle as pkl
     from sklearn.preprocessing import StandardScaler
@@ -376,7 +376,7 @@ def run_legacy_tft(
         scaler_y = scaler_type,
         step = 1,
         path = path_data
-        )
+    )
 
     # * Get training tools
     optimizer = conf_params.get_optim(model)
@@ -395,10 +395,10 @@ def run_legacy_tft(
             cost_func = loss_fun,
             optimizer = optimizer,
             scheduler = scheduler
-            )
+        )
 
     # * LEARNING
     model.inference(
         dl = test_dl,
         scaler = scaler_y
-        )
+    )

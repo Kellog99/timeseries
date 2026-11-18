@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi import Query
 from pandas import DataFrame
 
+from services.models.portfolio import PortfolioSnapshot, PortfolioValuation
 from services.models.tickerdata import TickerData, Portfolio, History
 from .utils import validate_path, config_field
 
@@ -15,43 +16,49 @@ router = APIRouter(prefix = "/load")
 
 @router.get("/tickers")
 def get_tickers(
-        tickers: list[str] = Depends(config_field("tickers"))
-        ) -> list[str]:
+    tickers: list[str] = Depends(config_field("tickers"))
+) -> list[str]:
     """
     This returns the ticker list that have been saved in the config file.
     """
     return tickers
 
 
-def evaluate_portfolio() -> Portfolio:
-    """
-    This function evaluates the portfolio and returns it.
-    """
-    raise HTTPException(status_code = 501, detail = "Portfolio evaluation is not implemented.")
+@router.post('/portfolio/evaluate')
+def evaluate_portfolio(
+    snapshot: PortfolioSnapshot
+) -> PortfolioValuation:
+    try:
+        return snapshot.evaluate()
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(422, f'Invalid or missing portfolio mark: {exc}') from exc
 
 
 @router.get("/portfolio")
 def get_portfolio_analysis(
-        path_report: Path | str = Depends(config_field("path_report")),
-) -> Portfolio:
+    path_report: Path | str = Depends(config_field("path_report")),
+) -> Portfolio | PortfolioValuation:
     path_portfolio: Path = validate_path(path_report) / "analysis.json"
     if path_portfolio.exists():
         with open(path_portfolio, "r") as f:
             data_json = json.load(f)
         return Portfolio.model_validate(data_json)
     else:
-        return evaluate_portfolio()
+        snapshot_path = validate_path(path_report) / 'portfolio.json'
+        if not snapshot_path.exists():
+            raise HTTPException(404, 'Save a PortfolioSnapshot as portfolio.json or POST /load/portfolio/evaluate.')
+        return evaluate_portfolio(PortfolioSnapshot.model_validate_json(snapshot_path.read_text()))
 
 
 @router.get("/ticker_ts")
 def get_data(
-        ticker: str = Query(
-            default = ...,
-            description = "It represent the path to the ticker time series."
-        ),
-        path_data: Path | str = Depends(config_field("path_data")),
-        step_size: int = Depends(config_field("step_size")),
-        save: bool = Depends(config_field("save"))
+    ticker: str = Query(
+        default = ...,
+        description = "It represent the path to the ticker time series."
+    ),
+    path_data: Path | str = Depends(config_field("path_data")),
+    step_size: int = Depends(config_field("step_size")),
+    save: bool = Depends(config_field("save"))
 ) -> TickerData:
     """
     This function create the structure associated with the Ticker's information
@@ -92,11 +99,11 @@ def get_data(
             with open(ticker_path, "r", encoding = "utf-8") as f:
                 data_json = json.load(f)
 
-        except json.JSONDecodeError as e:
-            print(f"\nJSON Error: {e}")
-            print(f"Position: {e.pos}")
-            print(f"Line: {e.lineno}, Column: {e.colno}")
-        out = TickerData.model_validate(data_json)
+            out = TickerData.model_validate(data_json)
+            if data_json.get('auto_adjust') is not False or not out.history:
+                out = None  # Rebuild legacy caches rather than mix adjustment policies.
+        except (json.JSONDecodeError, ValueError):
+            out = None  # Rebuild an invalid cache.
 
     ################################################
 
@@ -137,9 +144,9 @@ def get_data(
             )
 
         if len(out.history) == 0:
-            history: DataFrame = tick.history(period = "max")
+            history: DataFrame = tick.history(period = "max", auto_adjust = False)
         else:
-            history: DataFrame = tick.history(start = last_date, end = today_date)
+            history: DataFrame = tick.history(start = last_date, end = today_date, auto_adjust = False)
 
         history.reset_index(inplace = True)
         if "Date" in history.columns:
@@ -177,6 +184,7 @@ def get_data(
                     obj = {
                         "name": out.name,
                         "description": out.description,
+                        "auto_adjust": False,
                         "history": {
                             k.isoformat() if isinstance(k, date) else k: v.model_dump()
                             for k, v in out.history.items()

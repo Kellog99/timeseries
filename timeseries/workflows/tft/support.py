@@ -6,8 +6,8 @@ from .configuration import dictConfiguration
 
 
 def load_paths(
-        cluster: bool
-        ):
+    cluster: bool
+):
     config_path = (
         '/storage/DSIP/edison/anmartinelli/config.yaml'
         if cluster else '/home/andrea/timeseries/anmartinelli/config.yaml'
@@ -19,10 +19,10 @@ def load_paths(
 
 
 def get_model(
-        conf_params: dictConfiguration,
-        device,
-        path: str
-        ) -> Model:
+    conf_params: dictConfiguration,
+    device,
+    path: str
+) -> Model:
     model = Model(
         use_target_past = conf_params.strategy_dict['use_target_past'],
         use_yprec = conf_params.strategy_dict['use_yprec'],
@@ -42,5 +42,5 @@ def get_model(
         quantiles = conf_params.strategy_dict['quantiles'],
         path_model_save = path,
         model_name = conf_params.name
-        ).to(device)
+    ).to(device)
     return model

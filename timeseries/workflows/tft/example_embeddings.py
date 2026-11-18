@@ -23,7 +23,7 @@ if __name__ == '__main__':
         step = step,
         scaler_y = scaler_type,
         path = path_data
-        )
+    )
 
     x, y = next(iter(train_dl))
     # x.shape = [8, 256, 6]

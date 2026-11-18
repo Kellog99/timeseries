@@ -12,7 +12,7 @@ class ConfigARIMAPredictor(Configuration):
     q: int = Field(
         2, ge = 0,
         description = "Reserved moving-average order; the current predictor fits only AR coefficients."
-        )
+    )
 
 
 @ModelFactory.register(
@@ -25,27 +25,27 @@ class ARIMAPredictor:
     CONFIG_T = ConfigARIMAPredictor
 
     def __init__(
-            self,
-            p: int = 5,
-            d: int = 1,
-            q: int = 2
-            ) -> None:
+        self,
+        p: int = 5,
+        d: int = 1,
+        q: int = 2
+    ) -> None:
         config = self.CONFIG_T(p = p, d = d, q = q)
         self.p, self.d, self.q = config.p, config.d, config.q
         self.ar_coef: NDArray[np.float64] | None = None
         self.ma_coef: NDArray[np.float64] | None = None
 
     def difference(
-            self,
-            data: ArrayLike,
-            order: int = 1
-            ) -> NDArray[np.float64]:
+        self,
+        data: ArrayLike,
+        order: int = 1
+    ) -> NDArray[np.float64]:
         return np.diff(np.asarray(data, dtype = float), n = order)
 
     def fit(
-            self,
-            data: ArrayLike
-            ) -> None:
+        self,
+        data: ArrayLike
+    ) -> None:
         values = self.difference(data, self.d)
         if values.ndim != 1 or len(values) <= self.p or not np.isfinite(values).all():
             raise ValueError("Expected finite univariate data with more observations than p + d.")
@@ -53,10 +53,10 @@ class ARIMAPredictor:
         self.ar_coef = np.linalg.lstsq(x, values[self.p:], rcond = None)[0]
 
     def predict(
-            self,
-            data: ArrayLike,
-            steps: int = 1
-            ) -> NDArray[np.float64]:
+        self,
+        data: ArrayLike,
+        steps: int = 1
+    ) -> NDArray[np.float64]:
         if self.ar_coef is None:
             raise ValueError("Fit the predictor before predicting.")
         if steps <= 0:

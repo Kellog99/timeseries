@@ -9,9 +9,9 @@ from .inference import get_plot
 
 
 def test(
-        config: ConfigParser,
-        name_model: str
-        ) -> None:
+    config: ConfigParser,
+    name_model: str
+) -> None:
     print(f'{" Upload the dataframe ":=^60s}')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     path_dataset = os.path.join(config['paths']['dataset'], f"dataframes.pkl")
@@ -32,7 +32,7 @@ def test(
     for key, value in zip(
             ("hid_out_features1", "hid_out_features2", "num_layer1",
              "num_layer2", "nfeat_out_gnn"), architecture, strict = False
-            ):
+    ):
         config['model'][key] = value
 
     params_model = {key: config.getint('model', key) for key in (
@@ -59,7 +59,7 @@ def test(
         past = 200,
         future = 65,
         device = str(device)
-        )
+    )
     model.load_state_dict(torch.load(os.path.join(config['paths']['net_weights_train'], f"{name_model}")))
     model.to(device)
     print(f'{f" configuration {id_model} ":=^60s}')

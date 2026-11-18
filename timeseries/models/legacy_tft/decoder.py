@@ -10,12 +10,12 @@ class Head_selfDec(Module):
     """ one head of self-att for decoder"""
 
     def __init__(
-            self,
-            n_embd,
-            head_size,
-            lag,
-            dropout
-            ):
+        self,
+        n_embd,
+        head_size,
+        lag,
+        dropout
+    ):
         super().__init__()
         self.head_size = head_size
         self.query = nn.Linear(n_embd, head_size, bias = False)
@@ -25,9 +25,9 @@ class Head_selfDec(Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         B, T, C = x.shape
 
         q = self.query(x)
@@ -46,11 +46,11 @@ class Head_crossDec(Module):
     """ one head of cross-att for decoder"""
 
     def __init__(
-            self,
-            n_embd,
-            head_size,
-            dropout
-            ):
+        self,
+        n_embd,
+        head_size,
+        dropout
+    ):
         super().__init__()
         self.head_size = head_size
         self.key = nn.Linear(n_embd, head_size, bias = False)
@@ -59,11 +59,11 @@ class Head_crossDec(Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(
-            self,
-            q,
-            k,
-            v
-            ):
+        self,
+        q,
+        k,
+        v
+    ):
         # B, T, C = x.shape # C = n_embd
 
         # import pdb
@@ -84,22 +84,22 @@ class Head_crossDec(Module):
 class MultiHead_selfDec(Module):
 
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            lag,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        lag,
+        dropout
+    ):
         super().__init__()
         self.num_heads = num_heads
         self.heads = nn.ModuleList([Head_selfDec(n_embd, head_size, lag, dropout) for _ in range(num_heads)])
         self.proj = nn.Linear(num_heads * head_size, n_embd)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         out = torch.cat([h(x) for h in self.heads], dim = -1)
         out = self.proj(out)
         return out
@@ -111,23 +111,23 @@ class MultiHead_selfDec(Module):
 class MultiHead_crossDec(Module):
 
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        dropout
+    ):
         super().__init__()
         self.num_heads = num_heads
         self.heads = nn.ModuleList([Head_crossDec(n_embd, head_size, dropout) for _ in range(num_heads)])
         self.proj = nn.Linear(num_heads * head_size, n_embd)
 
     def forward(
-            self,
-            q,
-            k,
-            v
-            ):
+        self,
+        q,
+        k,
+        v
+    ):
         out = torch.cat([h(q, k, v) for h in self.heads], dim = -1)
         out = self.proj(out)
         return out
@@ -139,10 +139,10 @@ class MultiHead_crossDec(Module):
 class FFN(Module):
 
     def __init__(
-            self,
-            n_embd,
-            fw_exp
-            ):
+        self,
+        n_embd,
+        fw_exp
+    ):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, fw_exp * n_embd),
@@ -151,23 +151,23 @@ class FFN(Module):
         )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.net(x)
 
 
 #   DECODER-LAYER    #
 class DecoderLayer(Module):
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            fw_exp,
-            lag,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        fw_exp,
+        lag,
+        dropout
+    ):
         super().__init__()
         self.self_heads = MultiHead_selfDec(n_embd, num_heads, head_size, lag, dropout)
         self.cross_heads = MultiHead_crossDec(n_embd, num_heads, head_size, dropout)
@@ -177,11 +177,11 @@ class DecoderLayer(Module):
         self.norm3 = nn.LayerNorm(n_embd)
 
     def forward(
-            self,
-            q,
-            k,
-            v
-            ):  # q = x_future, k = output of encoder, v = y_past
+        self,
+        q,
+        k,
+        v
+    ):  # q = x_future, k = output of encoder, v = y_past
         q = q + self.self_heads(self.norm1(q))
         q = q + self.cross_heads(self.norm2(q), k, v)
         q = q + self.ffn(self.norm3(q))
@@ -191,28 +191,28 @@ class DecoderLayer(Module):
 #   DECODER   #
 class Decoder(Module):
     def __init__(
-            self,
-            n_dec,
-            n_embd,
-            num_heads,
-            head_size,
-            fw_exp,
-            lag,
-            dropout
-            ):
+        self,
+        n_dec,
+        n_embd,
+        num_heads,
+        head_size,
+        fw_exp,
+        lag,
+        dropout
+    ):
         super().__init__()
         self.layers = nn.ModuleList(
             [DecoderLayer(n_embd, num_heads, head_size, fw_exp, lag, dropout)
              for _ in range(n_dec)]
-            )
+        )
         self.norm = nn.LayerNorm(n_embd)
 
     def forward(
-            self,
-            q,
-            k,
-            v
-            ):
+        self,
+        q,
+        k,
+        v
+    ):
         decoding = q
         for layer in self.layers:
             decoding = layer(decoding, k, v)

@@ -23,7 +23,7 @@ class ConfigGNN(ForecastConfiguration):
     emb: dict[str, tuple[PositiveInt, PositiveInt]] = Field(
         ...,
         description = 'Embedding cardinality and dimension per categorical feature.'
-        )
+    )
     device: str = Field(..., description = 'Torch device, for example cpu or cuda:0.')
     nfeat_out_gnn: PositiveInt = Field(16, description = 'Output feature width of each graph network.')
     num_layer1: PositiveInt = Field(1, description = 'Number of layers in the first graph network.')
@@ -34,11 +34,11 @@ class ConfigGNN(ForecastConfiguration):
 
 class pre_processing(Module):
     def __init__(
-            self,
-            in_feat: int,
-            emb: dict[str, tuple[int, int]],
-            device: str | torch.device
-            ) -> None:
+        self,
+        in_feat: int,
+        emb: dict[str, tuple[int, int]],
+        device: str | torch.device
+    ) -> None:
         super().__init__()
         self.in_feat = in_feat
         self.emb = nn.ModuleDict({})
@@ -48,7 +48,7 @@ class pre_processing(Module):
                 num_embeddings = emb[key][0],
                 embedding_dim = emb[key][1],
                 device = device
-                )
+            )
             out += emb[key][1]
 
         # sommo le tre variabili non categoriche dell'input
@@ -59,23 +59,23 @@ class pre_processing(Module):
             nn.Linear(
                 in_features = out,
                 out_features = 128
-                ),
+            ),
             nn.ReLU(),
             nn.Linear(
                 in_features = 128,
                 out_features = 128
-                ),
+            ),
             nn.ReLU(),
             nn.Linear(
                 in_features = 128,
                 out_features = out - 1
-                )
             )
+        )
 
     def forward(
-            self,
-            x: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor
+    ) -> torch.Tensor:
         embeddings: list[torch.Tensor] = []
         for i, key in enumerate(self.emb.keys()):
             embeddings.append(self.emb[key](x[:, :, i].int().to(x.device.type)))
@@ -91,11 +91,11 @@ class pre_processing(Module):
 class my_gcnn(Module):
 
     def __init__(
-            self,
-            in_channels: int,
-            out_channels: int,
-            relu: bool = True
-            ) -> None:
+        self,
+        in_channels: int,
+        out_channels: int,
+        relu: bool = True
+    ) -> None:
         super().__init__()
 
         self.in_channels = in_channels
@@ -104,7 +104,7 @@ class my_gcnn(Module):
             in_channels,
             out_channels,
             bias = False
-            )
+        )
         self.relu = nn.ReLU()
         if relu:
             self.act = nn.ReLU()
@@ -112,8 +112,8 @@ class my_gcnn(Module):
             self.act = nn.Identity()
 
     def forward(
-            self,
-            x0: tuple[torch.Tensor, torch.Tensor]
+        self,
+        x0: tuple[torch.Tensor, torch.Tensor]
     ) -> tuple[torch.Tensor, torch.Tensor]:
         x, A = x0
         # Inserisco una threshold
@@ -149,24 +149,24 @@ class GNN(Module):
     CONFIG_T: ClassVar[type[ConfigGNN]] = ConfigGNN
 
     def __init__(
-            self,
-            past_steps: int,
-            future_steps: int,
-            future_channel: int,
-            embs: list[int],
-            cat_emb_dim: int,
-            hidden_GNN: int,
-            in_feat: int,
-            past: int,
-            future: int,
-            emb: dict[str, tuple[int, int]],
-            device: str,
-            nfeat_out_gnn: int = 16,
-            num_layer1: int = 1,
-            num_layer2: int = 1,
-            hid_out_features1: int = 16,
-            hid_out_features2: int = 16,
-            ) -> None:
+        self,
+        past_steps: int,
+        future_steps: int,
+        future_channel: int,
+        embs: list[int],
+        cat_emb_dim: int,
+        hidden_GNN: int,
+        in_feat: int,
+        past: int,
+        future: int,
+        emb: dict[str, tuple[int, int]],
+        device: str,
+        nfeat_out_gnn: int = 16,
+        num_layer1: int = 1,
+        num_layer2: int = 1,
+        hid_out_features1: int = 16,
+        hid_out_features2: int = 16,
+    ) -> None:
         """ Custom GNN 
         
         Args:
@@ -226,7 +226,7 @@ class GNN(Module):
             in_feat = in_feat,
             emb = emb,
             device = device
-            )
+        )
 
         N = past + future
         self.M = torch.nn.Parameter(torch.randn(N, N))  # Matrice di adiacenza
@@ -241,28 +241,28 @@ class GNN(Module):
                 in_channels = self.out_preprocess,
                 out_channels = self.out_gnn,
                 relu = False
-                )
+            )
         else:
             layers = [my_gcnn(
                 in_channels = self.out_preprocess,
                 out_channels = hid_out_features1
-                )]
+            )]
 
             for _ in range(max(0, num_layer1 - 2)):
                 layers.append(
                     my_gcnn(
                         in_channels = hid_out_features1,
                         out_channels = hid_out_features1
-                        )
                     )
+                )
 
             layers.append(
                 my_gcnn(
                     in_channels = hid_out_features1,
                     out_channels = self.out_gnn,
                     relu = False
-                    )
                 )
+            )
 
             self.gnn1 = nn.Sequential(*layers)
 
@@ -273,28 +273,28 @@ class GNN(Module):
                 in_channels = self.out_preprocess - 1,
                 out_channels = self.out_gnn,
                 relu = False
-                )
+            )
         else:
             layers = [my_gcnn(
                 in_channels = self.out_preprocess - 1,
                 out_channels = hid_out_features2
-                )]
+            )]
 
             for _ in range(max(0, num_layer2 - 2)):
                 layers.append(
                     my_gcnn(
                         in_channels = hid_out_features2,
                         out_channels = hid_out_features2
-                        )
                     )
+                )
 
             layers.append(
                 my_gcnn(
                     in_channels = hid_out_features2,
                     out_channels = self.out_gnn,
                     relu = False
-                    )
                 )
+            )
 
             self.gnn2 = nn.Sequential(*layers)
 
@@ -302,30 +302,30 @@ class GNN(Module):
             in_channels = self.out_gnn,
             out_channels = self.out_gnn,
             relu = False
-            )
+        )
         self.propagation = nn.Sequential(
             nn.Flatten(-2),
             nn.BatchNorm1d(self.out_gnn * self.future),
             nn.Linear(
                 in_features = self.out_gnn * self.future,
                 out_features = 128
-                ),
+            ),
             nn.ReLU(),
             nn.Linear(
                 in_features = 128,
                 out_features = 128
-                ),
+            ),
             nn.ReLU(),
             nn.Linear(
                 in_features = 128,
                 out_features = self.future
-                )
             )
+        )
 
     def forward(
-            self,
-            data: torch.Tensor
-            ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        self,
+        data: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
         A = self.relu(torch.matmul(self.M, self.M.T))
         masked = self.mask.to(A.device) == 0

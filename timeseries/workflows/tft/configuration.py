@@ -7,9 +7,9 @@ import torch
 class dictConfiguration():
 
     def __init__(
-            self,
-            name: str
-            ) -> None:
+        self,
+        name: str
+    ) -> None:
         self.name = name
         self.strategy_dict: dict[str, Any] = {
             'use_target_past': True,
@@ -50,8 +50,8 @@ class dictConfiguration():
         }
 
     def __str__(
-            self
-            ):
+        self
+    ):
         print('\n' + '- ' * 10)
         print(f'NAME = {self.name}')
         print('\n' + '- ' * 10)
@@ -73,25 +73,25 @@ class dictConfiguration():
         return ''
 
     def get_optim(
-            self,
-            model
-            ):
+        self,
+        model
+    ):
         if self.train_dict['optimizer_index_selection'] == 0:
             optimizer = torch.optim.AdamW(
                 model.parameters(), lr = self.train_dict['lr'], weight_decay = self.train_dict['wd']
-                )
+            )
         elif self.train_dict['optimizer_index_selection'] == 1:
             optimizer = torch.optim.Adam(
                 model.parameters(), lr = self.train_dict['lr'], weight_decay = self.train_dict['wd']
-                )
+            )
         elif self.train_dict['optimizer_index_selection'] == 2:
             optimizer = torch.optim.Adagrad(
                 model.parameters(), lr = self.train_dict['lr'], weight_decay = self.train_dict['wd']
-                )
+            )
         elif self.train_dict['optimizer_index_selection'] == 3:
             optimizer = torch.optim.SGD(
                 model.parameters(), lr = self.train_dict['lr'], weight_decay = self.train_dict['wd']
-                )
+            )
         else:
             raise ValueError(
                 'Non Valid Index for Optimizer\n\
@@ -99,12 +99,12 @@ class dictConfiguration():
                                             Index = 1: Adam\n\
                                             Index = 2: Adagrad\n\
                                             Index = 3: SGD}'
-                )
+            )
         return optimizer
 
     def get_loss_fun(
-            self
-            ):
+        self
+    ):
         if self.train_dict['loss_index_selection'] == 0:
             loss_fun = torch.nn.L1Loss(reduction = self.train_dict['loss_reduction'])
         elif self.train_dict['loss_index_selection'] == 1:
@@ -114,20 +114,20 @@ class dictConfiguration():
                 'Non Valid Index for Loss Function\n\
                                             Index = 0: L1Loss\n\
                                             Index = 1: MSELoss'
-                )
+            )
         return loss_fun
 
     def get_scheduler(
-            self,
-            optimizer
-            ):
+        self,
+        optimizer
+    ):
         if self.train_dict['sched_index_selection'] == 0:
             scheduler = torch.optim.lr_scheduler.StepLR(
                 optimizer, step_size = self.train_dict['sched_step'], gamma = self.train_dict['sched_gamma']
-                )
+            )
         else:
             raise ValueError(
                 'Non Valid Index for Scheduler\n\
                                             Index = 0: StepLR'
-                )
+            )
         return scheduler

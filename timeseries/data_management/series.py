@@ -16,14 +16,14 @@ log.addHandler(logging.NullHandler())
 class Categorical():
 
     def __init__(
-            self,
-            name: str,
-            frequency: int,
-            duration: List[int],
-            classes: int,
-            action: ActionEnum | Literal["multiplicative", "additive"],
-            level: List[float]
-            ):
+        self,
+        name: str,
+        frequency: int,
+        duration: List[int],
+        classes: int,
+        action: ActionEnum | Literal["multiplicative", "additive"],
+        level: List[float]
+    ):
         """Class for generating toy categorical data
 
         Args:
@@ -46,8 +46,8 @@ class Categorical():
         self.validate()
 
     def validate(
-            self
-            ):
+        self
+    ):
         """Validate, maybe there will be other checks in the future
         
         :meta private:
@@ -58,9 +58,9 @@ class Categorical():
             raise ValueError("Length must match")
 
     def generate_signal(
-            self,
-            length: int
-            ) -> None:
+        self,
+        length: int
+    ) -> None:
         """Generate the resposne signal
 
         Args:
@@ -102,8 +102,8 @@ class Categorical():
         self.signal_array = signal
 
     def plot(
-            self
-            ) -> None:
+        self
+    ) -> None:
         """Plot the series
         """
         tmp = pd.DataFrame(
@@ -116,9 +116,9 @@ class Categorical():
 class TimeSeries():
 
     def __init__(
-            self,
-            name: str
-            ):
+        self,
+        name: str
+    ):
         """Class for generating time series object. If you don't have any time series you can build one fake
         timeseries using some helping classes (Categorical for instance).
 
@@ -146,24 +146,24 @@ class TimeSeries():
         self.scalers_fitted = False
 
     def __str__(
-            self
-            ) -> str:
+        self
+    ) -> str:
         return (f"Timeseries named {self.name} of length {self.dataset.shape[0]}.\n Categorical variable: "
                 f"{self.cat_var},\n Future variables: {self.future_variables},\n Past var"
                 f"iables: {self.past_variables},\n Target variables: {self.target_variables}")
 
     def __repr__(
-            self
-            ) -> str:
+        self
+    ) -> str:
         return (f"Timeseries named {self.name} of length {self.dataset.shape[0]}.\n Categorical variable: "
                 f"{self.cat_var},\n Future variables: {self.future_variables},\n Past var"
                 f"iables: {self.past_variables},\n Target variables: {self.target_variables}")
 
     def _generate_base(
-            self,
-            length: int,
-            type: int = 0
-            ) -> None:
+        self,
+        length: int,
+        type: int = 0
+    ) -> None:
         """Generate a basic timeseries 
 
         Args:
@@ -180,12 +180,12 @@ class TimeSeries():
         """
 
     def generate_signal(
-            self,
-            length: int = 5000,
-            categorical_variables: List[Categorical] = [],
-            noise_mean: int = 1,
-            type: int = 0
-            ) -> None:
+        self,
+        length: int = 5000,
+        categorical_variables: List[Categorical] = [],
+        noise_mean: int = 1,
+        type: int = 0
+    ) -> None:
         """This will generate a syntetic signal with a selected length, a noise level and some categorical variables.
         The additive series are added at the end while the multiplicative series acts on the original signal
         The TS structure will be populated
@@ -225,10 +225,10 @@ class TimeSeries():
         )
 
     def enrich(
-            self,
-            dataset,
-            columns
-            ):
+        self,
+        dataset,
+        columns
+    ):
         if columns == 'hour':
             dataset[columns] = dataset.time.dt.hour
         elif columns == 'dow':
@@ -241,15 +241,15 @@ class TimeSeries():
             logging.info('I can not automatically add column {c} plase update this function accordlyng')
 
     def load_signal(
-            self,
-            data: pd.DataFrame,
-            enrich_cat: List[str] = [],
-            past_variables: List[str] = [],
-            future_variables: List[str] = [],
-            target_variables: List[str] = [],
-            cat_var: List[str] = [],
-            check_past: bool = True
-            ) -> None:
+        self,
+        data: pd.DataFrame,
+        enrich_cat: List[str] = [],
+        past_variables: List[str] = [],
+        future_variables: List[str] = [],
+        target_variables: List[str] = [],
+        cat_var: List[str] = [],
+        check_past: bool = True
+    ) -> None:
         """ This is a crucial point in the data structure. We expect here to have a dataset with time as timestamp.
             There are some checks:
                 1- the duplicates will tbe removed taking the first instance
@@ -314,8 +314,8 @@ class TimeSeries():
         )
 
     def plot(
-            self
-            ):
+        self
+    ):
         """  
         Easy way to control the loaded data
         Returns:
@@ -329,15 +329,15 @@ class TimeSeries():
         return fig
 
     def create_data_loader(
-            self,
-            data: pd.DataFrame,
-            past_steps: int,
-            future_steps: int,
-            shift: int = 0,
-            keep_entire_seq_while_shifting: bool = False,
-            starting_point: Union[None, dict] = None,
-            skip_step: int = 1
-            ) -> MyDataset:
+        self,
+        data: pd.DataFrame,
+        past_steps: int,
+        future_steps: int,
+        shift: int = 0,
+        keep_entire_seq_while_shifting: bool = False,
+        starting_point: Union[None, dict] = None,
+        skip_step: int = 1
+    ) -> MyDataset:
         """ Create the dataset for the training/inference step
 
         Args:
@@ -455,19 +455,19 @@ class TimeSeries():
         return MyDataset(dd, times, idx_target)
 
     def split_for_train(
-            self,
-            perc_train: Union[float, None] = 0.6,
-            perc_valid: Union[float, None] = 0.2,
-            range_train: Union[List[Union[datetime, str]], None] = None,
-            range_validation: Union[List[Union[datetime, str]], None] = None,
-            range_test: Union[List[Union[datetime, str]], None] = None,
-            past_steps: int = 100,
-            future_steps: int = 20,
-            shift: int = 0,
-            keep_entire_seq_while_shifting: bool = False,
-            starting_point: Union[None, dict] = None,
-            skip_step: int = 1
-            ) -> tuple[MyDataset, MyDataset, MyDataset]:
+        self,
+        perc_train: Union[float, None] = 0.6,
+        perc_valid: Union[float, None] = 0.2,
+        range_train: Union[List[Union[datetime, str]], None] = None,
+        range_validation: Union[List[Union[datetime, str]], None] = None,
+        range_test: Union[List[Union[datetime, str]], None] = None,
+        past_steps: int = 100,
+        future_steps: int = 20,
+        shift: int = 0,
+        keep_entire_seq_while_shifting: bool = False,
+        starting_point: Union[None, dict] = None,
+        skip_step: int = 1
+    ) -> tuple[MyDataset, MyDataset, MyDataset]:
         """Split the data and create the datasets.
 
         Args:
@@ -540,14 +540,14 @@ class TimeSeries():
         dl_train = self.create_data_loader(
             train, past_steps, future_steps, shift, keep_entire_seq_while_shifting,
             starting_point, skip_step
-            )
+        )
         dl_validation = self.create_data_loader(
             validation, past_steps, future_steps, shift,
             keep_entire_seq_while_shifting, starting_point, skip_step
-            )
+        )
         dl_test = self.create_data_loader(
             test, past_steps, future_steps, shift, keep_entire_seq_while_shifting,
             starting_point, skip_step
-            )
+        )
 
         return dl_train, dl_validation, dl_test

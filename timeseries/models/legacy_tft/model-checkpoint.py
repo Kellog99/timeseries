@@ -12,26 +12,26 @@ from timeseries.models.legacy_tft.encoder import Encoder
 
 class Model(Module):
     def __init__(
-            self,
-            use_target_past: bool,
-            use_yprec: bool,
-            n_cat_var,
-            n_target_var,
-            seq_len,
-            lag,
-            d_model,
-            n_enc,
-            n_dec,
-            head_size,
-            num_heads,
-            fw_exp,
-            dropout,
-            num_lstm_layers,
-            device,
-            quantiles = None,
-            path_model_save = None,
-            model_name = None
-            ) -> None:
+        self,
+        use_target_past: bool,
+        use_yprec: bool,
+        n_cat_var,
+        n_target_var,
+        seq_len,
+        lag,
+        d_model,
+        n_enc,
+        n_dec,
+        head_size,
+        num_heads,
+        fw_exp,
+        dropout,
+        num_lstm_layers,
+        device,
+        quantiles = None,
+        path_model_save = None,
+        model_name = None
+    ) -> None:
         super().__init__()
         self.path_model_save = path_model_save
         self.model_name = model_name
@@ -47,14 +47,14 @@ class Model(Module):
         # Encoder (past)
         self.EncVariableSelection = Encoder_Var_Selection(
             use_target_past, n_cat_var + 3, n_target_var, d_model, dropout, device
-            )
+        )
         self.EncLSTM = Encoder_LSTM(num_lstm_layers, d_model, dropout, device)
         self.EncGRN = GRN(d_model, dropout)
         self.Encoder = Encoder(n_enc, d_model, num_heads, head_size, fw_exp, dropout)
         # Decoder (future)
         self.DecVariableSelection = Decoder_Var_Selection(
             use_yprec, n_cat_var + 3, n_target_var, d_model, dropout, device
-            )
+        )
         self.DecLSTM = Decoder_LSTM(num_lstm_layers, d_model, dropout)
         self.DecGRN = GRN(d_model, dropout)
         self.Decoder = Decoder(n_dec, d_model, num_heads, head_size, fw_exp, lag, dropout)
@@ -67,10 +67,10 @@ class Model(Module):
             self.outLinear = nn.Linear(d_model, n_target_var)
 
     def forward(
-            self,
-            categorical,
-            y
-            ):
+        self,
+        categorical,
+        y
+    ):
         embed_categorical = self.emb_cat_var(categorical)
         embed_categorical_past = embed_categorical[:, :-self.lag, :, :]
         embed_categorical_fut = embed_categorical[:, -self.lag:, :, :]
@@ -110,10 +110,10 @@ class Model(Module):
         return out
 
     def iter_forward(
-            self,
-            categorical,
-            y
-            ):
+        self,
+        categorical,
+        y
+    ):
         embed_categorical = self.emb_cat_var(categorical)
         embed_categorical_past = embed_categorical[:, :-self.lag, :, :]
         embed_categorical_fut = embed_categorical[:, -self.lag:, :, :]
@@ -137,7 +137,7 @@ class Model(Module):
             embed_tau_y = self.emb_y_var(decoder_out)
             variable_selection_fut = self.DecVariableSelection(
                 embed_categorical_fut[:, :tau, :, :], embed_tau_y.unsqueeze(2)
-                )
+            )
             fut_LSTM = self.DecLSTM(variable_selection_fut, hn, cn)
             pred_decoding = self.DecGRN(fut_LSTM)
             pred_decoded = self.Decoder(pred_decoding, encoded, encoded)
@@ -149,24 +149,24 @@ class Model(Module):
         return out
 
     def learning(
-            self,
-            epochs,
-            dl_training,
-            dl_validation,
-            cost_func,
-            optimizer,
-            scheduler
-            ):
+        self,
+        epochs,
+        dl_training,
+        dl_validation,
+        cost_func,
+        optimizer,
+        scheduler
+    ):
         """Compatibility method delegating to the shared training workflow."""
         from timeseries.training import train_legacy_tft
 
         return train_legacy_tft(self, epochs, dl_training, dl_validation, cost_func, optimizer, scheduler)
 
     def inference(
-            self,
-            dl,
-            scaler
-            ):
+        self,
+        dl,
+        scaler
+    ):
         if self.path_model_save is None:
             raise ValueError("A checkpoint path is required for inference.")
 
@@ -194,7 +194,7 @@ class Model(Module):
             f'{dict_loss["train"][2]:.4f}\n' \
             f'VAL:   -last: {dict_loss["val"][0][-1]:.03f} -argmin: {dict_loss["val"][1]:.4f} -min: '
             f'{dict_loss["val"][2]:.4f}'
-            )
+        )
         loss_plot.legend()
 
         # * RMSE AND TEST BATCH
@@ -262,7 +262,7 @@ class Model(Module):
         rmse_plot.set_title(
             f' BEST: min {min_rmse_best:.2f}, mean {mean_rmse_best:.2f}, max {max_rmse_best:.2f}\n \
                             LAST: min {min_rmse_last:.2f}, mean {mean_rmse_last:.2f}, max {max_rmse_last:.2f}'
-            )
+        )
         rmse_plot.legend()
 
         batch_plot = plots[2:4]
@@ -303,9 +303,9 @@ class Model(Module):
         fig.savefig(self.path_model_save + f'_plot_{total_epochs}.png')  # ! PATH
 
     def get_losses(
-            self,
-            path
-            ):
+        self,
+        path
+    ):
         with open(path, 'rb') as f:
             _, losses = pkl.load(f)
             f.close()
@@ -324,8 +324,8 @@ class Model(Module):
         return dict_loss
 
     def count_parameters(
-            self
-            ):
+        self
+    ):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
     # import pdb

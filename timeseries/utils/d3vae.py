@@ -4,9 +4,9 @@ import torch.distributed as dist
 
 
 def average_tensor(
-        t,
-        is_distributed
-        ):
+    t,
+    is_distributed
+):
     if is_distributed:
         size = float(dist.get_world_size())
         dist.all_reduce(t.data, op = dist.ReduceOp.SUM)
@@ -14,8 +14,8 @@ def average_tensor(
 
 
 def get_stride_for_cell_type(
-        cell_type
-        ):
+    cell_type
+):
     if cell_type.startswith('normal') or cell_type.startswith('combiner'):
         stride = 1
     elif cell_type.startswith('down'):
@@ -29,8 +29,8 @@ def get_stride_for_cell_type(
 
 
 def get_input_size(
-        dataset
-        ):
+    dataset
+):
     if dataset in {'mnist', 'omniglot'}:
         return 32
     elif dataset == 'cifar10':
@@ -45,12 +45,12 @@ def get_input_size(
 
 
 def groups_per_scale(
-        num_scales,
-        num_groups_per_scale,
-        is_adaptive,
-        divider = 2,
-        minimum_groups = 1
-        ):
+    num_scales,
+    num_groups_per_scale,
+    is_adaptive,
+    divider = 2,
+    minimum_groups = 1
+):
     g = []
     n = num_groups_per_scale
     for s in range(num_scales):
@@ -63,8 +63,8 @@ def groups_per_scale(
 
 
 def get_arch_cells(
-        arch_type
-        ):
+    arch_type
+):
     if arch_type == 'res_elu':
         arch_cells = dict()
         arch_cells['normal_enc'] = ['res_elu', 'res_elu']

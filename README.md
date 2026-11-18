@@ -1,322 +1,319 @@
-# Lazy financial market: unified library for financial analysis
+# Lazy financial market
 
-The idea of this library is to analyse all the stock options available on `Yahoo Finance` and create an analysis on
-them.
-It started as a library on generic time series and then switched this kind of analysis.
+Time-series forecasting, option valuation, strategy backtesting and paper trading.
+Configurations inherit from Pydantic `BaseModel`; invalid parameters and unknown
+configuration fields are rejected. Python 3.12+ is required.
 
-## Background
+This is a research/paper-trading toolkit. Live trading still needs verified market
+data, a broker adapter, durable order state and product-specific margin/lifecycle handling.
 
-What is a multivariate timeseries?
+| Package              | Tools                                                                                           |
+|----------------------|-------------------------------------------------------------------------------------------------|
+| `timeseries.models`  | Neural forecasting, ARIMA, GARCH, filtering, indicators, Black–Scholes, CRR trees               |
+| `timeseries.metrics` | Sharpe, Sortino, Omega, drawdown, Calmar, volatility, returns, dependence                       |
+| `timeseries.trading` | Strategies, walk-forward validation, backtests, portfolio accounting, risk limits, paper broker |
+| `timeseries.options` | Implied-volatility surfaces, portfolio greeks, full-repricing scenarios                         |
+| `services`           | FastAPI market-data, fundamentals and portfolio-valuation endpoints                             |
 
-**Definition**   
-A multivariate timeseries is a finite part of a realization from a stochastic process $\{X_t,t\in T\}$
-in $\mathbb{R}^k$, i.e. $\{X_t,t\in T_0\}\subseteq\mathbb{R}^k$ with $T_0\subset T$
+## Models and configurations
 
-In this case $\mathbb{R}^k$ is the result of a concatenation of 2 space:
+```python
+from timeseries.models import ModelFactory, ConfigBlackScholes
 
-1. $\mathcal{C} \subset \mathbf{N}^c$ the set of categorical variables.
-2. $\mathcal{W} \subset \mathbf{R}^{k-c}$ the set of numerical variables
+config = ConfigBlackScholes(risk_free_rate = 0.03, volatility = 0.25, dividend_yield = 0.01)
+model = ModelFactory.create(config = config)
+premium = model.price(spot = 100, strike = 100, time_to_maturity = 1)
+greeks = model.greeks(100, 100, 1)
+iv = model.implied_volatility(premium, 100, 100, 1)  # 0.25
 
-For this reason it is possible to write $\forall t\in T_0,
-X_t=c_tw_t$ with $c_t\in\mathcal{C}, w_t\in \mathcal{W}$
-where $c_tw_t$ means concatenation.
+american = ModelFactory.create("binomial", risk_free_rate = 0.03, volatility = 0.25, steps = 500)
+put = american.price(100, 110, 1, "put")
+```
 
-***   
-**Important**  
-We assume that the categorical variables are always known, i.e. $\mathcal{C}$ is known $\forall t$.
+Black–Scholes supports European calls/puts, continuous dividends and NumPy
+broadcasting. CRR trees support European/American exercise and continuous dividends;
+set `american=False` for European options. Zero volatility and expiry are handled.
+Discrete dividend schedules require a different model. Greeks require positive
+maturity and volatility: theta is per year, vega per **1.0** volatility change,
+rho per **1.0** rate change. Divide vega/rho by 100 for one percentage point.
+IV inversion rejects prices outside European no-arbitrage bounds.
 
-***   
+`ModelFactory.get_list_classes(domain="forecasting")` filters the catalog. Domains
+also include `volatility`, `filtering`, `technical_analysis` and `option_pricing`.
+`get_config(id, **params)` creates a config; `get_info(id)` returns metadata.
+`create(id, config=config, **overrides)` validates overrides without changing the config.
+Models declare `CONFIG_T` and register with `@ModelFactory.register(...)`; modules
+under `timeseries/models` are discovered automatically. `ModelRegister` is an alias.
 
-## Structure
+## Backtest a strategy
 
-This folder is composed of
+```python
+import pandas as pd
+from timeseries.trading import BacktestConfig, ExecutionConfig, MovingAverageStrategy, RiskLimits, backtest
 
-1. **timeseries**: all the models that will be used for forecasting the timeseries
-2. **notebook**: for all the simple testing
-3. **tests**: this folder contains all the test for executing the timeseries library
-4. **services**: API services for market data, indicators and metrics
+bars = pd.DataFrame(
+    {
+        "open": [100, 101, 102, 103, 102, 104, 105, 104],
+        "close": [101, 102, 103, 102, 104, 105, 104, 106],
+        "volume": [100_000] * 8,
+    }, index = pd.date_range("2026-01-01", periods = 8, tz = "UTC")
+)
 
-## Timeseries
+config = BacktestConfig(
+    initial_cash = 10_000, allocation = 0.45, spread_bps = 5,
+    execution = ExecutionConfig(commission_per_unit = 0.01, slippage_bps = 2),
+    limits = RiskLimits(max_position_fraction = 0.5, max_gross_leverage = 1, max_drawdown = 0.2),
+)
+result = backtest(bars, strategy = MovingAverageStrategy(fast = 2, slow = 3), config = config)
+print(result.summary())
+print(result.history[["equity", "cash", "quantity"]])
+```
 
-This folder contains all the models that have been implemented.
+Signals are target weights in `[-1, 1]`, generated at the close and executed at the **next open**. Warm-up exposure is
+zero. Custom signals can be passed as an aligned
+Series: `backtest(bars, signals=my_signals, config=config)`. Short signals require
+`RiskLimits(allow_short=True)`; the default is long/cash. Allocation scales targets.
 
-## Tests
+The simulator rebalances each opening, applies spread/slippage/commissions, and
+expires unfilled quantities after that opening quote. With `volume`, capacity is
+`participation * previous_bar_volume`, rounded down: a liquidity proxy known before
+execution. Without volume, capacity is unlimited. The final position stays open,
+marked at the last close. Prices must be tradable prices; supply corporate-action
+handling separately. Historical Yahoo prices alone do not provide delisted-universe
+coverage, option quote history or point-in-time fundamentals.
 
-This contains all the main test for implementing a new model in the regime.
+Configure `annual_financing_rate` and `annual_short_borrow_rate` for ACT/365 borrowing
+charges. There is no interest on positive cash. Drawdown/concentration/leverage
+limits block risk increases while allowing reductions; they do not force liquidation.
+Short availability and broker-specific margin schedules are outside this simulator.
+
+## Walk-forward predictions
+
+![One-step forecasts on a held-out synthetic series, compared with persistence](docs/assets/forecasting.png)
+
+Offline AR(2) example: fit on 140 observations, evaluate the next 50. Each forecast
+uses only observations before its target timestamp; coefficients stay fixed.
+MAE is measured on the holdout and compared with the previous-value baseline.
+The synthetic data are generated by an AR(2) process: this illustrates the API,
+not performance on financial markets.
+
+This example continues with `bars` and `config` above. Each fold fits a fresh model;
+its prediction function only receives history through the current close.
+
+```python
+from timeseries.models import ModelFactory
+from timeseries.trading import WalkForwardConfig, walk_forward_signals
+
+
+def fit(
+    train
+):
+    predictor = ModelFactory.create("arima", p = 2, d = 1, q = 0)
+    predictor.fit(train.to_numpy())
+    return lambda
+        history: float(predictor.predict(history.to_numpy())[0] > history.iloc[-1])
+
+
+signals = walk_forward_signals(bars.close, fit, WalkForwardConfig(train_size = 4, test_size = 2, gap = 1))
+validated = backtest(bars, signals, config = config)
+```
+
+Use `gap` to exclude recent training rows when forward labels overlap the test
+period. Fit scalers and tune parameters inside `fit(train)`; keep a final evaluation
+period separate. The callback is responsible for causal features and training labels.
+The current ARIMA implementation fits AR coefficients; `q` is reserved.
+
+## Paper execution and portfolio accounting
+
+```python
+from datetime import datetime, timedelta, timezone
+from timeseries.instruments import Instrument, Quote
+from timeseries.trading import ExecutionConfig, Order, PaperBroker, Portfolio, RiskLimits
+
+now = datetime(2026, 1, 1, tzinfo = timezone.utc)
+stock = Instrument(symbol = "TEST")
+broker = PaperBroker(
+    [stock], portfolio = Portfolio(cash = 10_000),
+    execution = ExecutionConfig(commission_per_unit = 0.01),
+    limits = RiskLimits(max_position_fraction = 0.5)
+    )
+order = Order(id = "entry-1", symbol = "TEST", quantity = 10, timestamp = now, limit_price = 101)
+broker.submit(order)
+broker.on_quote(Quote(symbol = "TEST", timestamp = now, bid = 100, ask = 101, ask_size = 4), now)
+# Partial fill: four shares. A fresh quote can fill the remainder.
+later = now + timedelta(seconds = 1)
+broker.on_quote(Quote(symbol = "TEST", timestamp = later, bid = 100, ask = 101, ask_size = 6), later)
+
+print(broker.portfolio.equity({"TEST": 102}))
+print(broker.portfolio.realized_pnl, broker.portfolio.unrealized_pnl({"TEST": 102}))
+broker.reconcile({"TEST": 10}, expected_cash = 8989.9)
+snapshot = broker.portfolio.model_dump_json()
+restored = Portfolio.model_validate_json(snapshot)
+broker.halt()  # Cancel pending orders and reject new ones.
+```
+
+Quantities are signed: positive buys, negative sells. Quotes use timezone-aware
+exchange instants; stale/future/replayed quotes are rejected. Liquidity is shared
+between orders on the same quote. Duplicate order IDs are idempotent; reusing an
+ID with different parameters raises. Commission minimums apply **per fill**.
+Equity peaks are updated only with fresh marks; expired option positions must be
+settled before further executions.
+Use `cancel(order_id)` to cancel a remainder. Positions use average cost and contract
+multipliers; realized P&L includes commissions and accrued financing.
+
+One account supports one currency. `Broker` defines the adapter protocol; this
+implementation sends no live orders. Persist portfolio snapshots and reconcile after
+restarting; pending orders/quote history are in memory and must be reconstructed by
+a live adapter. Simulation fills do not establish live execution quality.
+
+## Tail risk and option scenarios
+
+```python
+from timeseries.trading import TailRisk, stress_test
+
+print(TailRisk(confidence = 0.95).compute([0.01, -0.03, 0.02, -0.08], capital = 10_000))
+print(stress_test(restored, {"TEST": 102}, {"crash": {"TEST": -0.2}}))
+```
+
+VaR and expected shortfall use historical one-period simple returns; expected
+shortfall averages the worst probability mass, including a fractional boundary
+observation. `stress_test` shocks instrument prices directly. For options, use full
+repricing to shock the underlying, volatility and time instead:
+
+```python
+from timeseries.instruments import OptionContract
+from timeseries.options import GreekLimits, OptionMarket, OptionScenario, portfolio_greeks
+from timeseries.trading import Fill, Portfolio
+
+contract = OptionContract(
+    symbol = "CALL", underlying = "TEST", strike = 100,
+    expiry = now + timedelta(days = 365), option_type = "call"
+    )
+options = Portfolio(cash = 10_000)
+options.apply(Fill(order_id = "option-1", symbol = "CALL", quantity = 1, price = 10, timestamp = now), contract)
+markets = {"TEST": OptionMarket(as_of = now, spot = 100, volatility = 0.25)}
+exposures = portfolio_greeks(options, markets)
+greek_limits = GreekLimits(max_abs_delta = 100, max_abs_vega = 10_000)
+greek_limits.check(exposures)
+pnl = OptionScenario(spot_shocks = {"TEST": -0.1}, volatility_shifts = {"TEST": 0.05}, days = 1).pnl(options, markets)
+print(exposures, pnl)
+```
+
+Exposures include stock delta and contract multipliers, grouped by underlying.
+Scenario P&L compares model values, with fixed rates/dividend yields. For pre-trade
+Greek limits, pass `pre_trade_check=lambda p: greek_limits.check(portfolio_greeks(p, markets))`
+to `PaperBroker`, keeping `markets` current. Analytical greeks/scenarios require
+European exercise. Paper options support whole, long European cash-settled contracts;
+`settle_option(symbol, underlying_quote, now)` requires the underlying settlement
+price encoded as equal bid/ask at the exact expiry instant. American/physical assignment and uncovered short
+options require a broker adapter and appropriate margin/lifecycle handling.
+
+## Volatility surface and calibrated GARCH
+
+![Synthetic implied-volatility surface: 3D view, heatmap and input quotes](docs/assets/volatility_surface.png)
+
+The figure inverts 35 synthetic European call quotes across seven strikes and five
+expiries, then interpolates total variance. White circles mark input quotes; colors
+show annualized implied volatility. This is a diagnostic surface, with no guarantee
+of static-arbitrage consistency. The minimal example below checks IV at a single node.
+
+```python
+from timeseries.options import OptionMarketQuote, VolatilitySurface
+
+market = markets["TEST"]
+price = market.model().price(100, 100, 1)
+quotes = [OptionMarketQuote(contract = contract, observed_at = now, bid = price - 0.01, ask = price + 0.01)]
+surface = VolatilitySurface.from_quotes(quotes, market)
+print(surface.volatility(strike = 100, maturity = 1))  # 0.25
+
+returns = bars.close.pct_change().dropna()
+# A longer sample is needed for calibration (at least 20 nonconstant returns).
+import numpy as np
+
+sample = np.random.default_rng(42).normal(0, 0.01, 300)
+garch = ModelFactory.create("garch").fit(sample)
+print(garch.fit_predict(sample, steps = 5))  # Per-observation volatility.
+```
+
+Supply multiple strikes/maturities for a surface. It inverts European midpoint
+quotes, rejects wide/stale observations, and interpolates total variance without
+extrapolation. Use one quote per strike/maturity. It is a diagnostic interpolation,
+not an arbitrage-free calibration. Yahoo observation time is retrieval time, so it
+cannot establish exchange freshness. GARCH uses stationary Gaussian maximum
+likelihood; call `fit` explicitly, then `fit_predict` to filter/forecast. Annualize
+per-observation volatility with `sqrt(periods_per_year)`. RegimeDetector uses causal
+expanding volatility quantiles; warm-up labels are `-1`.
+
+Regenerate both figures without downloading data:
+
+```bash
+.venv/bin/python -m examples.generate_readme_figures
+```
+
+The script uses `FigureConfig` (Pydantic) and a fixed seed; `--output-dir` and
+`--seed` are optional. Reuse `timeseries.plotting.plot_volatility_surface(surface)`
+or `plot_forecast(observed, predicted)` with your own data; both return a Matplotlib figure.
+
+The next substantive improvements are historical bid/ask datasets and corporate
+actions, arbitrage-constrained volatility calibration, execution models validated
+against fills, and portfolio-level walk-forward benchmarks on unseen real data.
 
 ## Services
 
-This folder contains all the services that have to be used for sending all the information to the FE (front end).
+Run `python -m services.app --path_data ./data --path_report ./report --step_size 1`.
 
-## Model domains
+| Endpoint                                                    | Behavior                                                                 |
+|-------------------------------------------------------------|--------------------------------------------------------------------------|
+| `GET /load/ticker_ts?ticker=TEST`                           | Cached, unadjusted OHLCV prices                                          |
+| `GET /indicators/?ticker=TEST`                              | Provider fundamentals; unavailable fields are null; ratios are decimals  |
+| `GET /load/options?ticker=TEST&expiry=2027-01-15T21:00:00Z` | Filtered Yahoo option snapshots; exact expiry instant supplied by caller |
+| `POST /load/portfolio/evaluate`                             | Value a `PortfolioSnapshot` supplied as JSON                             |
+| `GET /load/portfolio`                                       | Read legacy `analysis.json`, or evaluate `portfolio.json` snapshot       |
 
-Models are grouped by their registered `domain`:
-
-| Domain               | Models                                                                                                                                         | Purpose                                                                     |
-|----------------------|------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| `forecasting`        | RNN (GRU/LSTM), LinearTS, Persistent, MyModel, TFT, TFT2, legacy TFT, Informer, CrossFormer, D3VAE, VVA, VQVAEA, GNN, ARIMA, EnsemblePredictor | Time series prediction, including multivariate and graph-based forecasting. |
-| `volatility`         | SimpleGARCH                                                                                                                                    | Conditional volatility estimation.                                          |
-| `filtering`          | KalmanFilter                                                                                                                                   | Signal filtering and smoothing.                                             |
-| `technical_analysis` | MovingAverages, BollingerBands, RegimeDetector                                                                                                 | Trend indicators, price bands and volatility-based regimes.                 |
-| `option_pricing`     | BlackScholes                                                                                                                                   | Analytical pricing of European call and put options.                         |
-
-Use `ModelFactory.get_list_classes(domain="forecasting")` to filter the catalog.
-Metrics have separate domains: `risk`, `returns`, `statistics` and `dependence`.
-
-### Black–Scholes equation modelling
-
-Black–Scholes provides a framework for pricing European call and put options.
-The `BlackScholes` model implements the analytical solution and is available
-through `ModelFactory` with identifier `blackscholes` and domain `option_pricing`.
-No training is required.
+`load_option_chain(ticker, expiry, exercise="american", settlement="physical")` is
+also callable from Python. Quotes include volume, open interest, observation time
+and last trade time when available. Contract exercise/settlement must match the
+actual product. This endpoint supplies research snapshots, not historical chains or
+an execution feed. Legacy price caches are rebuilt with `auto_adjust=False`.
 
 ```python
-from timeseries.models import ModelFactory
+from pathlib import Path
+from services.models.portfolio import PortfolioSnapshot
 
-model = ModelFactory.create("blackscholes", risk_free_rate = 0.05, volatility = 0.20)
-call = model.price(spot = 100, strike = 100, time_to_maturity = 1.0)  # 10.4506
-put = model.price(spot = 100, strike = 100, time_to_maturity = 1.0, option_type = "put")  # 5.5735
-calls = model.price(spot = [90, 100, 110], strike = 100, time_to_maturity = 1.0)
+valuation = PortfolioSnapshot(as_of = now, portfolio = restored, marks = {"TEST": 102})
+print(valuation.evaluate())
+# Save under the server's --path_report directory, or POST the same JSON to the endpoint.
+Path("/tmp/portfolio.json").write_text(valuation.model_dump_json())
 ```
 
-`price()` accepts NumPy-broadcastable spot, strike and maturity inputs. It returns
-a float for scalar inputs and a NumPy array otherwise. Inputs must be finite,
-spot and strike positive, and maturity nonnegative. Negative interest rates are
-supported. Expired options and zero volatility use their limiting payoffs.
+## Forecasting, metrics and tests
 
-Assume a non-dividend-paying underlying asset whose price follows geometric
-Brownian motion under the risk-neutral measure:
+Use `timeseries.data_management.TimeSeries` for preparation, or
+`timeseries.workflows.TimeSeries` for preparation plus training/inference/save/load.
+Datasets include custom pandas series, synthetic signals, public forecasting
+benchmarks and Monash archives. Public benchmark files must already be downloaded.
 
-$$
-dS_t = rS_t\,dt + \sigma S_t\,dW_t,
-$$
+`timeseries.training.train_model(model, train_loader, validation_loader, epochs=20,
+checkpoint_dir="checkpoints", device="cpu")` trains forecasting models, GNN and
+legacy TFT through shared adapters. Checkpoints contain weights, optimizer,
+scheduler and epoch; `best.pt` follows validation loss. Load weights with
+`torch.load(path, weights_only=True)` then `model.load_state_dict(checkpoint["state_dict"])`.
+Temporal splits fit scalers on training data.
 
-where $S_t$ is the asset price, $r$ is the continuously compounded risk-free
-interest rate, $\sigma$ is volatility and $W_t$ is a standard Brownian motion
-under that measure. For an option value $V(S,t)$, the Black–Scholes equation is
+Metrics use `MetricFactory.create("sharpe", periods_per_year=252)`, then `update`,
+`compute`, `reset`. Inputs are **one-dimensional decimal simple returns**, not
+prices; risk-free/target returns are per observation. Standard deviation is sample
+based; drawdown is a positive loss fraction including initial capital. Undefined
+ratios are NaN; nonzero ratios with zero denominator are infinite. Metrics use
+constructor parameters, not `CONFIG_T`. `MetricRegister` remains an alias.
 
-$$
-\frac{\partial V}{\partial t}
-+ \frac{1}{2}\sigma^2 S^2\frac{\partial^2 V}{\partial S^2}
-+ rS\frac{\partial V}{\partial S} - rV = 0.
-$$
-
-The terminal conditions at maturity $T$, with strike price $K$, are
-$C(S,T)=\max(S-K,0)$ for a call and $P(S,T)=\max(K-S,0)$ for a put.
-For $\tau=T-t>0$ and $\sigma>0$, the analytical solutions are
-
-$$
-C(S,t) = S\Phi(d_1) - Ke^{-r\tau}\Phi(d_2),
-\qquad
-P(S,t) = Ke^{-r\tau}\Phi(-d_2) - S\Phi(-d_1),
-$$
-
-$$
-d_1 = \frac{\ln(S/K)+(r+\sigma^2/2)\tau}{\sigma\sqrt{\tau}},
-\qquad d_2 = d_1-\sigma\sqrt{\tau},
-$$
-
-where $\Phi$ is the standard normal cumulative distribution function and
-$S,K>0$. Time to maturity is expressed in years; the rate and volatility use
-the same annual basis, with decimal inputs (for example, `0.20` for 20%
-annualized volatility). At maturity, use the payoff directly; for zero
-volatility before maturity, use $C=\max(S-Ke^{-r\tau},0)$ and
-$P=\max(Ke^{-r\tau}-S,0)$.
-
-The model assumes constant interest rate and volatility, frictionless markets,
-continuous trading and European exercise. It supplies an option-pricing
-baseline rather than a forecast of future asset prices. Extensions for
-dividends, changing volatility or American exercise require additional modelling.
-
-## Supported datasets
-
-- **Custom series**: univariate or multivariate pandas DataFrames with a `time`
-  column, numeric targets, past/future covariates and categorical variables,
-  loaded through `TimeSeries.load_signal()`.
-- **Synthetic series**: periodic signals with noise and additive or multiplicative
-  categorical effects, generated with `TimeSeries.generate_signal()` and `Categorical`.
-- **Public forecasting benchmarks**: `electricity`, `etth1`, `etth2`, `ettm1`,
-  `ettm2`, `exchange_rate`, `illness`, `traffic` and `weather`, loaded with
-  `read_public_dataset(path, dataset)` from `timeseries.data_management.public_datasets`.
-  Files must be downloaded and extracted under `path/all_six_datasets/` first.
-- **Monash archive**: dataset download helpers and `.tsf` parsing through
-  `Monash` and `convert_tsf_to_dataframe` in `timeseries.data_management.monash`.
-- **Financial data**: historical ticker prices from Yahoo Finance through the
-  service layer, with daily-return utilities in `timeseries.metrics.returns`.
-
-Training uses windowed PyTorch datasets (`MyDataset`); token-based VVA models
-use `VVADataset`. Legacy TFT and GNN workflows have dedicated data loaders.
-The Venice tide builder (`build_venice`) is separate: `venice` is currently
-excluded from the public dataset loader's accepted names.
-
-## Model and metric factories
-
-Public forecasting/statistical models use `ModelFactory`; metrics use an independent
-`MetricFactory`. Models declare a Pydantic `CONFIG_T`; metrics use constructor
-arguments directly and have no configuration classes. Both register with a decorator.
-Metadata (`ModelInfo` / `MetricInfo`) stores the actual class,
-identifier, name, description and application domain. Metric metadata also declares
-supported `actions`.
-
-```python
-from timeseries.models import ModelFactory
-from timeseries.metrics import MetricFactory
-
-config = ModelFactory.get_config("kalman", measurement_variance = 0.05)
-model = ModelFactory.create(config = config)
-# Explicit overrides are validated without modifying config.
-model = ModelFactory.create("kalman", config = config, process_variance = 0.001)
-
-info = ModelFactory.get_info("d3vae")
-fields = ModelFactory.get_config_param("d3vae")
-risk_metrics = MetricFactory.get_list_classes(domain = "risk", actions = {"performance"})
-metric_params = MetricFactory.get_config_param("sharpe")
-# {"risk_free_rate": 0.0, "periods_per_year": 252}
-
-sharpe = MetricFactory.create("sharpe", risk_free_rate = 0.0, periods_per_year = 252)
-sharpe.update([0.01, -0.02, 0.03])
-value = sharpe.compute()
-sharpe.reset()
+```bash
+.venv/bin/python -m pytest tests -q
 ```
 
-`ModelFactory.create()` passes validated configuration fields as constructor keyword arguments.
-The constructor and `CONFIG_T` have matching parameter names and defaults. Unknown
-fields and invalid constraints raise Pydantic validation errors. `ModelRegister`
-and `MetricRegister` remain available as aliases.
-
-`MetricFactory.get_config_param()` returns a fresh dictionary of constructor
-defaults (`{}` for metrics without parameters). `MetricFactory.create(id, **params)`
-passes arguments directly to the metric constructor, which validates its inputs.
-Metrics do not provide `get_config()` or `CONFIG_T`.
-
-To add a model, declare an explicit configuration and decorate the implementation:
-
-```python
-from pydantic import Field
-from timeseries.registry import Configuration
-from timeseries.models import ModelFactory
-
-
-class ExampleConfig(Configuration):
-    window: int = Field(20, gt = 0, description = "Number of past observations.")
-
-
-@ModelFactory.register(
-    name = "Example", description = "Example window-based model.",
-    id = "example", domain = "forecasting",
-)
-class Example:
-    CONFIG_T = ExampleConfig
-
-    def __init__(
-            self,
-            window: int = 20
-    ) -> None:
-        self.window = window
-```
-
-`timeseries/models/__init__.py` recursively imports model modules to activate their
-registration decorators, then exposes each registered model and its `CONFIG_T`
-configuration. For example, `from timeseries.models import BlackScholes, ConfigBlackScholes`.
-New model modules are discovered automatically without adding imports or module
-routing entries to `model_register.py`. Direct factory imports initialize the same model
-package on first use. To register a metric, use `MetricFactory.register` and define
-its constructor arguments without a configuration class. Metric implementations
-inherit from `torchmetrics.Metric` and can declare `actions={"performance"}`.
-
-Financial metrics consume **one-dimensional decimal simple returns**, not prices:
-`0.01` means +1%. `risk_free_rate` and `target_return` are **per-observation** decimal
-returns; `periods_per_year` controls annualization. Sharpe and volatility use sample
-standard deviation. Sortino uses the root mean square of negative target deviations
-across all observations. Omega compares gains and shortfalls around its threshold.
-Maximum drawdown includes initial capital and returns a positive loss fraction;
-Calmar divides the annualized compounded return by that drawdown.
-
-Streaming `update()` calls accumulate observations until `reset()`. Empty inputs at
-`compute()` raise `ValueError`; undefined ratios return `NaN` and nonzero ratios
-with a zero denominator return infinity. Windowed mean/variance/Sharpe use
-non-overlapping windows and include the entire final partial window. The historical
-`timeseries.metrics.RSI` module path is retained, although those classes are not RSI
-indicators. The ARIMA-style model currently fits AR coefficients only; `q` remains a
-reserved parameter and differencing supports orders zero and one.
-
-Run the focused refactoring tests with `python -m pytest tests` in the project environment.
-
-## Model layout and PyTorch training
-
-All model implementations live under `timeseries/models`:
-
-- Forecasting architectures and statistical models are directly in `models/`,
-  for example `RNN.py`, `LinearTS.py` and `ARIMA.py`.
-- Each model file defines its Pydantic configuration alongside the implementation:
-  `from timeseries.models.RNN import RNN, ConfigRNN`.
-- Architecture subdirectories contain neural components: `gnn/`, `tft/`,
-  `legacy_tft/`, `crossformer/`, `informer/`, `d3vae/`, `tft2/` and `vva/`.
-
-Shared infrastructure lives outside `models`: `timeseries/base.py` contains the
-forecasting superclass, `timeseries/configuration.py` contains shared validation
-types, `timeseries/utils/` contains utilities and losses, and
-`timeseries/training.py` provides training with validation and checkpoints.
-All training loops and orchestration live in `timeseries/training.py`, including
-GNN and legacy TFT. `timeseries/workflows/` contains batch/loss adapters,
-configuration helpers, inference, persistence and thin command line entry points.
-Run entry points as package modules, for example
-`python -m timeseries.workflows.gnn.run --help`.
-Data generation, loading, temporal splits, scaling, datasets and modifiers all
-live in `timeseries/data_management/`. The former `data_structure/` package has
-been merged into it. Automated tests live in `tests/`.
-
-Use `from timeseries.data_management import TimeSeries, Categorical` for data
-preparation alone. For the model lifecycle (`set_model`, `train_model`, inference,
-save/load), use `from timeseries.workflows import TimeSeries`. Existing imports
-from `timeseries.data_structure` must be updated to one of these two APIs.
-
-```python
-from timeseries.models import ModelFactory
-from timeseries.training import train_model
-
-model = ModelFactory.create(
-    "linearts", past_steps = 24, future_steps = 6, past_channels = 1,
-    future_channels = 0, embs = [], cat_emb_dim = 4, kernel_size = 3,
-    sum_emb = False, out_channels = 1, hidden_size = 32,
-    optim_config = {"lr": 0.001},
-)
-history = train_model(
-    model, train_loader, validation_loader,
-    epochs = 20, device = "cpu", checkpoint_dir = "checkpoints",
-)
-```
-
-The loop uses `zero_grad`, `backward`, `step`, evaluation mode and disabled gradients
-during validation. It supports gradient clipping, epoch-based schedulers and
-validation-driven ReduceLROnPlateau. Checkpoints
-are ordinary PyTorch dictionaries containing `state_dict`, epoch, optimizer and
-scheduler states; `best.pt` follows validation loss and `last.pt` records the final
-epoch. Load model weights with:
-
-```python
-import torch
-
-checkpoint = torch.load("checkpoints/best.pt", map_location = "cpu", weights_only = True)
-model.load_state_dict(checkpoint["state_dict"])
-model.eval()
-```
-
-`timeseries.workflows.TimeSeries.train_model()` uses the same loop and also writes `loss.csv`. It accepts
-`device` for one CPU or GPU. Its former `auto_lr_find`, `devices` and `precision`
-arguments have been removed; older notebook calls using those arguments must be
-updated. Select the learning rate through the model's `optim_config`.
-
-`train_model` selects the adapter for Base models, GNN and legacy TFT automatically.
-GNN and legacy TFT accept an explicit `optimizer` and `scheduler`; Base models
-configure those through `configure_optimizers()`. A new batch/loss contract can be
-supported by passing an `adapter` implementing `TrainingAdapter.step`, without
-adding another optimization loop. Validation runs after training every epoch;
-losses are weighted by sample count, including the final partial batch. GNN
-retains its scheduler interval of 100 epochs and legacy TFT its iterative training
-every fifth epoch. Legacy entry points export their historical report and raw
-weight files alongside the common best/last checkpoint dictionaries.
-
-The focused tests retain numerical metric checks, factory validation, a real
-optimization step and checkpoint round trips. Repetitive constructor and metadata
-inspection tests have been removed.
+Tests cover numerical references/finite-difference greeks, IV inversion, early
+exercise, accounting, costs, partial fills, risk rejection, expiry settlement,
+causal signals, calibration, mocked providers and existing forecasting workflows.
+The mathematical references are Hull, *Options, Futures and Other Derivatives*,
+9th ed., chapters 13, 15 and 19–23. Pricing and backtests do not establish a
+profitable trading edge.

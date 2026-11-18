@@ -11,8 +11,8 @@ from fastapi import APIRouter, Depends
 from fastapi import Query
 from tqdm import tqdm
 
-from .load_data import get_data
 from services.models.tickerdata import TickerData
+from .load_data import get_data
 from .utils import validate_path, base64_plot_generator, config_field, compute_correlation_matrix
 
 # Add project root to Python path
@@ -27,12 +27,12 @@ router = APIRouter(prefix = "/compute")
 
 
 def get_cached_correlation_matrix(
-        path_report: Path | str,
-        path_data: Optional[Path] = None,
-        correlation: str = "pearson",
-        device: str | torch.device = "cpu",
-        tickers: Optional[list[str]] = None,
-        save: bool = True,
+    path_report: Path | str,
+    path_data: Optional[Path] = None,
+    correlation: str = "pearson",
+    device: str | torch.device = "cpu",
+    tickers: Optional[list[str]] = None,
+    save: bool = True,
 ) -> np.ndarray:
     """
     This function aims to handle all the loading of the information
@@ -83,7 +83,8 @@ def get_cached_correlation_matrix(
             ticker_data: TickerData = get_data(
                 path_data = path_data,
                 ticker = ticker,
-                step_size = 1
+                step_size = 1,
+                save = save,
             )
             daily_return = get_return(history = {day: value.Close for day, value in ticker_data.history.items()})
             data[ticker] = daily_return
@@ -107,15 +108,15 @@ def get_cached_correlation_matrix(
 
 @router.get("/correlation")
 def get_correlation_matrix_plot(
-        correlation: str = Query(
-            default = "pearson",
-            description = "Type of correlation to compute. Default: 'Pearson'",
-        ),
-        path_report: Path | str = Depends(config_field("path_report")),
-        device: str = Depends(config_field("device")),
-        tickers: list[str] = Depends(config_field("tickers")),
-        path_data: Optional[Path] = Depends(config_field("path_data")),
-        save: bool = Depends(config_field("save"))
+    correlation: str = Query(
+        default = "pearson",
+        description = "Type of correlation to compute. Default: 'Pearson'",
+    ),
+    path_report: Path | str = Depends(config_field("path_report")),
+    device: str = Depends(config_field("device")),
+    tickers: list[str] = Depends(config_field("tickers")),
+    path_data: Optional[Path] = Depends(config_field("path_data")),
+    save: bool = Depends(config_field("save"))
 ) -> str:
     matrix: np.ndarray = get_cached_correlation_matrix(
         correlation = correlation,
@@ -130,23 +131,23 @@ def get_correlation_matrix_plot(
 
 @router.get("/corr_lead")
 def get_leaderboard(
-        k: int = Query(
-            default = 10,
-            description = "Number of element to show in the leaderboard."
-        ),
-        correlation: str = Query(
-            default = "pearson",
-            description = "Type of correlation from which the correlations are computed. Default: 'Pearson'",
-        ),
-        best: bool = Query(
-            default = True,
-            description = "It tells whether the correlations are the best, True, or the worst, False."
-        ),
-        path_report: Path | str = Depends(config_field("path_report")),
-        device: str = Depends(config_field("device")),
-        tickers: list[str] = Depends(config_field("tickers")),
-        path_data: Optional[Path] = Depends(config_field("path_data")),
-        save: bool = Depends(config_field("save"))
+    k: int = Query(
+        default = 10,
+        description = "Number of element to show in the leaderboard."
+    ),
+    correlation: str = Query(
+        default = "pearson",
+        description = "Type of correlation from which the correlations are computed. Default: 'Pearson'",
+    ),
+    best: bool = Query(
+        default = True,
+        description = "It tells whether the correlations are the best, True, or the worst, False."
+    ),
+    path_report: Path | str = Depends(config_field("path_report")),
+    device: str = Depends(config_field("device")),
+    tickers: list[str] = Depends(config_field("tickers")),
+    path_data: Optional[Path] = Depends(config_field("path_data")),
+    save: bool = Depends(config_field("save"))
 
 ) -> list[list[float | str]]:
     """
@@ -170,34 +171,36 @@ def get_leaderboard(
     ]
     k = min(k, len(flat_with_idx))
     if best:
-        return heapq.nsmallest(k, flat_with_idx, key = lambda
-            x: x[2]
-                               )
+        return heapq.nsmallest(
+            k, flat_with_idx, key = lambda
+                x: x[2]
+            )
     else:
-        return heapq.nlargest(k, flat_with_idx, key = lambda
-            x: x[2]
-                              )
+        return heapq.nlargest(
+            k, flat_with_idx, key = lambda
+                x: x[2]
+            )
 
 
 @router.get("/correlation_list")
 def get_correlation(
-        k: int = Query(
-            default = 10,
-            description = "Number of element to show in the leaderboard."
-        ),
-        correlation: str = Query(
-            default = "pearson",
-            description = "Type of correlation from which the correlations are computed. Default: 'Pearson'",
-        ),
-        best: bool = Query(
-            default = True,
-            description = "It tells whether the correlations are the best, True, or the worst, False."
-        ),
-        path_report: Path | str = Depends(config_field("path_report")),
-        device: str = Depends(config_field("device")),
-        tickers: list[str] = Depends(config_field("tickers")),
-        path_data: Optional[Path] = Depends(config_field("path_data")),
-        save: bool = Depends(config_field("save"))
+    k: int = Query(
+        default = 10,
+        description = "Number of element to show in the leaderboard."
+    ),
+    correlation: str = Query(
+        default = "pearson",
+        description = "Type of correlation from which the correlations are computed. Default: 'Pearson'",
+    ),
+    best: bool = Query(
+        default = True,
+        description = "It tells whether the correlations are the best, True, or the worst, False."
+    ),
+    path_report: Path | str = Depends(config_field("path_report")),
+    device: str = Depends(config_field("device")),
+    tickers: list[str] = Depends(config_field("tickers")),
+    path_data: Optional[Path] = Depends(config_field("path_data")),
+    save: bool = Depends(config_field("save"))
 
 ) -> list[tuple[str, float]]:
     """
@@ -221,10 +224,12 @@ def get_correlation(
         for i in range(n)
     ]
     if best:
-        return heapq.nsmallest(k, flat_with_idx, key = lambda
-            x: x[1]
-                               )
+        return heapq.nsmallest(
+            k, flat_with_idx, key = lambda
+                x: x[1]
+            )
     else:
-        return heapq.nlargest(k, flat_with_idx, key = lambda
-            x: x[1]
-                              )
+        return heapq.nlargest(
+            k, flat_with_idx, key = lambda
+                x: x[1]
+            )

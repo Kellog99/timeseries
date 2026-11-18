@@ -1,7 +1,7 @@
 import pandas as pd
 
-from timeseries.models.MovingAverage import MovingAverages
 from timeseries.model_register import ModelFactory
+from timeseries.models.MovingAverage import MovingAverages
 from timeseries.registry import Configuration
 
 
@@ -23,10 +23,10 @@ class BollingerBands:
 
     @staticmethod
     def calculate(
-            data,
-            window = 20,
-            num_std = 2
-            ):
+        data,
+        window = 20,
+        num_std = 2
+    ):
         """Calculate Bollinger Bands"""
         sma = MovingAverages.sma(data, window)
         std = pd.Series(data).rolling(window = window).std().to_numpy()

@@ -46,7 +46,7 @@ if __name__ == "__main__":
     for i, key in enumerate(
             ["hid_out_features1", "hid_out_features2", "num_layer1", "num_layer2", "nfeat_out_gnn", "lr",
              "weight_decay"]
-            ):
+    ):
         exists = True
         try:
             getattr(args, key)
@@ -76,7 +76,7 @@ if __name__ == "__main__":
                 test(
                     config = config,
                     name_model = model
-                    )
+                )
     if args.dataset:
         from timeseries.data_management.data_generation import crete_dataframe
 

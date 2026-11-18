@@ -14,8 +14,8 @@ class ModelFactory(Factory[object]):
 
     @classmethod
     def _load_builtins(
-            cls,
-            class_id: Optional[str] = None
+        cls,
+        class_id: Optional[str] = None
     ) -> None:
         import_module("timeseries.models")
 

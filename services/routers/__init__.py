@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from .compute_metrics import router as metrics_router
 from .get_indicators import router as indicators_router
 from .load_data import router as data_router
+from .options import router as options_router
 from .ticker_returns import router as return_router
 
 api_router = APIRouter()
@@ -13,3 +14,4 @@ api_router.include_router(data_router)
 api_router.include_router(metrics_router)
 api_router.include_router(return_router)
 api_router.include_router(indicators_router)
+api_router.include_router(options_router)

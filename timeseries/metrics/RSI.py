@@ -1,6 +1,5 @@
 """Historical module name retained for the windowed metrics API."""
 
-
 from numbers import Integral
 from typing import Literal, Optional
 
@@ -16,9 +15,9 @@ Period = Optional[int | Literal["max"]]
 class WindowMetric(ReturnMetric):
 
     def __init__(
-            self,
-            period: Period = None
-            ) -> None:
+        self,
+        period: Period = None
+    ) -> None:
         super().__init__()
         if period is not None and period != "max":
             if isinstance(period, bool) or not isinstance(period, Integral) or period <= 0:
@@ -27,22 +26,22 @@ class WindowMetric(ReturnMetric):
         self.period = period
 
     def reduce(
-            self,
-            window: Tensor
-            ) -> Tensor:
+        self,
+        window: Tensor
+    ) -> Tensor:
         raise NotImplementedError
 
     def compute(
-            self
-            ) -> list[float]:
+        self
+    ) -> list[float]:
         values = self.values()
         period = values.numel() if self.period is None or self.period == "max" else self.period
         return [self.reduce(window).item() for window in values.split(period)]
 
     def update(
-            self,
-            data: Tensor | list[float]
-            ) -> None:
+        self,
+        data: Tensor | list[float]
+    ) -> None:
         # Means and variances also accept arbitrary finite observations, not only returns.
         values = torch.as_tensor(data, dtype = torch.float64, device = self.device)
         if values.ndim != 1 or not torch.isfinite(values).all():
@@ -58,9 +57,9 @@ class WindowMetric(ReturnMetric):
 class MovingAverage(WindowMetric):
 
     def reduce(
-            self,
-            window: Tensor
-            ) -> Tensor:
+        self,
+        window: Tensor
+    ) -> Tensor:
         return window.mean()
 
 
@@ -72,9 +71,9 @@ class MovingAverage(WindowMetric):
 class MovingVariance(WindowMetric):
 
     def reduce(
-            self,
-            window: Tensor
-            ) -> Tensor:
+        self,
+        window: Tensor
+    ) -> Tensor:
         return window.var(correction = 0)
 
 
@@ -86,14 +85,14 @@ class MovingVariance(WindowMetric):
 class MovingSR(WindowMetric):
 
     def update(
-            self,
-            data: Tensor | list[float]
-            ) -> None:
+        self,
+        data: Tensor | list[float]
+    ) -> None:
         ReturnMetric.update(self, data)
 
     def reduce(
-            self,
-            window: Tensor
-            ) -> Tensor:
+        self,
+        window: Tensor
+    ) -> Tensor:
         std = window.std() if window.numel() > 1 else window.new_tensor(float("nan"))
         return divide(window.mean(), std)

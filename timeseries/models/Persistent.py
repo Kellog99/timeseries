@@ -15,7 +15,7 @@ class ConfigPersistent(ForecastConfiguration):
     loss_type: BaseLoss | None = Field(None, description = 'Training loss selection.')
     persistence_weight: float = Field(
         0.1, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
-        )
+    )
     optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
     scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
 
@@ -29,13 +29,13 @@ class Persistent(Base):
     CONFIG_T: ClassVar[type[ConfigPersistent]] = ConfigPersistent
 
     def __init__(
-            self,
-            future_steps: int,
-            past_steps: int,
-            loss_type: BaseLoss | None = None,
-            persistence_weight: float = 0.1,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        future_steps: int,
+        past_steps: int,
+        loss_type: BaseLoss | None = None,
+        persistence_weight: float = 0.1,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         """Persistent model propagatinng  last observed values
 
@@ -59,9 +59,9 @@ class Persistent(Base):
         )
 
     def forward(
-            self,
-            batch
-            ):
+        self,
+        batch
+    ):
         """It is mandatory to implement this method
 
         Args:

@@ -9,6 +9,7 @@ from timeseries.registry import Domain
 if TYPE_CHECKING:
     from .ARIMA import ARIMAPredictor, ConfigARIMAPredictor
     from .BlackScholes import BlackScholes, ConfigBlackScholes
+    from .Binomial import Binomial, ConfigBinomial
     from .BollingerBands import BollingerBands, ConfigBollingerBands
     from .CrossFormer import CrossFormer, ConfigCrossFormer
     from .D3VAE import D3VAE, ConfigD3VAE

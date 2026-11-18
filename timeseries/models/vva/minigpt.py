@@ -16,9 +16,9 @@ class NewGELU(Module):
     """
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return 0.5 * x * (1.0 + torch.tanh(math.sqrt(2.0 / math.pi) * (x + 0.044715 * torch.pow(x, 3.0))))
 
 
@@ -32,13 +32,13 @@ class CausalSelfAttention(Module):
     bias: torch.Tensor
 
     def __init__(
-            self,
-            n_embd,
-            n_head,
-            attn_pdrop,
-            resid_pdrop,
-            block_size
-            ):
+        self,
+        n_embd,
+        n_head,
+        attn_pdrop,
+        resid_pdrop,
+        block_size
+    ):
         super().__init__()
         assert n_embd % n_head == 0
         # key, query, value projections for all heads, but in a batch
@@ -52,14 +52,14 @@ class CausalSelfAttention(Module):
         self.register_buffer(
             "bias", torch.tril(torch.ones(block_size, block_size))
             .view(1, 1, block_size, block_size)
-            )
+        )
         self.n_head = n_head
         self.n_embd = n_embd
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         B, T, C = x.size()  # batch size, sequence length, embedding dimensionality (n_embd)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
@@ -87,13 +87,13 @@ class Block(Module):
     bias: torch.Tensor
 
     def __init__(
-            self,
-            n_embd,
-            resid_pdrop,
-            n_head,
-            attn_pdrop,
-            block_size
-            ):
+        self,
+        n_embd,
+        resid_pdrop,
+        n_head,
+        attn_pdrop,
+        block_size
+    ):
         super().__init__()
         self.ln_1 = nn.LayerNorm(n_embd)
         self.attn = CausalSelfAttention(n_embd, n_head, attn_pdrop, resid_pdrop, block_size)
@@ -108,12 +108,12 @@ class Block(Module):
         )
         m = self.mlp
         self.mlpf = lambda \
-            x: m["dropout"](m["c_proj"](m["act"](m["c_fc"](x))))  # MLP forward
+                x: m["dropout"](m["c_proj"](m["act"](m["c_fc"](x))))  # MLP forward
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         x = x + self.attn(self.ln_1(x))
         x = x + self.mlpf(self.ln_2(x))
         return x

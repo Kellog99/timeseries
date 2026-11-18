@@ -22,7 +22,7 @@ class ConfigInformer(ThreeQuantileConfiguration):
     past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
     future_channels: NonNegativeInt = Field(
         ..., description = 'Number of known future numerical features; zero is allowed.'
-        )
+    )
     d_model: PositiveInt = Field(..., description = 'Dimension of the internal feature embeddings.')
     embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
     hidden_size: PositiveInt = Field(..., description = 'Hidden size.')
@@ -39,11 +39,11 @@ class ConfigInformer(ThreeQuantileConfiguration):
     n_head: PositiveInt = Field(1, description = 'Number of attention heads.')
     persistence_weight: float = Field(
         0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
-        )
+    )
     loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
     quantiles: list[Quantile] | None = Field(
         None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
-        )
+    )
     dropout_rate: Probability = Field(0.1, description = 'Dropout rate.')
     optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
     optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
@@ -59,32 +59,32 @@ class Informer(Base):
     CONFIG_T: ClassVar[type[ConfigInformer]] = ConfigInformer
 
     def __init__(
-            self,
-            past_steps: int,
-            future_steps: int,
-            past_channels: int,
-            future_channels: int,
-            d_model: int,
-            embs: list[int],
-            hidden_size: int,
-            n_layer_encoder: int,
-            n_layer_decoder: int,
-            out_channels: int,
-            mix: bool = True,
-            activation: str = 'torch.nn.ReLU',
-            remove_last: bool = False,
-            attn: str = 'prob',
-            output_attention: bool = False,
-            distil: bool = True,
-            factor: int = 5,
-            n_head: int = 1,
-            persistence_weight: float = 0.0,
-            loss_type: BaseLoss = 'l1',
-            quantiles: list[float] | None = None,
-            dropout_rate: float = 0.1,
-            optim: str | None = None,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        past_steps: int,
+        future_steps: int,
+        past_channels: int,
+        future_channels: int,
+        d_model: int,
+        embs: list[int],
+        hidden_size: int,
+        n_layer_encoder: int,
+        n_layer_decoder: int,
+        out_channels: int,
+        mix: bool = True,
+        activation: str = 'torch.nn.ReLU',
+        remove_last: bool = False,
+        attn: str = 'prob',
+        output_attention: bool = False,
+        distil: bool = True,
+        factor: int = 5,
+        n_head: int = 1,
+        persistence_weight: float = 0.0,
+        loss_type: BaseLoss = 'l1',
+        quantiles: list[float] | None = None,
+        dropout_rate: float = 0.1,
+        optim: str | None = None,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         """Informer
 
@@ -155,7 +155,7 @@ class Informer(Base):
                     AttentionLayer(
                         Attn(False, factor, attention_dropout = dropout_rate, output_attention = output_attention),
                         d_model, n_head, mix = False
-                        ),
+                    ),
                     d_model,
                     hidden_size,
                     dropout = dropout_rate,
@@ -176,11 +176,11 @@ class Informer(Base):
                     AttentionLayer(
                         Attn(True, factor, attention_dropout = dropout_rate, output_attention = False),
                         d_model, n_head, mix = mix
-                        ),
+                    ),
                     AttentionLayer(
                         FullAttention(False, factor, attention_dropout = dropout_rate, output_attention = False),
                         d_model, n_head, mix = False
-                        ),
+                    ),
                     d_model,
                     hidden_size,
                     dropout = dropout_rate,
@@ -194,9 +194,9 @@ class Informer(Base):
         self.projection = nn.Linear(d_model, out_channels, bias = True)
 
     def forward(
-            self,
-            batch
-            ):
+        self,
+        batch
+    ):
         # x_enc, x_mark_enc, x_dec, x_mark_dec,enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
 
         x_enc = batch['x_num_past'].to(self.device)

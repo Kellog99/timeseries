@@ -21,7 +21,7 @@ class ConfigTFT2(ThreeQuantileConfiguration):
     past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
     future_channels: NonNegativeInt = Field(
         ..., description = 'Number of known future numerical features; zero is allowed.'
-        )
+    )
     num_layers_RNN: PositiveInt = Field(..., description = 'Number of recurrent layers.')
     embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
     d_head: PositiveInt = Field(..., description = 'Feature dimension of each attention head.')
@@ -29,11 +29,11 @@ class ConfigTFT2(ThreeQuantileConfiguration):
     dropout_rate: Probability = Field(..., description = 'Dropout rate.')
     persistence_weight: float = Field(
         0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
-        )
+    )
     loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
     quantiles: list[Quantile] | None = Field(
         None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
-        )
+    )
     optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
     optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
     scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
@@ -48,24 +48,24 @@ class TFT2(Base):
     CONFIG_T: ClassVar[type[ConfigTFT2]] = ConfigTFT2
 
     def __init__(
-            self,
-            d_model: int,
-            out_channels: int,
-            past_steps: int,
-            future_steps: int,
-            past_channels: int,
-            future_channels: int,
-            num_layers_RNN: int,
-            embs: list[int],
-            d_head: int,
-            n_head: int,
-            dropout_rate: float,
-            persistence_weight: float = 0.0,
-            loss_type: BaseLoss = 'l1',
-            quantiles: list[float] | None = None,
-            optim: str | None = None,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        d_model: int,
+        out_channels: int,
+        past_steps: int,
+        future_steps: int,
+        past_channels: int,
+        future_channels: int,
+        num_layers_RNN: int,
+        embs: list[int],
+        d_head: int,
+        n_head: int,
+        dropout_rate: float,
+        persistence_weight: float = 0.0,
+        loss_type: BaseLoss = 'l1',
+        quantiles: list[float] | None = None,
+        optim: str | None = None,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         """_summary_
 
@@ -120,7 +120,7 @@ class TFT2(Base):
             pred_step = future_steps,
             num_layers = num_layers_RNN,
             dropout = dropout_rate
-            )
+        )
 
         self.res_conn1_past = sub_nn.ResidualConnection(d_model, dropout_rate)
         self.res_conn1_fut = sub_nn.ResidualConnection(d_model, dropout_rate)
@@ -135,9 +135,9 @@ class TFT2(Base):
         self.outLinear = nn.Linear(d_model, out_channels * self.mul)
 
     def forward(
-            self,
-            batch
-            ):
+        self,
+        batch
+    ):
 
         num_past = batch['x_num_past'].to(self.device)
         # PAST TARGET NUMERICAL VARIABLE
@@ -162,7 +162,7 @@ class TFT2(Base):
             aux_num_past = self.remove_var(num_past, idx_target, 2)  # remove the target index on the second dimension
             assert self.aux_past_channels == aux_num_past.size(
                 2
-                ), f"{self.aux_past_channels} LAYERS FOR PAST VARS AND {aux_num_past.size(2)} VARS"
+            ), f"{self.aux_past_channels} LAYERS FOR PAST VARS AND {aux_num_past.size(2)} VARS"
             aux_emb_num_past = torch.Tensor().to(aux_num_past.device)
             for i, layer in enumerate(self.linear_aux_past):
                 aux_emb_past = layer(aux_num_past[:, :, [i]]).unsqueeze(2)
@@ -175,7 +175,7 @@ class TFT2(Base):
             aux_num_fut = batch['x_num_future'].to(self.device)
             assert self.aux_fut_channels == aux_num_fut.size(2), logging.info(
                 f"{self.aux_fut_channels} LAYERS FOR PAST VARS AND {aux_num_fut.size(2)} VARS"
-                )  # to check if we are using the expected number of variables about fut
+            )  # to check if we are using the expected number of variables about fut
             aux_emb_num_fut = torch.Tensor().to(aux_num_fut.device)
             for j, layer in enumerate(self.linear_aux_fut):
                 aux_emb_fut = layer(aux_num_fut[:, :, [j]]).unsqueeze(2)
@@ -233,11 +233,11 @@ class TFT2(Base):
 
     # function to extract from batch['x_num_past'] all variables except the one autoregressive
     def remove_var(
-            self,
-            tensor: torch.Tensor,
-            indexes_to_exclude: torch.Tensor,
-            dimension: int
-            ) -> torch.Tensor:
+        self,
+        tensor: torch.Tensor,
+        indexes_to_exclude: torch.Tensor,
+        dimension: int
+    ) -> torch.Tensor:
         """Function to remove variables from tensors in chosen dimension and position 
 
         Args:
@@ -251,7 +251,7 @@ class TFT2(Base):
 
         remaining_idx = torch.tensor([i for i in range(tensor.size(dimension)) if i not in indexes_to_exclude]).to(
             tensor.device
-            )
+        )
         # Select the desired sub-tensor
         extracted_subtensors = torch.index_select(tensor, dim = dimension, index = remaining_idx)
 

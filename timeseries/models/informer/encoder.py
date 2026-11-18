@@ -7,9 +7,9 @@ from timeseries.utils.typing import Module
 
 class ConvLayer(Module):
     def __init__(
-            self,
-            c_in
-            ):
+        self,
+        c_in
+    ):
         super(ConvLayer, self).__init__()
         padding = 1 if torch.__version__ >= '1.5.0' else 2
         self.downConv = nn.Conv1d(
@@ -18,15 +18,15 @@ class ConvLayer(Module):
             kernel_size = 3,
             padding = padding,
             padding_mode = 'circular'
-            )
+        )
         self.norm = nn.BatchNorm1d(c_in)
         self.activation = nn.ELU()
         self.maxPool = nn.MaxPool1d(kernel_size = 3, stride = 2, padding = 1)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         x = self.downConv(x.permute(0, 2, 1))
         x = self.norm(x)
         x = self.activation(x)
@@ -37,13 +37,13 @@ class ConvLayer(Module):
 
 class EncoderLayer(Module):
     def __init__(
-            self,
-            attention,
-            d_model,
-            d_ff = None,
-            dropout = 0.1,
-            activation = "relu"
-            ):
+        self,
+        attention,
+        d_model,
+        d_ff = None,
+        dropout = 0.1,
+        activation = "relu"
+    ):
         super(EncoderLayer, self).__init__()
         d_ff = d_ff or 4 * d_model
         self.attention = attention
@@ -55,10 +55,10 @@ class EncoderLayer(Module):
         self.activation = F.relu if activation == "relu" else F.gelu
 
     def forward(
-            self,
-            x,
-            attn_mask = None
-            ):
+        self,
+        x,
+        attn_mask = None
+    ):
         # x [B, L, D]
         # x = x + self.dropout(self.attention(
         #     x, x, x,
@@ -79,21 +79,21 @@ class EncoderLayer(Module):
 
 class Encoder(Module):
     def __init__(
-            self,
-            attn_layers,
-            conv_layers = None,
-            norm_layer = None
-            ):
+        self,
+        attn_layers,
+        conv_layers = None,
+        norm_layer = None
+    ):
         super(Encoder, self).__init__()
         self.attn_layers = nn.ModuleList(attn_layers)
         self.conv_layers = nn.ModuleList(conv_layers) if conv_layers is not None else None
         self.norm = norm_layer
 
     def forward(
-            self,
-            x,
-            attn_mask = None
-            ):
+        self,
+        x,
+        attn_mask = None
+    ):
         # x [B, L, D]
         attns = []
         if self.conv_layers is not None:
@@ -116,19 +116,19 @@ class Encoder(Module):
 
 class EncoderStack(Module):
     def __init__(
-            self,
-            encoders,
-            inp_lens
-            ):
+        self,
+        encoders,
+        inp_lens
+    ):
         super(EncoderStack, self).__init__()
         self.encoders = nn.ModuleList(encoders)
         self.inp_lens = inp_lens
 
     def forward(
-            self,
-            x,
-            attn_mask = None
-            ):
+        self,
+        x,
+        attn_mask = None
+    ):
         # x [B, L, D]
         x_stack = [];
         attns = []

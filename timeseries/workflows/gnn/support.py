@@ -3,8 +3,8 @@ import torch.nn as nn
 
 
 def loss_from_config(
-        expression: str
-        ) -> nn.Module:
+    expression: str
+) -> nn.Module:
     """Resolve historical loss names without evaluating configuration as code."""
     name = expression.strip().removesuffix('()').removeprefix('torch.nn.').removeprefix('nn.')
     losses = {

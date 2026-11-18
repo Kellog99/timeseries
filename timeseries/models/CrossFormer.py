@@ -23,7 +23,7 @@ class ConfigCrossFormer(ThreeQuantileConfiguration):
     past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
     future_channels: NonNegativeInt = Field(
         ..., description = 'Number of known future numerical features; zero is allowed.'
-        )
+    )
     d_model: PositiveInt = Field(..., description = 'Dimension of the internal feature embeddings.')
     embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
     hidden_size: PositiveInt = Field(..., description = 'Hidden size.')
@@ -36,11 +36,11 @@ class ConfigCrossFormer(ThreeQuantileConfiguration):
     remove_last: bool = Field(False, description = 'Predict differences from the last observed target value.')
     persistence_weight: float = Field(
         0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
-        )
+    )
     loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
     quantiles: list[Quantile] | None = Field(
         None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
-        )
+    )
     dropout_rate: Probability = Field(0.1, description = 'Dropout rate.')
     optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
     optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
@@ -60,28 +60,28 @@ class CrossFormer(Base):
     CONFIG_T: ClassVar[type[ConfigCrossFormer]] = ConfigCrossFormer
 
     def __init__(
-            self,
-            past_steps: int,
-            future_steps: int,
-            past_channels: int,
-            future_channels: int,
-            d_model: int,
-            embs: list[int],
-            hidden_size: int,
-            n_head: int,
-            seg_len: int,
-            n_layer_encoder: int,
-            win_size: int,
-            out_channels: int,
-            factor: int = 5,
-            remove_last: bool = False,
-            persistence_weight: float = 0.0,
-            loss_type: BaseLoss = 'l1',
-            quantiles: list[float] | None = None,
-            dropout_rate: float = 0.1,
-            optim: str | None = None,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        past_steps: int,
+        future_steps: int,
+        past_channels: int,
+        future_channels: int,
+        d_model: int,
+        embs: list[int],
+        hidden_size: int,
+        n_head: int,
+        seg_len: int,
+        n_layer_encoder: int,
+        win_size: int,
+        out_channels: int,
+        factor: int = 5,
+        remove_last: bool = False,
+        persistence_weight: float = 0.0,
+        loss_type: BaseLoss = 'l1',
+        quantiles: list[float] | None = None,
+        dropout_rate: float = 0.1,
+        optim: str | None = None,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         """CroosFormer (https://openreview.net/forum?id=vSVLM2j9eie)
 
@@ -149,21 +149,21 @@ class CrossFormer(Base):
         self.encoder = Encoder(
             n_layer_encoder, win_size, d_model, n_head, hidden_size, block_depth = 1, \
             dropout = dropout_rate, in_seg_num = (self.pad_past_steps // seg_len), factor = factor
-            )
+        )
 
         # Decoder
         self.dec_pos_embedding = nn.Parameter(
             torch.randn(1, past_channels, (self.pad_future_steps // seg_len), d_model)
-            )
+        )
         self.decoder = Decoder(
             seg_len, n_layer_encoder + 1, d_model, n_head, hidden_size, dropout_rate, \
             out_seg_num = (self.pad_future_steps // seg_len), factor = factor
-            )
+        )
 
     def forward(
-            self,
-            batch
-            ):
+        self,
+        batch
+    ):
         idx_target = batch['idx_target'][0]
         x_seq = batch['x_num_past'].to(self.device)  # [:,:,idx_target]
 

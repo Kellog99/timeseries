@@ -24,14 +24,14 @@ split = {
 
 class MyDataset(Dataset):
     def __init__(
-            self,
-            df: pd.DataFrame,
-            h_pass: int,
-            h_future: int,
-            config: ConfigParser,
-            columns: list,
-            task: str
-            ):
+        self,
+        df: pd.DataFrame,
+        h_pass: int,
+        h_future: int,
+        config: ConfigParser,
+        columns: list,
+        task: str
+    ):
         path_date = os.path.join(config['paths']['dataset'], f"dates_dataset_{task}.csv")
 
         self.x = []
@@ -53,27 +53,27 @@ class MyDataset(Dataset):
         self.date.to_csv(path_date)
 
     def __len__(
-            self
-            ):
+        self
+    ):
         return len(self.x)
 
     def __getitem__(
-            self,
-            index
-            ):
+        self,
+        index
+    ):
         idxs = index
         return self.x[idxs], self.y[idxs]
 
     def getdate(
-            self,
-            idxs
-            ):
+        self,
+        idxs
+    ):
         return self.date.values[idxs]
 
 
 def crete_dataframe(
-        config_path: str
-        ):
+    config_path: str
+):
     config = ConfigParser()
     config.read(config_path)
 
@@ -108,8 +108,8 @@ def crete_dataframe(
         map(
             lambda
                 x: datetime.strptime(x, '%Y-%m-%d %H'), df['date']
-            )
         )
+    )
     df = df.sort_values(by = ['date'])
     df = df[['date'] + columns]
     df = df.drop([0, 1]).reset_index(drop = True)
@@ -144,7 +144,7 @@ def crete_dataframe(
             config = config,
             columns = columns,
             task = key
-            )
+        )
 
     path_dataset = os.path.join(config['paths']['dataset'], f"dataframes.pkl")
     path_date = os.path.join(config['paths']['dataset'], f"dates.pkl")
@@ -175,7 +175,7 @@ if __name__ == "__main__":
         type = str,
         required = True,
         help = "It storse the path of the config file"
-        )
+    )
     args = parser.parse_args()
 
     crete_dataframe(args.config)

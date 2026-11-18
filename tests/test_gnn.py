@@ -20,8 +20,8 @@ def test_graph_layers_compose_and_preserve_adjacency():
 
 
 def make_gnn(
-        depth: int
-        ) -> GNN:
+    depth: int
+) -> GNN:
     return GNN(
         past_steps = 200, future_steps = 65, future_channel = 0,
         embs = [4], cat_emb_dim = 2, hidden_GNN = 4, in_feat = 4,
@@ -33,8 +33,8 @@ def make_gnn(
 
 @pytest.mark.parametrize("depth", [1, 3])
 def test_gnn_outputs_and_checkpoint_round_trip(
-        depth
-        ):
+    depth
+):
     model = make_gnn(depth).eval()
     data = torch.randn(2, 265, 4)
     data[:, :, 0] = torch.randint(0, 4, (2, 265))

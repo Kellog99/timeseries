@@ -23,25 +23,25 @@ class MovingAverages:
 
     @staticmethod
     def sma(
-            data,
-            window
-            ):
+        data,
+        window
+    ):
         """Simple Moving Average"""
         return pd.Series(data).rolling(window = window).mean().values
 
     @staticmethod
     def ema(
-            data,
-            span
-            ):
+        data,
+        span
+    ):
         """Exponential Moving Average"""
         return pd.Series(data).ewm(span = span, adjust = False).mean().values
 
     @staticmethod
     def wma(
-            data,
-            window
-            ):
+        data,
+        window
+    ):
         """Weighted Moving Average"""
         weights = np.arange(1, window + 1)
         wma = pd.Series(data).rolling(window).apply(
@@ -52,9 +52,9 @@ class MovingAverages:
 
     @staticmethod
     def hull_ma(
-            data,
-            window
-            ):
+        data,
+        window
+    ):
         """Hull Moving Average - reduced lag"""
         half_length = window // 2
         sqrt_length = int(np.sqrt(window))

@@ -10,8 +10,8 @@ from bs4 import BeautifulSoup as bs
 
 
 def strtobool(
-        value: str
-        ) -> bool:
+    value: str
+) -> bool:
     value = value.lower()
     if value in {"y", "yes", "t", "true", "on", "1"}:
         return True
@@ -32,9 +32,9 @@ import logging
 # value_column_name - Any name that is preferred to have as the name of the column containing series values in the
 # returning dataframe
 def convert_tsf_to_dataframe(
-        full_file_path_and_name: str,
-        replace_missing_vals_with: str = "NaN",
-        value_column_name: str = "series_value",
+    full_file_path_and_name: str,
+    replace_missing_vals_with: str = "NaN",
+    value_column_name: str = "series_value",
 ) -> tuple[pd.DataFrame, str | None, int | None, bool | None, bool | None]:
     """I copied this function from the repo
 
@@ -196,8 +196,8 @@ def convert_tsf_to_dataframe(
 
 
 def get_freq(
-        freq
-        ) -> str:
+    freq
+) -> str:
     """Get the frequency based on the string reported. I don't think there are all the possibilities here
 
     Args:
@@ -217,10 +217,10 @@ def get_freq(
 class Monash():
 
     def __init__(
-            self,
-            filename: str,
-            baseUrl: str = 'https://forecastingdata.org/',
-            rebuild: bool = False
+        self,
+        filename: str,
+        baseUrl: str = 'https://forecastingdata.org/',
+        rebuild: bool = False
     ):
         """Class for downloading datasets listed here https://forecastingdata.org/ 
 
@@ -244,9 +244,9 @@ class Monash():
             self.save(filename)
 
     def get_table(
-            self,
-            baseUrl
-            ):
+        self,
+        baseUrl
+    ):
         """   get table
         
         :meta private:
@@ -286,13 +286,13 @@ class Monash():
         tot['id'] = tot.Download.apply(
             lambda
                 x: int(x.split('/')[-1])
-            )
+        )
         self.table = tot.copy()
 
     def save(
-            self,
-            filename: str
-            ) -> None:
+        self,
+        filename: str
+    ) -> None:
         """Save the monarch structure
 
         Args:
@@ -307,9 +307,9 @@ class Monash():
             pickle.dump(params, f)
 
     def load(
-            self,
-            filename: str
-            ) -> None:
+        self,
+        filename: str
+    ) -> None:
         """Load a monarch structure
 
         Args:
@@ -322,11 +322,11 @@ class Monash():
                 setattr(self, p, params[p])
 
     def download_dataset(
-            self,
-            path: str,
-            id: int,
-            rebuild = False
-            ) -> None:
+        self,
+        path: str,
+        id: int,
+        rebuild = False
+    ) -> None:
         """download a specific dataset 
 
         Args:
@@ -344,7 +344,7 @@ class Monash():
                 file = self._download(
                     url = self.table.Download[self.table.id == id].values[0],
                     path = os.path.join(path, str(id))
-                    )
+                )
                 self.downloaded[id] = f'{path}/{id}/{file}'
             else:
                 pass
@@ -352,14 +352,14 @@ class Monash():
             file = self._download(
                 url = self.table.Download[self.table.id == id].values[0],
                 path = os.path.join(path, str(id))
-                )
+            )
             self.downloaded[id] = f'{path}/{id}/{file}'
 
     def _download(
-            self,
-            url,
-            path
-            ) -> str:
+        self,
+        url,
+        path
+    ) -> str:
         """ get data
         
         :meta private:
@@ -378,9 +378,9 @@ class Monash():
         return os.listdir(path)[0]
 
     def generate_dataset(
-            self,
-            id: int
-            ) -> tuple[pd.DataFrame, str | None, int | None, bool | None, bool | None] | None:
+        self,
+        id: int
+    ) -> tuple[pd.DataFrame, str | None, int | None, bool | None, bool | None] | None:
         """Parse the id-th dataset in a convient format and return a pandas dataset
 
         Args:

@@ -59,28 +59,28 @@ class VQVAEA(Base):
     CONFIG_T: ClassVar[type[ConfigVQVAEA]] = ConfigVQVAEA
 
     def __init__(
-            self,
-            past_steps: int,
-            future_steps: int,
-            past_channels: int,
-            future_channels: int,
-            hidden_channels: int,
-            embs: list[int],
-            d_model: int,
-            max_voc_size: int,
-            num_layers: int,
-            dropout_rate: float,
-            commitment_cost: float,
-            decay: float,
-            n_heads: int,
-            out_channels: int,
-            epoch_vqvae: int,
-            persistence_weight: float = 0.0,
-            loss_type: BaseLoss = 'l1',
-            quantiles: list[float] | None = None,
-            optim: str | None = None,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        past_steps: int,
+        future_steps: int,
+        past_channels: int,
+        future_channels: int,
+        hidden_channels: int,
+        embs: list[int],
+        d_model: int,
+        max_voc_size: int,
+        num_layers: int,
+        dropout_rate: float,
+        commitment_cost: float,
+        decay: float,
+        n_heads: int,
+        out_channels: int,
+        epoch_vqvae: int,
+        persistence_weight: float = 0.0,
+        loss_type: BaseLoss = 'l1',
+        quantiles: list[float] | None = None,
+        optim: str | None = None,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         """ Custom encoder-decoder 
         
@@ -168,7 +168,7 @@ class VQVAEA(Base):
         self.is_classification = True
 
     def configure_optimizers(
-            self
+        self
     ):
 
         # return torch.optim.Adam(self.vqvae.parameters(), lr=(self.optim_config or {}).get("lr_vqvae", 5e-5),
@@ -188,8 +188,8 @@ class VQVAEA(Base):
         )
 
     def gpt(
-            self,
-            tokens
+        self,
+        tokens
     ):
 
         b, t = tokens.size()
@@ -207,8 +207,8 @@ class VQVAEA(Base):
         return logits
 
     def forward(
-            self,
-            batch
+        self,
+        batch
     ):
 
         ##VQVAE
@@ -266,9 +266,9 @@ class VQVAEA(Base):
             return None, loss_vqvae
 
     def training_step(
-            self,
-            batch,
-            batch_idx: int = 0
+        self,
+        batch,
+        batch_idx: int = 0
     ):
         """
         
@@ -278,9 +278,9 @@ class VQVAEA(Base):
         return loss
 
     def validation_step(
-            self,
-            batch,
-            batch_idx: int = 0
+        self,
+        batch,
+        batch_idx: int = 0
     ):
         """
         
@@ -290,13 +290,13 @@ class VQVAEA(Base):
         return loss
 
     def generate(
-            self,
-            idx,
-            max_new_tokens,
-            temperature = 1.0,
-            do_sample = False,
-            top_k = None,
-            num_samples = 100
+        self,
+        idx,
+        max_new_tokens,
+        temperature = 1.0,
+        do_sample = False,
+        top_k = None,
+        num_samples = 100
     ):
         """
         Take a conditioning sequence of indices idx (LongTensor of shape (b,t)) and complete
@@ -345,8 +345,8 @@ class VQVAEA(Base):
             return idx
 
     def inference(
-            self,
-            batch: dict
+        self,
+        batch: dict
     ) -> torch.Tensor:
 
         idx_target = batch['idx_target'][0]

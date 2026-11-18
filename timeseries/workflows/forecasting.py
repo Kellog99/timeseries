@@ -23,8 +23,8 @@ class TimeSeries(TimeSeriesData):
     losses: pd.DataFrame
 
     def __init__(
-            self,
-            name: str
+        self,
+        name: str
     ):
         super().__init__(name)
         self.is_trained = False
@@ -34,9 +34,9 @@ class TimeSeries(TimeSeriesData):
         self.dirpath: str | None = None
 
     def set_model(
-            self,
-            model: Base,
-            config: dict | None = None
+        self,
+        model: Base,
+        config: dict | None = None
     ):
         """Set the model to train
 
@@ -69,10 +69,10 @@ class TimeSeries(TimeSeriesData):
         logging.info(model)
 
     def train_model(
-            self,
-            dirpath: str,
-            split_params: dict,
-            **kwargs
+        self,
+        dirpath: str,
+        split_params: dict,
+        **kwargs
     ) -> float:
         """Delegate data preparation and training to the shared training module."""
         from timeseries.training import train_timeseries
@@ -80,13 +80,13 @@ class TimeSeries(TimeSeriesData):
         return train_timeseries(self, dirpath, split_params, **kwargs)
 
     def inference_on_set(
-            self,
-            batch_size: int = 100,
-            num_workers: int = 4,
-            split_params: Union[None, dict] = None,
-            set: str = 'test',
-            rescaling: bool = True,
-            data: Union[None, torch.utils.data.Dataset] = None
+        self,
+        batch_size: int = 100,
+        num_workers: int = 4,
+        split_params: Union[None, dict] = None,
+        set: str = 'test',
+        rescaling: bool = True,
+        data: Union[None, torch.utils.data.Dataset] = None
     ) -> pd.DataFrame:
         """This function allows to get the prediction on a particular set (train, test or validation). 
 
@@ -231,13 +231,13 @@ class TimeSeries(TimeSeriesData):
         return res
 
     def inference(
-            self,
-            batch_size: int = 100,
-            num_workers: int = 4,
-            split_params: Union[None, dict] = None,
-            rescaling: bool = True,
-            data: pd.DataFrame | None = None,
-            steps_in_future: int = 0
+        self,
+        batch_size: int = 100,
+        num_workers: int = 4,
+        split_params: Union[None, dict] = None,
+        rescaling: bool = True,
+        data: pd.DataFrame | None = None,
+        steps_in_future: int = 0
     ) -> pd.DataFrame:
         """same as inference_on_set
         only change is split_params that must contain this keys but using the default can be sufficient:
@@ -282,8 +282,8 @@ class TimeSeries(TimeSeriesData):
         return res
 
     def save(
-            self,
-            filename: str
+        self,
+        filename: str
     ) -> None:
         """save the timeseries object
 
@@ -299,12 +299,12 @@ class TimeSeries(TimeSeriesData):
             pickle.dump(params, f)
 
     def load(
-            self,
-            model: type[Base],
-            filename: str,
-            load_last: bool = True,
-            dirpath: Union[str, None] = None,
-            weight_path: Union[str, None] = None
+        self,
+        model: type[Base],
+        filename: str,
+        load_last: bool = True,
+        dirpath: Union[str, None] = None,
+        weight_path: Union[str, None] = None
     ) -> None:
         """ Load a saved model
 

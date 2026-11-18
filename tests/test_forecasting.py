@@ -10,32 +10,32 @@ from timeseries.training import train_model
 
 
 def make_linear_model(
-        **overrides
-        ):
+    **overrides
+):
     params: dict[str, Any] = dict(
         past_steps = 8, future_steps = 2, past_channels = 1, future_channels = 0,
         embs = [], cat_emb_dim = 2, kernel_size = 3, sum_emb = False,
         out_channels = 1, hidden_size = 16, dropout_rate = 0.
-        )
+    )
     return ModelFactory.create("linearts", **(params | overrides))
 
 
 class Samples(Dataset):
     def __init__(
-            self,
-            items
-            ):
+        self,
+        items
+    ):
         self.items = items
 
     def __len__(
-            self
-            ):
+        self
+    ):
         return len(self.items)
 
     def __getitem__(
-            self,
-            index
-            ):
+        self,
+        index
+    ):
         return self.items[index]
 
 
@@ -48,15 +48,15 @@ def sample():
 
 
 def test_training_updates_weights_and_checkpoints_round_trip(
-        tmp_path
-        ):
+    tmp_path
+):
     model = make_linear_model(optim_config = {"lr": 0.01}, scheduler_config = {"step_size": 1, "gamma": 0.5})
     loader = DataLoader(Samples([sample() for _ in range(5)]), batch_size = 2)
     initial = {name: value.clone() for name, value in model.state_dict().items()}
     history = train_model(
         model, loader, loader, epochs = 2, checkpoint_dir = tmp_path,
         gradient_clip_val = 1.0
-        )
+    )
     assert len(history) == 2
     assert all(torch.isfinite(torch.tensor(list(epoch.values()))).all() for epoch in history)
     assert any(not torch.equal(value, initial[name]) for name, value in model.state_dict().items())

@@ -15,8 +15,8 @@ from timeseries.models.d3vae.neural_operations import act
 
 @pytest.mark.parametrize("action", ["multiplicative", ActionEnum.multiplicative])
 def test_categorical_multiplier_applies_to_generated_signal(
-        action
-        ):
+    action
+):
     category = Categorical("constant", 1, [1], 1, action, [2.0])
     series = TimeSeries("example")
     series.generate_signal(length = 20, categorical_variables = [category], noise_mean = 0)
@@ -24,8 +24,8 @@ def test_categorical_multiplier_applies_to_generated_signal(
 
 
 def test_tsf_parser_returns_data_and_metadata_without_distutils(
-        tmp_path
-        ):
+    tmp_path
+):
     path = tmp_path / "example.tsf"
     path.write_text(
         "@attribute series_name string\n@frequency hourly\n@horizon 2\n"
@@ -50,12 +50,12 @@ def test_generated_signal_sums_all_additive_categories():
         ("exchange_rate", "exchange_rate/exchange_rate.csv"),
         ("illness", "illness/national_illness.csv"),
     ]
-    )
+)
 def test_public_dataset_selects_the_corresponding_csv(
-        tmp_path,
-        dataset,
-        relative_path
-        ):
+    tmp_path,
+    dataset,
+    relative_path
+):
     path = tmp_path / "all_six_datasets" / relative_path
     path.parent.mkdir(parents = True)
     pd.DataFrame({"date": ["2024-01-01", "2024-01-02"], "OT": [1., 2.]}).to_csv(path, index = False)

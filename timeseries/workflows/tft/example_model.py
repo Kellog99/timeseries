@@ -23,7 +23,7 @@ if __name__ == '__main__':
         step = step,
         scaler_y = scaler_type,
         path = path_data
-        )
+    )
 
     d_model = 4
     n_enc = 2
@@ -55,7 +55,7 @@ if __name__ == '__main__':
         dropout,
         num_lstm_layers,
         device
-        )
+    )
 
     x, y = next(iter(train_dl))
     # x.shape = [8, 256, 6]

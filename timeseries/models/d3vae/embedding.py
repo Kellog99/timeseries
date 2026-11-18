@@ -15,10 +15,10 @@ class PositionalEmbedding(Module):
     pe: torch.Tensor
 
     def __init__(
-            self,
-            d_model,
-            max_len = 5000
-            ):
+        self,
+        d_model,
+        max_len = 5000
+    ):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model).float()
@@ -34,42 +34,42 @@ class PositionalEmbedding(Module):
         self.register_buffer('pe', pe)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.pe[:, :x.size(1)]
 
 
 class TokenEmbedding(Module):
     def __init__(
-            self,
-            c_in,
-            d_model
-            ):
+        self,
+        c_in,
+        d_model
+    ):
         super(TokenEmbedding, self).__init__()
         padding = 1 if torch.__version__ >= '1.5.0' else 2
         self.tokenConv = nn.Conv1d(
             in_channels = c_in, out_channels = d_model,
             kernel_size = 3, padding = padding, padding_mode = 'circular', bias = False
-            )
+        )
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
                 nn.init.kaiming_normal_(m.weight, mode = 'fan_in', nonlinearity = 'leaky_relu')
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         x = self.tokenConv(x.permute(0, 2, 1)).transpose(1, 2)
         return x
 
 
 class TemporalEmbedding(Module):
     def __init__(
-            self,
-            d_model,
-            freq = 'h'
-            ):
+        self,
+        d_model,
+        freq = 'h'
+    ):
         super(TemporalEmbedding, self).__init__()
 
         minute_size = 4;
@@ -91,13 +91,13 @@ class TemporalEmbedding(Module):
         self.month_embed = Embed(month_size, d_model)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         x = x.long()
         minute_x = self.minute_embed(x[:, :, 4]) if hasattr(self, 'minute_embed') else torch.zeros_like(
             self.hour_embed(x[:, :, 3])
-            )
+        )
         hour_x = self.hour_embed(x[:, :, 3])
         weekday_x = self.weekday_embed(x[:, :, 2])
         day_x = self.day_embed(x[:, :, 1])
@@ -114,12 +114,12 @@ class TemporalEmbedding(Module):
 
 class DataEmbedding(Module):
     def __init__(
-            self,
-            c_in,
-            d_model,
-            embs,
-            dropout = 0.1
-            ):
+        self,
+        c_in,
+        d_model,
+        embs,
+        dropout = 0.1
+    ):
         super(DataEmbedding, self).__init__()
 
         self.value_embedding = TokenEmbedding(c_in = c_in, d_model = d_model)
@@ -133,10 +133,10 @@ class DataEmbedding(Module):
         self.dropout = nn.Dropout(p = dropout)
 
     def forward(
-            self,
-            x,
-            x_mark
-            ):
+        self,
+        x,
+        x_mark
+    ):
         tot = None
         for i in range(len(self.emb_list)):
             if tot is None:

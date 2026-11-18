@@ -9,8 +9,8 @@ from timeseries.utils.typing import Module
 
 
 def weights_init(
-        m
-        ):
+    m
+):
     classname = m.__class__.__name__
     if classname.find("Conv") != -1:
         m.weight.data.normal_(0.0, 0.2)
@@ -21,67 +21,67 @@ def weights_init(
 
 class MyConvo2d(Module):
     def __init__(
-            self,
-            input_dim,
-            output_dim,
-            kernel_size,
-            stride = 1,
-            bias = True
-            ):
+        self,
+        input_dim,
+        output_dim,
+        kernel_size,
+        stride = 1,
+        bias = True
+    ):
         super(MyConvo2d, self).__init__()
         self.padding = int((kernel_size - 1) / 2)
         self.conv = nn.Conv2d(input_dim, output_dim, kernel_size, stride = 1, padding = self.padding, bias = bias)
 
     def forward(
-            self,
-            input
-            ):
+        self,
+        input
+    ):
         output = self.conv(input)
         return output
 
 
 class Square(Module):
     def __init__(
-            self
-            ):
+        self
+    ):
         super(Square, self).__init__()
         pass
 
     def forward(
-            self,
-            in_vect
-            ):
+        self,
+        in_vect
+    ):
         return in_vect ** 2
 
 
 class Swish(Module):
     def __init__(
-            self
-            ):
+        self
+    ):
         super(Swish, self).__init__()
         pass
 
     def forward(
-            self,
-            in_vect
-            ):
+        self,
+        in_vect
+    ):
         return in_vect * nn.functional.sigmoid(in_vect)
 
 
 class MeanPoolConv(Module):
     def __init__(
-            self,
-            input_dim,
-            output_dim,
-            kernel_size
-            ):
+        self,
+        input_dim,
+        output_dim,
+        kernel_size
+    ):
         super(MeanPoolConv, self).__init__()
         self.conv = MyConvo2d(input_dim, output_dim, kernel_size)
 
     def forward(
-            self,
-            input
-            ):
+        self,
+        input
+    ):
         output = input
         output = self.conv(output)
         return output
@@ -89,33 +89,33 @@ class MeanPoolConv(Module):
 
 class ConvMeanPool(Module):
     def __init__(
-            self,
-            input_dim,
-            output_dim,
-            kernel_size
-            ):
+        self,
+        input_dim,
+        output_dim,
+        kernel_size
+    ):
         super(ConvMeanPool, self).__init__()
         self.conv = MyConvo2d(input_dim, output_dim, kernel_size)
 
     def forward(
-            self,
-            input
-            ):
+        self,
+        input
+    ):
         output = self.conv(input)
         return output
 
 
 class ResidualBlock(Module):
     def __init__(
-            self,
-            input_dim,
-            output_dim,
-            kernel_size,
-            hw,
-            resample = None,
-            normalize = False,
-            AF = nn.ELU()
-            ):
+        self,
+        input_dim,
+        output_dim,
+        kernel_size,
+        hw,
+        resample = None,
+        normalize = False,
+        AF = nn.ELU()
+    ):
         super(ResidualBlock, self).__init__()
 
         self.input_dim = input_dim
@@ -144,9 +144,9 @@ class ResidualBlock(Module):
             self.conv_2 = MyConvo2d(input_dim, output_dim, kernel_size = kernel_size)
 
     def forward(
-            self,
-            input
-            ):
+        self,
+        input
+    ):
         if self.input_dim == self.output_dim and self.resample == None:
             shortcut = input
         else:
@@ -173,13 +173,13 @@ class ResidualBlock(Module):
 
 class Res12_Quadratic(Module):
     def __init__(
-            self,
-            inchan,
-            dim,
-            hw,
-            normalize = False,
-            AF = None
-            ):
+        self,
+        inchan,
+        dim,
+        hw,
+        normalize = False,
+        AF = None
+    ):
         super(Res12_Quadratic, self).__init__()
 
         self.hw = hw
@@ -198,9 +198,9 @@ class Res12_Quadratic(Module):
         self.Square = Square()
 
     def forward(
-            self,
-            x_in
-            ):
+        self,
+        x_in
+    ):
         output = x_in
         output = self.conv1(output)
         # print(output.shape)

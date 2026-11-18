@@ -21,7 +21,7 @@ class ConfigTFT(ThreeQuantileConfiguration):
     past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
     future_channels: NonNegativeInt = Field(
         ..., description = 'Number of known future numerical features; zero is allowed.'
-        )
+    )
     embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
     d_model: PositiveInt = Field(..., description = 'Dimension of the internal feature embeddings.')
     num_heads: PositiveInt = Field(..., description = 'Number of attention heads.')
@@ -35,11 +35,11 @@ class ConfigTFT(ThreeQuantileConfiguration):
     kind: str = Field(..., description = 'Kind.')
     persistence_weight: float = Field(
         0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
-        )
+    )
     loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
     quantiles: list[Quantile] | None = Field(
         None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
-        )
+    )
     optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
     optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
     scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
@@ -54,30 +54,30 @@ class TFT(Base):
     CONFIG_T: ClassVar[type[ConfigTFT]] = ConfigTFT
 
     def __init__(
-            self,
-            use_target_past: bool,
-            use_yprec_fut: bool,
-            past_steps: int,
-            future_steps: int,
-            past_channels: int,
-            future_channels: int,
-            embs: list[int],
-            d_model: int,
-            num_heads: int,
-            head_size: int,
-            fw_exp: int,
-            dropout: float,
-            n_layer_encoder: int,
-            n_layer_decoder: int,
-            num_layers_RNN: int,
-            out_channels: int,
-            kind: str,
-            persistence_weight: float = 0.0,
-            loss_type: BaseLoss = 'l1',
-            quantiles: list[float] | None = None,
-            optim: str | None = None,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        use_target_past: bool,
+        use_yprec_fut: bool,
+        past_steps: int,
+        future_steps: int,
+        past_channels: int,
+        future_channels: int,
+        embs: list[int],
+        d_model: int,
+        num_heads: int,
+        head_size: int,
+        fw_exp: int,
+        dropout: float,
+        n_layer_encoder: int,
+        n_layer_decoder: int,
+        num_layers_RNN: int,
+        out_channels: int,
+        kind: str,
+        persistence_weight: float = 0.0,
+        loss_type: BaseLoss = 'l1',
+        quantiles: list[float] | None = None,
+        optim: str | None = None,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         """TFT model 'arXiv:1912.09363v3 [stat.ML] 27 Sep 2020'
 
@@ -151,7 +151,7 @@ class TFT(Base):
         # - Encoder (past)
         self.EncVariableSelection = embedding_nn.Encoder_Var_Selection(
             self.use_target_past, len(embs) + 3, past_channels, d_model, dropout
-            )
+        )
         self.EncRNN = embedding_nn.Encoder_RNN(self.type_RNN, num_layers_RNN, d_model, dropout)
         self.EncGRN = embedding_nn.GRN(d_model, dropout)
         self.Encoder = encoder.Encoder(n_layer_encoder, d_model, num_heads, self.head_size, fw_exp, dropout)
@@ -159,12 +159,12 @@ class TFT(Base):
         # - Decoder (future)
         self.DecVariableSelection = embedding_nn.Decoder_Var_Selection(
             self.use_yprec_fut, len(embs) + 3, out_channels + 1, d_model, dropout
-            )
+        )
         self.DecRNN = embedding_nn.Decoder_RNN(self.type_RNN, num_layers_RNN, d_model, dropout)
         self.DecGRN = embedding_nn.GRN(d_model, dropout)
         self.Decoder = decoder.Decoder(
             n_layer_decoder, d_model, num_heads, self.head_size, fw_exp, future_steps, dropout
-            )
+        )
 
         # - PostTransformer (future)
         self.postTransformer = embedding_nn.postTransformer(d_model, dropout)
@@ -174,9 +174,9 @@ class TFT(Base):
         self.outLinear = nn.Linear(d_model, out_channels * self.mul)
 
     def forward(
-            self,
-            batch: dict
-            ) -> torch.Tensor:
+        self,
+        batch: dict
+    ) -> torch.Tensor:
         """ --- TFT ---
         This Model can perform iterative and direct predictions:\n
         ITERATIVE:\n
@@ -271,9 +271,9 @@ class TFT(Base):
         # daje roma
 
     def inference(
-            self,
-            batch: dict
-            ) -> torch.Tensor:
+        self,
+        batch: dict
+    ) -> torch.Tensor:
         """Exactly equal to forward method
 
         Args:

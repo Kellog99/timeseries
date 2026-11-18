@@ -9,11 +9,11 @@ class Head_selfEnc(Module):
     """ one head of self-att for encoder """
 
     def __init__(
-            self,
-            n_embd,
-            head_size,
-            dropout
-            ):
+        self,
+        n_embd,
+        head_size,
+        dropout
+    ):
         super().__init__()
         self.head_size = head_size
         self.key = nn.Linear(n_embd, head_size, bias = False)
@@ -22,18 +22,18 @@ class Head_selfEnc(Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(
-            self,
-            queries,
-            keys,
-            values
-            ):
+        self,
+        queries,
+        keys,
+        values
+    ):
         # import pdb
         # pdb.set_trace()
         queries = self.query(queries)
         keys = self.key(keys)
         wei = queries @ keys.transpose(
             -2, -1
-            ) * self.head_size ** -0.5  # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
+        ) * self.head_size ** -0.5  # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
         wei = nn.functional.softmax(wei, dim = -1)
         wei = self.dropout(wei)
 
@@ -45,12 +45,12 @@ class Head_selfEnc(Module):
 class MultiHeadEnc(Module):
 
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        dropout
+    ):
         super().__init__()
         self.head_size = head_size
         self.num_heads = num_heads
@@ -58,11 +58,11 @@ class MultiHeadEnc(Module):
         self.common_values_linear = nn.Linear(n_embd, head_size, bias = False)
 
     def forward(
-            self,
-            queries,
-            keys,
-            values
-            ):
+        self,
+        queries,
+        keys,
+        values
+    ):
         # import pdb
         # pdb.set_trace()
         device = queries.device.type
@@ -79,10 +79,10 @@ class MultiHeadEnc(Module):
 class FFN(Module):
 
     def __init__(
-            self,
-            n_embd,
-            fw_exp
-            ):
+        self,
+        n_embd,
+        fw_exp
+    ):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, fw_exp * n_embd),
@@ -91,22 +91,22 @@ class FFN(Module):
         )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.net(x)
 
 
 #   ENCODER-LAYER    #
 class EncoderLayer(Module):
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            fw_exp,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        fw_exp,
+        dropout
+    ):
         super().__init__()
         self.heads = MultiHeadEnc(n_embd, num_heads, head_size, dropout)
         self.linear_to_embd = nn.Linear(head_size, n_embd)
@@ -115,11 +115,11 @@ class EncoderLayer(Module):
         self.norm2 = nn.LayerNorm(n_embd)
 
     def forward(
-            self,
-            queries,
-            keys,
-            values
-            ):
+        self,
+        queries,
+        keys,
+        values
+    ):
         # import pdb
         # pdb.set_trace()
         queries = queries + self.linear_to_embd(self.heads(self.norm1(queries), keys, values))
@@ -130,14 +130,14 @@ class EncoderLayer(Module):
 #   ENCODER   #
 class Encoder(Module):
     def __init__(
-            self,
-            n_enc: int,
-            n_embd: int,
-            num_heads: int,
-            head_size: int,
-            fw_exp: int,
-            dropout: float
-            ):
+        self,
+        n_enc: int,
+        n_embd: int,
+        num_heads: int,
+        head_size: int,
+        fw_exp: int,
+        dropout: float
+    ):
         """Encoder
 
         Args:
@@ -152,15 +152,15 @@ class Encoder(Module):
         self.layers = nn.ModuleList(
             [EncoderLayer(n_embd, num_heads, head_size, fw_exp, dropout)
              for _ in range(n_enc)]
-            )
+        )
         self.norm = nn.LayerNorm(n_embd)
 
     def forward(
-            self,
-            queries: torch.Tensor,
-            keys: torch.Tensor,
-            values: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        queries: torch.Tensor,
+        keys: torch.Tensor,
+        values: torch.Tensor
+    ) -> torch.Tensor:
         """Encoder:
         - Multi Head SelfAttention on Encoder
         - Feed Forward Network

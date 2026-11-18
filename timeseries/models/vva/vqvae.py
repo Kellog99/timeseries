@@ -36,12 +36,12 @@ class VectorQuantizer(Module):
     """
 
     def __init__(
-            self,
-            num_embeddings,
-            embedding_dim,
-            commitment_cost,
-            device
-            ):
+        self,
+        num_embeddings,
+        embedding_dim,
+        commitment_cost,
+        device
+    ):
         super(VectorQuantizer, self).__init__()
 
         self._embedding_dim = embedding_dim
@@ -54,11 +54,11 @@ class VectorQuantizer(Module):
         self._device = device
 
     def forward(
-            self,
-            inputs,
-            compute_distances_if_possible = True,
-            record_codebook_stats = False
-            ):
+        self,
+        inputs,
+        compute_distances_if_possible = True,
+        record_codebook_stats = False
+    ):
         """
         Connects the module to some inputs.
 
@@ -118,7 +118,7 @@ class VectorQuantizer(Module):
                                               product(flat_input, self._embedding.weight.detach())]
             frames_vs_embedding_distances = torch.tensor(_frames_vs_embedding_distances).to(self._device).view(
                 batch_size, time, -1
-                )
+            )
         else:
             frames_vs_embedding_distances = None
 
@@ -157,21 +157,21 @@ class VectorQuantizer(Module):
 
     @property
     def embedding(
-            self
-            ):
+        self
+    ):
         return self._embedding
 
 
 class VectorQuantizerEMA(Module):
 
     def __init__(
-            self,
-            num_embeddings,
-            embedding_dim,
-            commitment_cost,
-            decay,
-            epsilon = 1e-5
-            ):
+        self,
+        num_embeddings,
+        embedding_dim,
+        commitment_cost,
+        decay,
+        epsilon = 1e-5
+    ):
         super(VectorQuantizerEMA, self).__init__()
 
         self._embedding_dim = embedding_dim
@@ -189,9 +189,9 @@ class VectorQuantizerEMA(Module):
         self._epsilon = epsilon
 
     def forward(
-            self,
-            inputs
-            ):
+        self,
+        inputs
+    ):
         # convert inputs from BCHW -> BHWC
         inputs = inputs.permute(0, 2, 1).contiguous()
         input_shape = inputs.shape
@@ -240,17 +240,17 @@ class VectorQuantizerEMA(Module):
         # convert quantized from BHWC -> BCHW
         return loss, quantized.permute(0, 2, 1).contiguous(), perplexity, encodings.view(
             input_shape[0], -1, encodings.shape[1]
-            )
+        )
 
 
 class Residual(Module):
 
     def __init__(
-            self,
-            in_channels,
-            hidden_channels,
-            num_residual_hiddens
-            ):
+        self,
+        in_channels,
+        hidden_channels,
+        num_residual_hiddens
+    ):
         super(Residual, self).__init__()
 
         relu_1 = nn.ReLU(True)
@@ -281,32 +281,32 @@ class Residual(Module):
         )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return x + self._block(x)
 
 
 class ResidualStack(Module):
 
     def __init__(
-            self,
-            in_channels,
-            hidden_channels,
-            num_residual_layers,
-            num_residual_hiddens
-            ):
+        self,
+        in_channels,
+        hidden_channels,
+        num_residual_layers,
+        num_residual_hiddens
+    ):
         super(ResidualStack, self).__init__()
 
         self._num_residual_layers = num_residual_layers
         self._layers = nn.ModuleList(
             [Residual(in_channels, hidden_channels, num_residual_hiddens)] * self._num_residual_layers
-            )
+        )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         for i in range(self._num_residual_layers):
             x = self._layers[i](x)
         return F.relu(x)
@@ -314,44 +314,44 @@ class ResidualStack(Module):
 
 class Encoder(Module):
     def __init__(
-            self,
-            in_channels,
-            hidden_channels,
-            num_residual_layers = 3
-            ):
+        self,
+        in_channels,
+        hidden_channels,
+        num_residual_layers = 3
+    ):
         super(Encoder, self).__init__()
 
         self._conv_1 = nn.Conv1d(
             in_channels = in_channels,
             out_channels = hidden_channels,
             kernel_size = 3, padding = 1
-            )
+        )
 
         self._conv_2 = nn.Conv1d(
             in_channels = hidden_channels,
             out_channels = hidden_channels,
             kernel_size = 3, padding = 1
-            )
+        )
 
         self._conv_3 = nn.Conv1d(
             in_channels = hidden_channels,
             out_channels = hidden_channels,
             kernel_size = 4,
             stride = 2, padding = 1
-            )
+        )
 
         self._conv_4 = nn.Conv1d(
             in_channels = hidden_channels,
             out_channels = hidden_channels,
             kernel_size = 3,
             padding = 1
-            )
+        )
 
         self._conv_5 = nn.Conv1d(
             in_channels = hidden_channels,
             out_channels = hidden_channels,
             kernel_size = 3, padding = 1
-            )
+        )
 
         self._residual_stack = ResidualStack(
             in_channels = hidden_channels,
@@ -361,9 +361,9 @@ class Encoder(Module):
         )
 
     def forward(
-            self,
-            inputs
-            ):
+        self,
+        inputs
+    ):
         x_conv_1 = F.relu(self._conv_1(inputs))
         x = F.relu(self._conv_2(x_conv_1)) + x_conv_1
         x_conv_3 = F.relu(self._conv_3(x))
@@ -386,17 +386,17 @@ class Jitter(Module):
     """
 
     def __init__(
-            self,
-            probability = 0.12
-            ):
+        self,
+        probability = 0.12
+    ):
         super(Jitter, self).__init__()
 
         self._probability = probability
 
     def forward(
-            self,
-            quantized
-            ):
+        self,
+        quantized
+    ):
         original_quantized = quantized.detach().clone()
         length = original_quantized.size(2)
         for i in range(length):
@@ -424,12 +424,12 @@ class Jitter(Module):
 
 class Decoder(Module):
     def __init__(
-            self,
-            in_channels,
-            hidden_channels,
-            out_channels,
-            num_residual_layers = 3
-            ):
+        self,
+        in_channels,
+        hidden_channels,
+        out_channels,
+        num_residual_layers = 3
+    ):
         super(Decoder, self).__init__()
 
         self._jitter = Jitter(0.125)
@@ -439,7 +439,7 @@ class Decoder(Module):
             out_channels = hidden_channels,
             kernel_size = 3,
             padding = 1
-            )
+        )
 
         self._upsample = nn.Upsample(scale_factor = 2)
 
@@ -454,7 +454,7 @@ class Decoder(Module):
             in_channels = hidden_channels,
             out_channels = hidden_channels,
             kernel_size = 3, padding = 1
-            )
+        )
 
         self._conv_trans_2 = nn.ConvTranspose1d(
             in_channels = hidden_channels,
@@ -466,13 +466,13 @@ class Decoder(Module):
             in_channels = hidden_channels,
             out_channels = out_channels,
             kernel_size = 4, padding = 1
-            )
+        )
 
     def forward(
-            self,
-            x,
-            is_training = True
-            ):
+        self,
+        x,
+        is_training = True
+    ):
         if is_training:
             x = self._jitter(x)
         x = self._conv_1(x)
@@ -486,15 +486,15 @@ class Decoder(Module):
 
 class VQVAE(Module):
     def __init__(
-            self,
-            in_channels,
-            hidden_channels,
-            out_channels,
-            num_embeddings,
-            embedding_dim,
-            commitment_cost,
-            decay
-            ):
+        self,
+        in_channels,
+        hidden_channels,
+        out_channels,
+        num_embeddings,
+        embedding_dim,
+        commitment_cost,
+        decay
+    ):
         super(VQVAE, self).__init__()
 
         self._encoder = Encoder(in_channels, hidden_channels)
@@ -503,27 +503,27 @@ class VQVAE(Module):
             out_channels = embedding_dim,
             kernel_size = 1,
             stride = 1
-            )
+        )
         if decay > 0.0:
             self._vq_vae = VectorQuantizerEMA(
                 num_embeddings, embedding_dim,
                 commitment_cost, decay
-                )
+            )
         else:
             logging.info('CARE NOT TESTED')
             self._vq_vae = VectorQuantizer(
                 num_embeddings, embedding_dim,
                 commitment_cost, device = "cpu"
-                )
+            )
         self._decoder = Decoder(
             in_channels = embedding_dim, hidden_channels = hidden_channels, out_channels = out_channels
-            )
+        )
 
     def forward(
-            self,
-            x,
-            is_training = True
-            ):
+        self,
+        x,
+        is_training = True
+    ):
         z = self._encoder(x)
 
         z = self._pre_vq_conv(z)

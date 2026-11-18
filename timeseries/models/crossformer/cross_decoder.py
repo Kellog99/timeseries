@@ -11,20 +11,20 @@ class DecoderLayer(Module):
     '''
 
     def __init__(
-            self,
-            seg_len,
-            d_model,
-            n_heads,
-            d_ff = None,
-            dropout = 0.1,
-            out_seg_num = 10,
-            factor = 10
-            ):
+        self,
+        seg_len,
+        d_model,
+        n_heads,
+        d_ff = None,
+        dropout = 0.1,
+        out_seg_num = 10,
+        factor = 10
+    ):
         super(DecoderLayer, self).__init__()
         self.self_attention = TwoStageAttentionLayer(
             out_seg_num, factor, d_model, n_heads, \
             d_ff, dropout
-            )
+        )
         self.cross_attention = AttentionLayer(d_model, n_heads, dropout = dropout)
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
@@ -33,14 +33,14 @@ class DecoderLayer(Module):
             nn.Linear(d_model, d_model),
             nn.GELU(),
             nn.Linear(d_model, d_model)
-            )
+        )
         self.linear_pred = nn.Linear(d_model, seg_len)
 
     def forward(
-            self,
-            x,
-            cross
-            ):
+        self,
+        x,
+        cross
+    ):
         '''
         x: the output of last decoder layer
         cross: the output of the corresponding encoder layer
@@ -72,17 +72,17 @@ class Decoder(Module):
     '''
 
     def __init__(
-            self,
-            seg_len,
-            d_layers,
-            d_model,
-            n_heads,
-            d_ff,
-            dropout, \
+        self,
+        seg_len,
+        d_layers,
+        d_model,
+        n_heads,
+        d_ff,
+        dropout, \
             router = False,
-            out_seg_num = 10,
-            factor = 10
-            ):
+        out_seg_num = 10,
+        factor = 10
+    ):
         super(Decoder, self).__init__()
 
         self.router = router
@@ -92,14 +92,14 @@ class Decoder(Module):
                 DecoderLayer(
                     seg_len, d_model, n_heads, d_ff, dropout, \
                     out_seg_num, factor
-                    )
                 )
+            )
 
     def forward(
-            self,
-            x,
-            cross
-            ):
+        self,
+        x,
+        cross
+    ):
         final_predict = None
         i = 0
 

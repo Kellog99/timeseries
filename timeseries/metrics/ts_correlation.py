@@ -1,12 +1,11 @@
 """Streaming multivariate dependence metrics on paired observations."""
 
-
 import torch
 from torch import Tensor
 from torchmetrics import PearsonCorrCoef
 
-from timeseries.utils.typing import Metric
 from timeseries.metric_register import MetricFactory
+from timeseries.utils.typing import Metric
 
 
 class PairedMetric(Metric):
@@ -15,17 +14,17 @@ class PairedMetric(Metric):
     y_list: list[Tensor]
 
     def __init__(
-            self
-            ) -> None:
+        self
+    ) -> None:
         super().__init__()
         self.add_state("x_list", default = [], dist_reduce_fx = "cat")
         self.add_state("y_list", default = [], dist_reduce_fx = "cat")
 
     def update(
-            self,
-            x: Tensor,
-            y: Tensor
-            ) -> None:
+        self,
+        x: Tensor,
+        y: Tensor
+    ) -> None:
         x, y = x.detach().to(self.device, dtype = torch.float64), y.detach().to(self.device, dtype = torch.float64)
         x = x.unsqueeze(1) if x.ndim == 1 else x
         y = y.unsqueeze(1) if y.ndim == 1 else y
@@ -39,8 +38,8 @@ class PairedMetric(Metric):
         self.y_list.append(y)
 
     def values(
-            self
-            ) -> tuple[Tensor, Tensor]:
+        self
+    ) -> tuple[Tensor, Tensor]:
         if not isinstance(self.x_list, Tensor) and not self.x_list:
             raise ValueError("Update the metric before computing it.")
         x = self.x_list if isinstance(self.x_list, Tensor) else torch.cat(self.x_list)
@@ -58,13 +57,13 @@ class PairedMetric(Metric):
 class CanonicalCorrelation(PairedMetric):
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         x, y = self.values()
 
         def basis(
-                values: Tensor
-                ) -> Tensor:
+            values: Tensor
+        ) -> Tensor:
             centered = values - values.mean(0)
             u, _, _ = torch.linalg.svd(centered, full_matrices = False)
             return u[:, :int(torch.linalg.matrix_rank(centered).item())]
@@ -83,8 +82,8 @@ class CanonicalCorrelation(PairedMetric):
 class RVCoefficient(PairedMetric):
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         x, y = self.values()
         x, y = x - x.mean(0), y - y.mean(0)
         xx, yy = x @ x.T, y @ y.T
@@ -99,13 +98,13 @@ class RVCoefficient(PairedMetric):
 class DistanceCorrelation(PairedMetric):
 
     def compute(
-            self
-            ) -> Tensor:
+        self
+    ) -> Tensor:
         x, y = self.values()
 
         def distances(
-                values: Tensor
-                ) -> Tensor:
+            values: Tensor
+        ) -> Tensor:
             matrix = torch.cdist(values, values)
             return matrix - matrix.mean(1, keepdim = True) - matrix.mean(0, keepdim = True) + matrix.mean()
 
@@ -123,6 +122,6 @@ class DistanceCorrelation(PairedMetric):
 class PearsonCorrelation(PearsonCorrCoef):
 
     def __init__(
-            self
-            ) -> None:
+        self
+    ) -> None:
         super().__init__()

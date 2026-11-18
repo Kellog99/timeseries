@@ -7,12 +7,12 @@ from timeseries.utils.typing import Module
 class embedding_cat_variables(Module):
     # at the moment cat_past and cat_fut together
     def __init__(
-            self,
-            seq_len: int,
-            future_steps: int,
-            d_model: int,
-            emb_dims: list
-            ):
+        self,
+        seq_len: int,
+        future_steps: int,
+        d_model: int,
+        emb_dims: list
+    ):
         """Class for embedding categorical variables, adding 3 positional variables during forward.
 
         Args:
@@ -34,9 +34,9 @@ class embedding_cat_variables(Module):
         )
 
     def forward(
-            self,
-            x: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor
+    ) -> torch.Tensor:
         """Must be applied to both past and future variables: a concatenation is needed!
         To x's components, 3 new variables are added; in the order:
         - pos_seq: assign at each step its time-position
@@ -66,42 +66,42 @@ class embedding_cat_variables(Module):
         return cat_n_embd
 
     def get_pos_seq(
-            self,
-            bs: int
-            ) -> torch.Tensor:
+        self,
+        bs: int
+    ) -> torch.Tensor:
         # [0, 1,....,seq_len-1] repeated bs times
         pos_seq = torch.arange(0, self.seq_len)
         pos_seq = pos_seq.repeat(bs, 1).unsqueeze(2)
         return pos_seq
 
     def get_pos_fut(
-            self,
-            bs: int
-            ) -> torch.Tensor:
+        self,
+        bs: int
+    ) -> torch.Tensor:
         # [0,0,..,0,1,...lag], where 0 is repeated past_steps-times
         pos_fut = torch.cat(
             (torch.zeros((self.seq_len - self.future_steps), dtype = torch.long),
              torch.arange(1, self.future_steps + 1))
-            )
+        )
         pos_fut = pos_fut.repeat(bs, 1).unsqueeze(2)
         return pos_fut
 
     def get_is_fut(
-            self,
-            bs: int
-            ) -> torch.Tensor:
+        self,
+        bs: int
+    ) -> torch.Tensor:
         # [0,0,...,0,1,...,1] with #past_steps 0s and #future_steps 1s
         is_fut = torch.cat(
             (torch.zeros((self.seq_len - self.future_steps), dtype = torch.long),
              torch.ones((self.future_steps), dtype = torch.long))
-            )
+        )
         is_fut = is_fut.repeat(bs, 1).unsqueeze(2)
         return is_fut
 
     def get_cat_n_embd(
-            self,
-            cat_vars: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        cat_vars: torch.Tensor
+    ) -> torch.Tensor:
         device = cat_vars.device.type
 
         cat_n_embd = torch.Tensor().to(device)
@@ -114,10 +114,10 @@ class embedding_cat_variables(Module):
 
 class embedding_num_past_variables(Module):
     def __init__(
-            self,
-            channels: int,
-            d_model: int
-            ):
+        self,
+        channels: int,
+        d_model: int
+    ):
         """Class to embed past numerical variables.
         Only past, do not concat with future
 
@@ -133,9 +133,9 @@ class embedding_num_past_variables(Module):
         )
 
     def forward(
-            self,
-            num_past_tensor: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        num_past_tensor: torch.Tensor
+    ) -> torch.Tensor:
         """Class to embed past numerical variables.
 
         Args:
@@ -155,11 +155,11 @@ class embedding_num_past_variables(Module):
 
 class embedding_num_future_variables(Module):
     def __init__(
-            self,
-            max_steps: int,
-            channels: int,
-            d_model: int
-            ):
+        self,
+        max_steps: int,
+        channels: int,
+        d_model: int
+    ):
         """ Embedding the target varible. (Only one)
         'channels' now not used, but ready to extend the model to predict more variables
 
@@ -179,9 +179,9 @@ class embedding_num_future_variables(Module):
         self.emb_pos_layer = nn.Embedding(max_steps, d_model)
 
     def forward(
-            self,
-            num_fut_tensor: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        num_fut_tensor: torch.Tensor
+    ) -> torch.Tensor:
         """Embedding the target varible. (Only one)
 
         Args:
@@ -206,18 +206,18 @@ class embedding_num_future_variables(Module):
         return embedded_num_past_vars
 
     def get_pos_seq(
-            self,
-            bs: int,
-            length: int
-            ) -> torch.Tensor:
+        self,
+        bs: int,
+        length: int
+    ) -> torch.Tensor:
         pos_seq = torch.arange(0, length)
         pos_seq = pos_seq.repeat(bs, 1).unsqueeze(2)
         return pos_seq
 
     def get_num_fut_embedded(
-            self,
-            num_fut_vars: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        num_fut_vars: torch.Tensor
+    ) -> torch.Tensor:
         device = num_fut_vars.device.type
         embed_vars = torch.Tensor().to(device)
         # at each iteration use the first L
@@ -230,9 +230,9 @@ class embedding_num_future_variables(Module):
 
 class GLU(Module):
     def __init__(
-            self,
-            d_model: int
-            ):
+        self,
+        d_model: int
+    ):
         """Gated Linear Unit, 'Gate' block in TFT paper
         Sub net of GRN: linear(x) * sigmoid(linear(x))
         No dimension changes
@@ -246,9 +246,9 @@ class GLU(Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(
-            self,
-            x: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor
+    ) -> torch.Tensor:
         """Gated Linear Unit
         Sub net of GRN: linear(x) * sigmoid(linear(x))
         No dimension changes: [bs, seq_len, d_model]
@@ -267,10 +267,10 @@ class GLU(Module):
 
 class GRN(Module):
     def __init__(
-            self,
-            d_model: int,
-            dropout: float
-            ):
+        self,
+        d_model: int,
+        dropout: float
+    ):
         """Gated Residual Network
         Used alone or as subnet of VariableSelection
         Norm(x + GLU(dropout( linear(ELU(linear)) )) )
@@ -288,9 +288,9 @@ class GRN(Module):
         self.norm = nn.LayerNorm(d_model)
 
     def forward(
-            self,
-            x: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor
+    ) -> torch.Tensor:
         """Gated Residual Network
         Used alone or as subnet of VariableSelection
         Norm(x + GLU(dropout( linear(ELU(linear)) )) )
@@ -310,11 +310,11 @@ class GRN(Module):
 
 class flatten_GRN(Module):
     def __init__(
-            self,
-            d_model: int,
-            num_var: int,
-            dropout: float
-            ):
+        self,
+        d_model: int,
+        num_var: int,
+        dropout: float
+    ):
         """Modified GRN for flattened variables
         We start from the starting dimension (emb_dims[0]) and gradually switch to mid dimension (emb_dims[1]).
         Ending with end dimension (emb_dims[2]), which will be the total number of variables to be selected.
@@ -340,9 +340,9 @@ class flatten_GRN(Module):
         self.softmax = nn.Softmax(dim = 2)
 
     def forward(
-            self,
-            x: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor
+    ) -> torch.Tensor:
         """Modified GRN for flattened variables to get Variable Selection Weights
         Norm(x + GLU(dropout( linear(ELU(linear)) )) )
 
@@ -363,13 +363,13 @@ class flatten_GRN(Module):
 
 class Encoder_Var_Selection(Module):  # input already embedded
     def __init__(
-            self,
-            use_target_past: bool,
-            n_past_cat_var: int,
-            n_past_num_var: int,
-            d_model: int,
-            dropout: float
-            ):
+        self,
+        use_target_past: bool,
+        n_past_cat_var: int,
+        n_past_num_var: int,
+        d_model: int,
+        dropout: float
+    ):
         """Variable Selection Network in Encoder(past)
         Apply GRN to each variable, compute selection weights
         Element-wise multiplication to have a Tensor [bs, seq_len, d_model] encoding the single variable.
@@ -411,10 +411,10 @@ class Encoder_Var_Selection(Module):  # input already embedded
         self.flatten_GRN = flatten_GRN(d_model, tot_var, dropout)
 
     def forward(
-            self,
-            categorical: torch.Tensor,
-            y: torch.Tensor | None = None
-            ) -> torch.Tensor:
+        self,
+        categorical: torch.Tensor,
+        y: torch.Tensor | None = None
+    ) -> torch.Tensor:
         """Variable Selection Network in Encoder(past)
         If y is not None, we want to apply selection also to numerical(y) variables
 
@@ -451,9 +451,9 @@ class Encoder_Var_Selection(Module):  # input already embedded
         return out
 
     def get_cat_GRN(
-            self,
-            x: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor
+    ) -> torch.Tensor:
         device = x.device.type
         # cat_after_GRN to store variables in parallel over the second dimension
         cat_after_GRN = torch.Tensor().to(device)
@@ -463,9 +463,9 @@ class Encoder_Var_Selection(Module):  # input already embedded
         return cat_after_GRN
 
     def get_num_GRN(
-            self,
-            x: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor
+    ) -> torch.Tensor:
         device = x.device.type
         # num_after_GRN to store variables in parallel over the second dimension
         num_after_GRN = torch.Tensor().to(device)
@@ -481,12 +481,12 @@ class Encoder_Var_Selection(Module):  # input already embedded
 
 class Encoder_RNN(Module):
     def __init__(
-            self,
-            type_RNN: str,
-            n_layers_RNN: int,
-            d_model: int,
-            dropout: float
-            ):
+        self,
+        type_RNN: str,
+        n_layers_RNN: int,
+        d_model: int,
+        dropout: float
+    ):
         """RNN Encoder with GLU, Add and Norm
         norm( x + RNN(dropout( LSTM(x) )) )
 
@@ -504,12 +504,12 @@ class Encoder_RNN(Module):
             self.RNN = nn.LSTM(
                 input_size = d_model, hidden_size = self.hidden_size, num_layers = self.n_layers_RNN,
                 batch_first = True, bias = False, dropout = dropout
-                )
+            )
         elif type_RNN == 'gru':
             self.RNN = nn.GRU(
                 input_size = d_model, hidden_size = self.hidden_size, num_layers = self.n_layers_RNN,
                 batch_first = True, bias = False, dropout = dropout
-                )
+            )
         else:
             raise Exception(f"NO VALID {type_RNN} RNN TYPE\n > Check the spell")
 
@@ -518,9 +518,9 @@ class Encoder_RNN(Module):
         self.norm = nn.LayerNorm(d_model)
 
     def forward(
-            self,
-            x: torch.Tensor
-            ) -> tuple[torch.Tensor, torch.Tensor | tuple[torch.Tensor, torch.Tensor]]:
+        self,
+        x: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor | tuple[torch.Tensor, torch.Tensor]]:
         """LSTM Encoder with GLU, Add and Norm
 
         Args:
@@ -548,13 +548,13 @@ class Encoder_RNN(Module):
 
 class Decoder_Var_Selection(Module):  # input already embedded
     def __init__(
-            self,
-            use_yprec: bool,
-            n_fut_cat_var: int,
-            n_fut_num_var: int,
-            d_model: int,
-            dropout: float
-            ):
+        self,
+        use_yprec: bool,
+        n_fut_cat_var: int,
+        n_fut_num_var: int,
+        d_model: int,
+        dropout: float
+    ):
         """Variable Selection Network in Decoder(future)
         Apply GRN to each variable, compute selection weights
         Element-wise multiplication to have a Tensor [bs, seq_len, d_model] encoding the single variable.
@@ -594,10 +594,10 @@ class Decoder_Var_Selection(Module):  # input already embedded
         self.flatten_GRN = flatten_GRN(d_model, tot_var, dropout)
 
     def forward(
-            self,
-            categorical: torch.Tensor,
-            y: torch.Tensor | None = None
-            ) -> torch.Tensor:
+        self,
+        categorical: torch.Tensor,
+        y: torch.Tensor | None = None
+    ) -> torch.Tensor:
         """Variable Selection Network in Decoder(future)
 
         Args:
@@ -629,9 +629,9 @@ class Decoder_Var_Selection(Module):  # input already embedded
         return out
 
     def get_cat_GRN(
-            self,
-            x: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor
+    ) -> torch.Tensor:
         device = x.device.type
         # cat_after_GRN to store variables in parallel over the second dimension
         cat_after_GRN = torch.Tensor().to(device)
@@ -641,9 +641,9 @@ class Decoder_Var_Selection(Module):  # input already embedded
         return cat_after_GRN
 
     def get_num_GRN(
-            self,
-            x: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor
+    ) -> torch.Tensor:
         # num_after_GRN to store variables in parallel over the second dimension
         device = x.device.type
         num_after_GRN = torch.Tensor().to(device)
@@ -660,12 +660,12 @@ class Decoder_Var_Selection(Module):  # input already embedded
 
 class Decoder_RNN(Module):
     def __init__(
-            self,
-            type_RNN: str,
-            n_layers_RNN: int,
-            d_model: int,
-            dropout: float
-            ):
+        self,
+        type_RNN: str,
+        n_layers_RNN: int,
+        d_model: int,
+        dropout: float
+    ):
         """RNN Decoder with GLU, Add and Norm
         norm( x + GLU(dropout( LSTM(x) )) )
 
@@ -683,12 +683,12 @@ class Decoder_RNN(Module):
             self.RNN = nn.LSTM(
                 input_size = d_model, hidden_size = self.hidden_size, num_layers = self.n_layers_RNN,
                 batch_first = True, bias = False, dropout = dropout
-                )
+            )
         elif type_RNN == 'gru':
             self.RNN = nn.GRU(
                 input_size = d_model, hidden_size = self.hidden_size, num_layers = self.n_layers_RNN,
                 batch_first = True, bias = False, dropout = dropout
-                )
+            )
         else:
             raise Exception(f"NO VALID {type_RNN} RNN TYPE\n > Check the spell")
         self.dropout = nn.Dropout(dropout)
@@ -696,10 +696,10 @@ class Decoder_RNN(Module):
         self.norm = nn.LayerNorm(d_model)
 
     def forward(
-            self,
-            x: torch.Tensor,
-            hn
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor,
+        hn
+    ) -> torch.Tensor:
         """RNN Decoder with GLU, Add and Norm
 
         Args:
@@ -718,10 +718,10 @@ class Decoder_RNN(Module):
 
 class postTransformer(Module):
     def __init__(
-            self,
-            d_model: int,
-            dropout: float
-            ):
+        self,
+        d_model: int,
+        dropout: float
+    ):
         """Last part of TFT after decoder and before last linear
         norm( res_conn_postLSTM + ( GLU(GRN( norm(res_conn_postGRN + GLU(dropout(x))) )) ) )
 
@@ -738,11 +738,11 @@ class postTransformer(Module):
         self.norm2 = nn.LayerNorm(d_model)
 
     def forward(
-            self,
-            x: torch.Tensor,
-            res_conn_dec: torch.Tensor,
-            res_conn_grn: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        x: torch.Tensor,
+        res_conn_dec: torch.Tensor,
+        res_conn_grn: torch.Tensor
+    ) -> torch.Tensor:
         """Last part of TFT after decoder and before last linear
 
         Args:

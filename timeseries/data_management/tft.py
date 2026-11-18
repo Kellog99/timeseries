@@ -8,17 +8,17 @@ from torch.utils.data import DataLoader
 
 
 def dataloading(
-        batch_size,
-        batch_size_test,
-        seq_len,
-        lag,
-        hour_learning,
-        hour_inference,
-        train_bool,
-        scaler_y,
-        step,
-        path = '../data/edison/processed.pkl'
-        ):
+    batch_size,
+    batch_size_test,
+    seq_len,
+    lag,
+    hour_learning,
+    hour_inference,
+    train_bool,
+    scaler_y,
+    step,
+    path = '../data/edison/processed.pkl'
+):
     dictbound = {
         'start_train': '2017-11-15',  # pd.to_datetime(dictbound['start_train'])
         'end_train': '2020-01-01',
@@ -78,21 +78,21 @@ def dataloading(
 
 class CustomDataset(torch.utils.data.Dataset):
     def __init__(
-            self,
-            df,
-            scaler,
-            seq_len,
-            lag,
-            step,
-            hour
-            ):
+        self,
+        df,
+        scaler,
+        seq_len,
+        lag,
+        step,
+        hour
+    ):
         X = []
         Y = []
 
         x = df.tempo.apply(
             lambda
                 x: [int(c) for c in x.strftime('%Y %m %d %H %w').split()]
-            ).values
+        ).values
         x = torch.tensor(np.array([np.array(c) for c in x]))
         y = torch.tensor(df.y.values)
         y = scaler.transform(y.unsqueeze(1)).squeeze()
@@ -123,12 +123,12 @@ class CustomDataset(torch.utils.data.Dataset):
         self.y = np.stack(Y)
 
     def __len__(
-            self
-            ):
+        self
+    ):
         return len(self.x)
 
     def __getitem__(
-            self,
-            index
-            ):
+        self,
+        index
+    ):
         return (self.x[index], self.y[index])

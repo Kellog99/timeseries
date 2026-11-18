@@ -16,31 +16,31 @@ from .resnet import Res12_Quadratic
 
 class diffusion_generate(Module):
     def __init__(
-            self,
-            target_dim,
-            embedding_dimension,
-            prediction_length,
-            sequence_length,
-            scale,
-            hidden_size,
-            num_layers,
-            dropout_rate,
-            diff_steps,
-            loss_type,
-            beta_end,
-            beta_schedule,
-            channel_mult,
-            mult,
-            num_preprocess_blocks,
-            num_preprocess_cells,
-            num_channels_enc,
-            arch_instance,
-            num_latent_per_group,
-            num_channels_dec,
-            groups_per_scale,
-            num_postprocess_blocks,
-            num_postprocess_cells
-            ):
+        self,
+        target_dim,
+        embedding_dimension,
+        prediction_length,
+        sequence_length,
+        scale,
+        hidden_size,
+        num_layers,
+        dropout_rate,
+        diff_steps,
+        loss_type,
+        beta_end,
+        beta_schedule,
+        channel_mult,
+        mult,
+        num_preprocess_blocks,
+        num_preprocess_cells,
+        num_channels_enc,
+        arch_instance,
+        num_latent_per_group,
+        num_channels_dec,
+        groups_per_scale,
+        num_postprocess_blocks,
+        num_postprocess_cells
+    ):
         super().__init__()
         self.target_dim = target_dim
         self.input_size = embedding_dimension
@@ -61,7 +61,7 @@ class diffusion_generate(Module):
             num_preprocess_blocks, num_preprocess_cells, num_channels_enc, arch_instance, num_latent_per_group,
             num_channels_dec, groups_per_scale, num_postprocess_blocks, num_postprocess_cells, embedding_dimension,
             hidden_size, target_dim, sequence_length, num_layers, dropout_rate
-            )
+        )
         self.diffusion = GaussianDiffusion(
             self.generative,
             input_size = target_dim,
@@ -74,11 +74,11 @@ class diffusion_generate(Module):
         self.projection = nn.Linear(embedding_dimension + hidden_size, embedding_dimension)
 
     def forward(
-            self,
-            past_time_feat,
-            future_time_feat,
-            t
-            ):
+        self,
+        past_time_feat,
+        future_time_feat,
+        t
+    ):
         """
         Output the generative results and related variables.
         """
@@ -90,35 +90,35 @@ class diffusion_generate(Module):
 
 class denoise_net(Module):
     def __init__(
-            self,
-            target_dim,
-            embedding_dimension,
-            prediction_length,
-            sequence_length,
-            scale,
-            hidden_size,
-            num_layers,
-            dropout_rate,
-            diff_steps,
-            loss_type,
-            beta_end,
-            beta_schedule,
-            channel_mult,
-            mult,
-            num_preprocess_blocks,
-            num_preprocess_cells,
-            num_channels_enc,
-            arch_instance,
-            num_latent_per_group,
-            num_channels_dec,
-            groups_per_scale,
-            num_postprocess_blocks,
-            num_postprocess_cells,
-            beta_start,
-            input_dim,
-            freq,
-            embs
-            ):
+        self,
+        target_dim,
+        embedding_dimension,
+        prediction_length,
+        sequence_length,
+        scale,
+        hidden_size,
+        num_layers,
+        dropout_rate,
+        diff_steps,
+        loss_type,
+        beta_end,
+        beta_schedule,
+        channel_mult,
+        mult,
+        num_preprocess_blocks,
+        num_preprocess_cells,
+        num_channels_enc,
+        arch_instance,
+        num_latent_per_group,
+        num_channels_dec,
+        groups_per_scale,
+        num_postprocess_blocks,
+        num_postprocess_cells,
+        beta_start,
+        input_dim,
+        freq,
+        embs
+    ):
         super().__init__()
         """
         The whole model architecture consists of three main parts, the coupled diffusion process and the generative 
@@ -142,30 +142,30 @@ class denoise_net(Module):
             dropout_rate, diff_steps, loss_type, beta_end, beta_schedule, channel_mult, mult,
             num_preprocess_blocks, num_preprocess_cells, num_channels_enc, arch_instance, num_latent_per_group,
             num_channels_dec, groups_per_scale, num_postprocess_blocks, num_postprocess_cells
-            )
+        )
 
         # Data embedding module.
 
         self.embedding = DataEmbedding(input_dim, embedding_dimension, embs, dropout_rate)
 
     def extract(
-            self,
-            a,
-            t,
-            x_shape
-            ):
+        self,
+        a,
+        t,
+        x_shape
+    ):
         """ extract the t-th element from a"""
         b, *_ = t.shape
         out = a.gather(-1, t)
         return out.reshape(b, *((1,) * (len(x_shape) - 1)))
 
     def forward(
-            self,
-            past_time_feat,
-            mark,
-            future_time_feat,
-            t
-            ):
+        self,
+        past_time_feat,
+        mark,
+        future_time_feat,
+        t
+    ):
         """
         Params:
            past_time_feat: Tensor
@@ -210,12 +210,12 @@ class denoise_net(Module):
 
 class pred_net(denoise_net):
     def forward(
-            self,
-            past_time_feat,
-            mark,
-            future_time_feat = None,
-            t = None
-            ):
+        self,
+        past_time_feat,
+        mark,
+        future_time_feat = None,
+        t = None
+    ):
         x = past_time_feat
         """
         generate the prediction by the trained model.
@@ -245,12 +245,12 @@ class pred_net(denoise_net):
 
 class Discriminator(Module):
     def __init__(
-            self,
-            neg_slope = 0.2,
-            latent_dim = 10,
-            hidden_units = 1000,
-            out_units = 2
-            ):
+        self,
+        neg_slope = 0.2,
+        latent_dim = 10,
+        hidden_units = 1000,
+        out_units = 2
+    ):
         """Discriminator proposed in [1].
         Parameters
         ----------
@@ -291,9 +291,9 @@ class Discriminator(Module):
         self.softmax = nn.Softmax()
 
     def forward(
-            self,
-            z
-            ):
+        self,
+        z
+    ):
         # Fully connected layers with leaky ReLu activations
         z = self.leaky_relu(self.lin1(z))
         z = self.leaky_relu(self.lin2(z))

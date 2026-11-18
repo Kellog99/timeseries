@@ -15,10 +15,10 @@ from torchmetrics import Metric as TorchMetric
 if TYPE_CHECKING:
     class Module(nn.Module):
         def forward(
-                self,
-                *args: Any,
-                **kwargs: Any
-                ) -> Any:  # ty: ignore[invalid-mutable-override]
+            self,
+            *args: Any,
+            **kwargs: Any
+        ) -> Any:  # ty: ignore[invalid-mutable-override]
             raise NotImplementedError
 
 
@@ -29,15 +29,15 @@ if TYPE_CHECKING:
 
     class Metric(_BoundMetricCalls):
         def update(
-                self,
-                *args: Any,
-                **kwargs: Any
-                ) -> None:  # ty: ignore[invalid-mutable-override]
+            self,
+            *args: Any,
+            **kwargs: Any
+        ) -> None:  # ty: ignore[invalid-mutable-override]
             raise NotImplementedError
 
         def compute(
-                self
-                ) -> Any:  # ty: ignore[invalid-mutable-override]
+            self
+        ) -> Any:  # ty: ignore[invalid-mutable-override]
             raise NotImplementedError
 else:
     Module = nn.Module

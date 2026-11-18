@@ -10,9 +10,9 @@ from torch.utils.data import Dataset
 
 
 def extend_df(
-        x: Union[pandas.Series, numpy.ndarray],
-        freq: str
-        ) -> pandas.DataFrame:
+    x: Union[pandas.Series, numpy.ndarray],
+    freq: str
+) -> pandas.DataFrame:
     """Utility for generating a full dataset and then merge the real data
 
     Args:
@@ -31,11 +31,11 @@ def extend_df(
 class MyDataset(Dataset):
 
     def __init__(
-            self,
-            data: dict,
-            t: np.ndarray,
-            idx_target: np.ndarray | list[int] | None
-            ) -> None:
+        self,
+        data: dict,
+        t: np.ndarray,
+        idx_target: np.ndarray | list[int] | None
+    ) -> None:
         """
             Extension of Dataset class. While training the returned item is a batch containing the standard keys
 
@@ -59,14 +59,14 @@ class MyDataset(Dataset):
         self.idx_target = np.array(idx_target) if idx_target is not None else None
 
     def __len__(
-            self
-            ):
+        self
+    ):
         return len(self.data['y'])
 
     def __getitem__(
-            self,
-            index
-            ):
+        self,
+        index
+    ):
         idxs = index
         sample = {}
         for k in self.data:

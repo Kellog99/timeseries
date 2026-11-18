@@ -9,11 +9,11 @@ class Head_selfEnc(Module):
     """ one head of self-att for encoder """
 
     def __init__(
-            self,
-            n_embd,
-            head_size,
-            dropout
-            ):
+        self,
+        n_embd,
+        head_size,
+        dropout
+    ):
         super().__init__()
         self.head_size = head_size
         self.key = nn.Linear(n_embd, head_size, bias = False)
@@ -22,11 +22,11 @@ class Head_selfEnc(Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(
-            self,
-            q,
-            k,
-            v
-            ):
+        self,
+        q,
+        k,
+        v
+    ):
         B, T, C = q.shape
 
         q = self.query(q)
@@ -43,23 +43,23 @@ class Head_selfEnc(Module):
 class MultiHeadEnc(Module):
 
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        dropout
+    ):
         super().__init__()
         self.num_heads = num_heads
         self.heads = nn.ModuleList([Head_selfEnc(n_embd, head_size, dropout) for _ in range(num_heads)])
         self.proj = nn.Linear(num_heads * head_size, n_embd)
 
     def forward(
-            self,
-            q,
-            k,
-            v
-            ):
+        self,
+        q,
+        k,
+        v
+    ):
         out = torch.cat([h(q, k, v) for h in self.heads], dim = -1)
         out = self.proj(out)
         return out
@@ -70,10 +70,10 @@ class MultiHeadEnc(Module):
 class FFN(Module):
 
     def __init__(
-            self,
-            n_embd,
-            fw_exp
-            ):
+        self,
+        n_embd,
+        fw_exp
+    ):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, fw_exp * n_embd),
@@ -82,22 +82,22 @@ class FFN(Module):
         )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.net(x)
 
 
 #   ENCODER-LAYER    #
 class EncoderLayer(Module):
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            fw_exp,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        fw_exp,
+        dropout
+    ):
         super().__init__()
         self.heads = MultiHeadEnc(n_embd, num_heads, head_size, dropout)
         self.ffn = FFN(n_embd, fw_exp)
@@ -105,11 +105,11 @@ class EncoderLayer(Module):
         self.norm2 = nn.LayerNorm(n_embd)
 
     def forward(
-            self,
-            q,
-            k,
-            v
-            ):
+        self,
+        q,
+        k,
+        v
+    ):
         q = q + self.heads(self.norm1(q), k, v)
         q = q + self.ffn(self.norm2(q))
         return q
@@ -118,27 +118,27 @@ class EncoderLayer(Module):
 # *   ENCODER   #
 class Encoder(Module):
     def __init__(
-            self,
-            n_enc,
-            n_embd,
-            num_heads,
-            head_size,
-            fw_exp,
-            dropout
-            ):
+        self,
+        n_enc,
+        n_embd,
+        num_heads,
+        head_size,
+        fw_exp,
+        dropout
+    ):
         super().__init__()
         self.layers = nn.ModuleList(
             [EncoderLayer(n_embd, num_heads, head_size, fw_exp, dropout)
              for _ in range(n_enc)]
-            )
+        )
         self.norm = nn.LayerNorm(n_embd)
 
     def forward(
-            self,
-            q,
-            k,
-            v
-            ):
+        self,
+        q,
+        k,
+        v
+    ):
         encoding = q
         for layer in self.layers:
             encoding = layer(encoding, k, v)

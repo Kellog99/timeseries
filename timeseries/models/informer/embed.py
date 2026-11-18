@@ -10,10 +10,10 @@ class PositionalEmbedding(Module):
     pe: torch.Tensor
 
     def __init__(
-            self,
-            d_model,
-            max_len = 5000
-            ):
+        self,
+        d_model,
+        max_len = 5000
+    ):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model).float()
@@ -29,42 +29,42 @@ class PositionalEmbedding(Module):
         self.register_buffer('pe', pe)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.pe[:, :x.size(1)]
 
 
 class TokenEmbedding(Module):
     def __init__(
-            self,
-            c_in,
-            d_model
-            ):
+        self,
+        c_in,
+        d_model
+    ):
         super(TokenEmbedding, self).__init__()
         padding = 1 if torch.__version__ >= '1.5.0' else 2
         self.tokenConv = nn.Conv1d(
             in_channels = c_in, out_channels = d_model,
             kernel_size = 3, padding = padding, padding_mode = 'circular'
-            )
+        )
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
                 nn.init.kaiming_normal_(m.weight, mode = 'fan_in', nonlinearity = 'leaky_relu')
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         x = self.tokenConv(x.permute(0, 2, 1)).transpose(1, 2)
         return x
 
 
 class FixedEmbedding(Module):
     def __init__(
-            self,
-            c_in,
-            d_model
-            ):
+        self,
+        c_in,
+        d_model
+    ):
         super(FixedEmbedding, self).__init__()
 
         w = torch.zeros(c_in, d_model).float()
@@ -80,19 +80,19 @@ class FixedEmbedding(Module):
         self.emb.weight = nn.Parameter(w, requires_grad = False)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.emb(x).detach()
 
 
 class TemporalEmbedding(Module):
     def __init__(
-            self,
-            d_model,
-            embed_type = 'fixed',
-            freq = 'h'
-            ):
+        self,
+        d_model,
+        embed_type = 'fixed',
+        freq = 'h'
+    ):
         super(TemporalEmbedding, self).__init__()
 
         minute_size = 4;
@@ -110,9 +110,9 @@ class TemporalEmbedding(Module):
         self.month_embed = Embed(month_size, d_model)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         x = x.long()
 
         minute_x = self.minute_embed(x[:, :, 4]) if hasattr(self, 'minute_embed') else 0.
@@ -126,11 +126,11 @@ class TemporalEmbedding(Module):
 
 class TimeFeatureEmbedding(Module):
     def __init__(
-            self,
-            d_model,
-            embed_type = 'timeF',
-            freq = 'h'
-            ):
+        self,
+        d_model,
+        embed_type = 'timeF',
+        freq = 'h'
+    ):
         super(TimeFeatureEmbedding, self).__init__()
 
         freq_map = {'h': 4, 't': 5, 's': 6, 'm': 1, 'a': 1, 'w': 2, 'd': 3, 'b': 3}
@@ -138,20 +138,20 @@ class TimeFeatureEmbedding(Module):
         self.embed = nn.Linear(d_inp, d_model)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.embed(x)
 
 
 class DataEmbedding(Module):
     def __init__(
-            self,
-            c_in,
-            d_model,
-            embs,
-            dropout = 0.1
-            ):
+        self,
+        c_in,
+        d_model,
+        embs,
+        dropout = 0.1
+    ):
         super(DataEmbedding, self).__init__()
 
         self.value_embedding = TokenEmbedding(c_in = c_in, d_model = d_model)
@@ -165,10 +165,10 @@ class DataEmbedding(Module):
         self.dropout = nn.Dropout(p = dropout)
 
     def forward(
-            self,
-            x,
-            x_mark
-            ):
+        self,
+        x,
+        x_mark
+    ):
         tot = None
         for i in range(len(self.emb_list)):
             if tot is None:

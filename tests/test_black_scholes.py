@@ -47,20 +47,30 @@ def test_deep_out_of_the_money_prices_are_finite_and_nonnegative():
         assert np.all(prices >= 0)
 
 
-@pytest.mark.parametrize('kwargs', [
-    {'volatility': -0.1}, {'volatility': float('inf')},
-    {'risk_free_rate': float('nan')}, {'risk_free_rate': float('inf')},
-])
-def test_invalid_configuration(kwargs):
+@pytest.mark.parametrize(
+    'kwargs', [
+        {'volatility': -0.1}, {'volatility': float('inf')},
+        {'risk_free_rate': float('nan')}, {'risk_free_rate': float('inf')},
+    ]
+    )
+def test_invalid_configuration(
+    kwargs
+):
     with pytest.raises(ValidationError):
         ModelFactory.create('blackscholes', **kwargs)
 
 
-@pytest.mark.parametrize('spot,strike,maturity', [
-    (0, 100, 1), (-1, 100, 1), (100, 0, 1), (100, -1, 1), (100, 100, -1),
-    ([100, float('nan')], 100, 1), (100, float('inf'), 1), (100, 100, float('inf')),
-])
-def test_invalid_pricing_inputs(spot, strike, maturity):
+@pytest.mark.parametrize(
+    'spot,strike,maturity', [
+        (0, 100, 1), (-1, 100, 1), (100, 0, 1), (100, -1, 1), (100, 100, -1),
+        ([100, float('nan')], 100, 1), (100, float('inf'), 1), (100, 100, float('inf')),
+    ]
+    )
+def test_invalid_pricing_inputs(
+    spot,
+    strike,
+    maturity
+):
     with pytest.raises(ValueError):
         ModelFactory.create('blackscholes').price(spot, strike, maturity)
 

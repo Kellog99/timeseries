@@ -19,13 +19,13 @@ from .neural_operations import OPS, EncCombinerCell, DecCombinerCell, Conv2D, ge
 
 class Cell(Module):
     def __init__(
-            self,
-            Cin,
-            Cout,
-            cell_type,
-            arch,
-            use_se
-            ):
+        self,
+        Cin,
+        Cout,
+        cell_type,
+        arch,
+        use_se
+    ):
         super(Cell, self).__init__()
         self.cell_type = cell_type
         stride = get_stride_for_cell_type(self.cell_type)
@@ -44,9 +44,9 @@ class Cell(Module):
             self._ops.append(op)
 
     def forward(
-            self,
-            s
-            ):
+        self,
+        s
+    ):
         # skip branch
         skip = self.skip(s)
         for i in range(self._num_nodes):
@@ -55,15 +55,15 @@ class Cell(Module):
 
 
 def soft_clamp5(
-        x: torch.Tensor
-        ):
+    x: torch.Tensor
+):
     return x.div(5.).tanh_().mul(5.)
 
 
 def sample_normal_jit(
-        mu,
-        sigma
-        ):
+    mu,
+    sigma
+):
     eps = mu.mul(0).normal_()
     # print(eps)
     z = eps.mul_(sigma).add_(mu)
@@ -73,11 +73,11 @@ def sample_normal_jit(
 
 class Normal:
     def __init__(
-            self,
-            mu,
-            log_sigma,
-            temp = 1.
-            ):
+        self,
+        mu,
+        log_sigma,
+        temp = 1.
+    ):
         self.mu = soft_clamp5(mu)
         log_sigma = soft_clamp5(log_sigma)
         self.sigma = torch.exp(log_sigma)
@@ -85,28 +85,28 @@ class Normal:
             self.sigma *= temp
 
     def sample(
-            self
-            ):
+        self
+    ):
         return sample_normal_jit(self.mu, self.sigma)
 
     def sample_given_eps(
-            self,
-            eps
-            ):
+        self,
+        eps
+    ):
         return eps * self.sigma + self.mu
 
     def log_p(
-            self,
-            samples
-            ):
+        self,
+        samples
+    ):
         normalized_samples = (samples - self.mu) / self.sigma
         log_p = - 0.5 * normalized_samples * normalized_samples - 0.5 * np.log(2 * np.pi) - torch.log(self.sigma)
         return log_p
 
     def kl(
-            self,
-            normal_dist
-            ):
+        self,
+        normal_dist
+    ):
         term1 = (self.mu - normal_dist.mu) / normal_dist.sigma
         term2 = self.sigma / normal_dist.sigma
         return 0.5 * (term1 * term1 + term2 * term2) - 0.5 - torch.log(term2)
@@ -114,9 +114,9 @@ class Normal:
 
 class NormalDecoder:
     def __init__(
-            self,
-            param
-            ):
+        self,
+        param
+    ):
         B, C, H, W = param.size()
         self.num_c = C // 2
         self.mu = param[:, :self.num_c, :, :]  # B, 3, H, W
@@ -125,22 +125,22 @@ class NormalDecoder:
         self.dist = Normal(self.mu, self.log_sigma)
 
     def log_prob(
-            self,
-            samples
-            ):
+        self,
+        samples
+    ):
         return self.dist.log_p(samples)
 
     def sample(
-            self, ):
+        self, ):
         x, _ = self.dist.sample()
         return x
 
 
 def log_density_gaussian(
-        sample,
-        mu,
-        logvar
-        ):
+    sample,
+    mu,
+    logvar
+):
     """Calculates log density of a Gaussian.
     Parameters
     ----------
@@ -163,26 +163,26 @@ def log_density_gaussian(
 
 class Encoder(Module):
     def __init__(
-            self,
-            channel_mult,
-            mult,
-            prediction_length,
-            num_preprocess_blocks,
-            num_preprocess_cells,
-            num_channels_enc,
-            arch_instance,
-            num_latent_per_group,
-            num_channels_dec,
-            groups_per_scale,
-            num_postprocess_blocks,
-            num_postprocess_cells,
-            embedding_dimension,
-            hidden_size,
-            target_dim,
-            sequence_length,
-            num_layers,
-            dropout_rate
-            ):
+        self,
+        channel_mult,
+        mult,
+        prediction_length,
+        num_preprocess_blocks,
+        num_preprocess_cells,
+        num_channels_enc,
+        arch_instance,
+        num_latent_per_group,
+        num_channels_dec,
+        groups_per_scale,
+        num_postprocess_blocks,
+        num_postprocess_cells,
+        embedding_dimension,
+        hidden_size,
+        target_dim,
+        sequence_length,
+        num_layers,
+        dropout_rate
+    ):
         super(Encoder, self).__init__()
 
         self.channel_mult = channel_mult
@@ -221,8 +221,8 @@ class Encoder(Module):
             nn.ELU(), Conv2D(
                 self.num_channels_enc * self.mult,
                 self.num_channels_enc * self.mult, kernel_size = 1, bias = True
-                ), nn.ELU()
-            )
+            ), nn.ELU()
+        )
 
         self.enc_sampler, self.dec_sampler = self.init_sampler(self.mult)
 
@@ -232,7 +232,7 @@ class Encoder(Module):
         self.image_conditional = nn.Sequential(
             nn.ELU(),
             Conv2D(int(self.num_channels_dec * self.mult), 2, 3, padding = 1, bias = True)
-            )
+        )
         self.rnn = nn.GRU(
             input_size = sequence_length,
             hidden_size = prediction_length,
@@ -242,9 +242,9 @@ class Encoder(Module):
         )
 
     def init_pre_process(
-            self,
-            mult
-            ):
+        self,
+        mult
+    ):
         pre_process = nn.ModuleList()
         for b in range(self.num_preprocess_blocks):
             for c in range(self.num_preprocess_cells):
@@ -263,9 +263,9 @@ class Encoder(Module):
         return pre_process
 
     def init_encoder_tower(
-            self,
-            mult
-            ):
+        self,
+        mult
+    ):
         enc_tower = nn.ModuleList()
         for g in range(self.groups_per_scale):
             arch = self.arch_instance['normal_enc']
@@ -283,9 +283,9 @@ class Encoder(Module):
         return enc_tower
 
     def init_decoder_tower(
-            self,
-            mult
-            ):
+        self,
+        mult
+    ):
 
         dec_tower = nn.ModuleList()
         for g in range(self.groups_per_scale):
@@ -301,9 +301,9 @@ class Encoder(Module):
         return dec_tower
 
     def init_sampler(
-            self,
-            mult
-            ):
+        self,
+        mult
+    ):
         enc_sampler = nn.ModuleList()
         dec_sampler = nn.ModuleList()
         for g in range(self.groups_per_scale):
@@ -321,9 +321,9 @@ class Encoder(Module):
         return enc_sampler, dec_sampler
 
     def init_post_process(
-            self,
-            mult
-            ):
+        self,
+        mult
+    ):
         post_process = nn.ModuleList()
         for b in range(self.num_postprocess_blocks):
             for c in range(self.num_postprocess_cells):
@@ -342,9 +342,9 @@ class Encoder(Module):
         return post_process
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
 
         s = self.stem(2 * x - 1.0)
         for cell in self.pre_process:
@@ -412,7 +412,7 @@ class Encoder(Module):
         return logits, total_c, all_z  # , log_q, log_p, kl_all, kl_diag
 
     def decoder_output(
-            self,
-            logits
-            ):
+        self,
+        logits
+    ):
         return NormalDecoder(logits)

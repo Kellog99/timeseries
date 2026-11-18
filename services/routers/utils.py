@@ -10,24 +10,24 @@ from fastapi import Request
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
+from services.models import MainConfig
 from timeseries.metrics import MetricRegister
 from timeseries.utils.typing import Metric
-from services.models import MainConfig
 
 T = TypeVar("T")
 
 
 ############################### Depends decorator ###############################
 def config_field(
-        attr_name: str
-        ) -> Callable[..., T]:
+    attr_name: str
+) -> Callable[..., T]:
     """
     A function for extracting an attribute from a config object in the app state.
     """
 
     def dependency(
-            request: Request
-            ) -> T:
+        request: Request
+    ) -> T:
         config: MainConfig = request.app.state.config
         if not hasattr(config, attr_name):
             raise ValueError(f"Configuration attribute '{attr_name}' not found")
@@ -40,9 +40,9 @@ def config_field(
 #################################################################################
 
 def validate_path(
-        path: str | Path,
-        create: bool = True
-        ) -> Path:
+    path: str | Path,
+    create: bool = True
+) -> Path:
     """
     validate the path that are passed through the whole application
     """
@@ -58,8 +58,8 @@ def validate_path(
 
 
 def base64_plot_generator(
-        matrix: np.ndarray
-        ):
+    matrix: np.ndarray
+):
     """
     This function create the plot associated to the correlation matrix and transform it into a base64 image.
     """
@@ -90,7 +90,7 @@ def base64_plot_generator(
         bbox_inches = 'tight',
         dpi = 100,
         transparent = True
-        )
+    )
     buffer.seek(0)
     plt.close(fig)  # Close the figure to free memory
 
@@ -100,9 +100,9 @@ def base64_plot_generator(
 
 
 def compute_correlation_matrix(
-        data: dict[str, dict],
-        device: torch.device,
-        metric_type: str | Callable[[], Metric] = "pearson",
+    data: dict[str, dict],
+    device: torch.device,
+    metric_type: str | Callable[[], Metric] = "pearson",
 ) -> np.ndarray:
     """
     This function has the role to compute the correlation matrix given
@@ -133,10 +133,10 @@ def compute_correlation_matrix(
                     metric.update(
                         torch.tensor(
                             [data[ticker_i][cd] for cd in common_dates], dtype = torch.float64, device = device
-                            ),
+                        ),
                         torch.tensor(
                             [data[ticker_j][cd] for cd in common_dates], dtype = torch.float64, device = device
-                            )
+                        )
                     )
                     corr: float = metric.compute()
                 # save the results into the matrices

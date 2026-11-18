@@ -10,12 +10,12 @@ class Head_selfDec(Module):
     """ one head of self-att for decoder"""
 
     def __init__(
-            self,
-            n_embd,
-            head_size,
-            lag,
-            dropout
-            ):
+        self,
+        n_embd,
+        head_size,
+        lag,
+        dropout
+    ):
         super().__init__()
         self.head_size = head_size
         self.query = nn.Linear(n_embd, head_size, bias = False)
@@ -25,17 +25,17 @@ class Head_selfDec(Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(
-            self,
-            queries,
-            keys,
-            values
-            ):
+        self,
+        queries,
+        keys,
+        values
+    ):
         T = queries.shape[1]
         queries = self.query(queries)
         keys = self.key(keys)
         wei = queries @ keys.transpose(
             -2, -1
-            ) * self.head_size ** -0.5  # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
+        ) * self.head_size ** -0.5  # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wei = nn.functional.softmax(wei, dim = -1)
         wei = self.dropout(wei)
@@ -49,11 +49,11 @@ class Head_crossDec(Module):
     """ one head of cross-att for decoder"""
 
     def __init__(
-            self,
-            n_embd,
-            head_size,
-            dropout
-            ):
+        self,
+        n_embd,
+        head_size,
+        dropout
+    ):
         super().__init__()
         self.head_size = head_size
         self.key = nn.Linear(n_embd, head_size, bias = False)
@@ -62,15 +62,15 @@ class Head_crossDec(Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(
-            self,
-            queries,
-            keys,
-            values
-            ):
+        self,
+        queries,
+        keys,
+        values
+    ):
         queries = self.query(queries)
         keys = self.key(keys)
         wei = queries @ keys.transpose(-2, -1) * (
-                    self.head_size ** -0.5)  # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
+                self.head_size ** -0.5)  # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
         wei = nn.functional.softmax(wei, dim = -1)
         wei = self.dropout(wei)
 
@@ -83,13 +83,13 @@ class Head_crossDec(Module):
 class MultiHead_selfDec(Module):
 
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            lag,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        lag,
+        dropout
+    ):
         super().__init__()
         self.head_size = head_size
         self.num_heads = num_heads
@@ -97,11 +97,11 @@ class MultiHead_selfDec(Module):
         self.common_values_linear = nn.Linear(n_embd, head_size, bias = False)
 
     def forward(
-            self,
-            queries,
-            keys,
-            values
-            ):
+        self,
+        queries,
+        keys,
+        values
+    ):
         device = queries.device.type
         B, L = queries.shape[:2]
         out = torch.zeros(B, L, self.head_size).to(device)
@@ -117,12 +117,12 @@ class MultiHead_selfDec(Module):
 class MultiHead_crossDec(Module):
 
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        dropout
+    ):
         super().__init__()
         self.head_size = head_size
         self.num_heads = num_heads
@@ -130,11 +130,11 @@ class MultiHead_crossDec(Module):
         self.common_values_linear = nn.Linear(n_embd, head_size, bias = False)
 
     def forward(
-            self,
-            queries,
-            keys,
-            values
-            ):
+        self,
+        queries,
+        keys,
+        values
+    ):
         device = queries.device.type
         B, L = queries.shape[:2]
         out = torch.zeros(B, L, self.head_size).to(device)
@@ -150,10 +150,10 @@ class MultiHead_crossDec(Module):
 class FFN(Module):
 
     def __init__(
-            self,
-            n_embd,
-            fw_exp
-            ):
+        self,
+        n_embd,
+        fw_exp
+    ):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, fw_exp * n_embd),
@@ -162,23 +162,23 @@ class FFN(Module):
         )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.net(x)
 
 
 #   DECODER-LAYER    #
 class DecoderLayer(Module):
     def __init__(
-            self,
-            n_embd,
-            num_heads,
-            head_size,
-            fw_exp,
-            lag,
-            dropout
-            ):
+        self,
+        n_embd,
+        num_heads,
+        head_size,
+        fw_exp,
+        lag,
+        dropout
+    ):
         super().__init__()
         self.self_heads = MultiHead_selfDec(n_embd, num_heads, head_size, lag, dropout)
         self.linear1_to_embd = nn.Linear(head_size, n_embd)
@@ -190,11 +190,11 @@ class DecoderLayer(Module):
         self.norm3 = nn.LayerNorm(n_embd)
 
     def forward(
-            self,
-            queries: torch.Tensor,
-            keys: torch.Tensor,
-            values: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        queries: torch.Tensor,
+        keys: torch.Tensor,
+        values: torch.Tensor
+    ) -> torch.Tensor:
         # q = x_future, k = output of encoder, v = output of encoder
         # decoder self attention over future values
         queries = queries + self.linear1_to_embd(self.self_heads(self.norm1(queries), queries, queries))
@@ -208,15 +208,15 @@ class DecoderLayer(Module):
 #   DECODER   #
 class Decoder(Module):
     def __init__(
-            self,
-            n_dec: int,
-            n_embd: int,
-            num_heads: int,
-            head_size: int,
-            fw_exp: int,
-            lag: int,
-            dropout: float
-            ):
+        self,
+        n_dec: int,
+        n_embd: int,
+        num_heads: int,
+        head_size: int,
+        fw_exp: int,
+        lag: int,
+        dropout: float
+    ):
         """Decoder
 
         Args:
@@ -233,15 +233,15 @@ class Decoder(Module):
         self.layers = nn.ModuleList(
             [DecoderLayer(n_embd, num_heads, head_size, fw_exp, lag, dropout)
              for _ in range(n_dec)]
-            )
+        )
         self.norm = nn.LayerNorm(n_embd)
 
     def forward(
-            self,
-            queries: torch.Tensor,
-            keys: torch.Tensor,
-            values: torch.Tensor
-            ) -> torch.Tensor:
+        self,
+        queries: torch.Tensor,
+        keys: torch.Tensor,
+        values: torch.Tensor
+    ) -> torch.Tensor:
         """Decoder:
         - Multi Head SelfAttention on Decoder
         - Multi Head CrossAttention among Decoder queries and Encoder keys and values

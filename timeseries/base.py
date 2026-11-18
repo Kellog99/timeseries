@@ -20,20 +20,20 @@ class Base(Module, ABC):
     _device_anchor: Tensor
 
     def __init__(
-            self,
-            *,
-            past_steps: int,
-            future_steps: int,
-            past_channels: int = 0,
-            future_channels: int = 0,
-            out_channels: int = 1,
-            quantiles: list[float] | None = None,
-            loss_type: BaseLoss | None = "l1",
-            persistence_weight: float = 0.0,
-            n_classes: int = 0,
-            optim: str | None = None,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        *,
+        past_steps: int,
+        future_steps: int,
+        past_channels: int = 0,
+        future_channels: int = 0,
+        out_channels: int = 1,
+        quantiles: list[float] | None = None,
+        loss_type: BaseLoss | None = "l1",
+        persistence_weight: float = 0.0,
+        n_classes: int = 0,
+        optim: str | None = None,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         super().__init__()
         self.past_steps = past_steps
@@ -71,33 +71,33 @@ class Base(Module, ABC):
 
     @property
     def device(
-            self
-            ) -> torch.device:
+        self
+    ) -> torch.device:
         return next(self.parameters(), self._device_anchor).device
 
     @abstractmethod
     def forward(
-            self,
-            batch: Batch
-            ) -> Tensor | tuple[Tensor, ...]:
+        self,
+        batch: Batch
+    ) -> Tensor | tuple[Tensor, ...]:
         """Compute predictions or architecture-specific training outputs."""
         raise NotImplementedError
 
     def inference(
-            self,
-            batch: Batch
-            ) -> Tensor:
+        self,
+        batch: Batch
+    ) -> Tensor:
         return self(batch)
 
     def configure_optimizers(
-            self
-            ) -> OptimizerSetup:
+        self
+    ) -> OptimizerSetup:
         return self._configure_optimizer(self.parameters())
 
     def _configure_optimizer(
-            self,
-            parameters: Iterable[nn.Parameter]
-            ) -> OptimizerSetup:
+        self,
+        parameters: Iterable[nn.Parameter]
+    ) -> OptimizerSetup:
         trainable = [parameter for parameter in parameters if parameter.requires_grad]
         if not trainable:
             return None
@@ -111,24 +111,24 @@ class Base(Module, ABC):
         return optimizer
 
     def training_step(
-            self,
-            batch: Batch,
-            batch_idx: int = 0
-            ) -> Tensor:
+        self,
+        batch: Batch,
+        batch_idx: int = 0
+    ) -> Tensor:
         return self.compute_loss(batch, self(batch))
 
     def validation_step(
-            self,
-            batch: Batch,
-            batch_idx: int = 0
-            ) -> Tensor:
+        self,
+        batch: Batch,
+        batch_idx: int = 0
+    ) -> Tensor:
         return self.compute_loss(batch, self(batch))
 
     def compute_loss(
-            self,
-            batch: Batch,
-            prediction: Tensor
-            ) -> Tensor:
+        self,
+        batch: Batch,
+        prediction: Tensor
+    ) -> Tensor:
         target = batch["y"]
         if self.is_classification:
             return self.loss(prediction.reshape(-1, self.n_classes), target.reshape(-1).long())

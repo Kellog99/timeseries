@@ -55,22 +55,22 @@ OPS = OrderedDict(
 
 class SyncBatchNormSwish(_BatchNorm):
     def __init__(
-            self,
-            num_features,
-            eps = 1e-5,
-            momentum = 0.1,
-            affine = True,
-            track_running_stats = True,
-            process_group = None
-            ):
+        self,
+        num_features,
+        eps = 1e-5,
+        momentum = 0.1,
+        affine = True,
+        track_running_stats = True,
+        process_group = None
+    ):
         super(SyncBatchNormSwish, self).__init__(num_features, eps, momentum, affine, track_running_stats)
         self.process_group = process_group
         self.ddp_gpu_size = None
 
     def forward(
-            self,
-            input
-            ):
+        self,
+        input
+    ):
         exponential_average_factor = self.momentum if self.momentum is not None else 0.0
         out = F.batch_norm(
             input, self.running_mean, self.running_var, self.weight, self.bias,
@@ -81,10 +81,10 @@ class SyncBatchNormSwish(_BatchNorm):
 
 
 def get_skip_connection(
-        C,
-        stride,
-        channel_mult
-        ):
+    C,
+    stride,
+    channel_mult
+):
     if stride == 1:
         return Identity()
     elif stride == 2:
@@ -94,21 +94,21 @@ def get_skip_connection(
 
 
 def norm(
-        t,
-        dim
-        ):
+    t,
+    dim
+):
     return torch.sqrt(torch.sum(t * t, dim))
 
 
 def logit(
-        t
-        ):
+    t
+):
     return torch.log(t) - torch.log(1 - t)
 
 
 def act(
-        t
-        ):
+    t
+):
     # The following implementation has lower memory.
     return SwishFN.apply(t)
 
@@ -116,18 +116,18 @@ def act(
 class SwishFN(torch.autograd.Function):
     @staticmethod
     def forward(
-            ctx,
-            i
-            ):
+        ctx,
+        i
+    ):
         result = i * torch.sigmoid(i)
         ctx.save_for_backward(i)
         return result
 
     @staticmethod
     def backward(
-            ctx,
-            *grad_outputs
-            ):
+        ctx,
+        *grad_outputs
+    ):
         grad_output, = grad_outputs
         i = ctx.saved_tensors[0]
         sigmoid_i = torch.sigmoid(i)
@@ -136,21 +136,21 @@ class SwishFN(torch.autograd.Function):
 
 class Swish(Module):
     def __init__(
-            self
-            ):
+        self
+    ):
         super(Swish, self).__init__()
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return act(x)
 
 
 def normalize_weight_jit(
-        log_weight_norm,
-        weight
-        ):
+    log_weight_norm,
+    weight
+):
     n = torch.exp(log_weight_norm)
     wn = torch.sqrt(torch.sum(weight * weight, dim = [1, 2, 3]))  # norm(w)
     weight = n * weight / (wn.view(-1, 1, 1, 1) + 1e-5)
@@ -161,18 +161,18 @@ class Conv2D(nn.Conv2d):
     """Allows for weights as input."""
 
     def __init__(
-            self,
-            C_in,
-            C_out,
-            kernel_size,
-            stride = 1,
-            padding = 0,
-            dilation = 1,
-            groups = 1,
-            bias = False,
-            data_init = False,
-            weight_norm = True
-            ):
+        self,
+        C_in,
+        C_out,
+        kernel_size,
+        stride = 1,
+        padding = 0,
+        dilation = 1,
+        groups = 1,
+        bias = False,
+        data_init = False,
+        weight_norm = True
+    ):
         """
         Args:
             use_shared (bool): Use weights for this layer or not?
@@ -189,9 +189,9 @@ class Conv2D(nn.Conv2d):
         self.weight_normalized = self.normalize_weight()
 
     def forward(
-            self,
-            input
-            ):
+        self,
+        input
+    ):
         x = input
         # do data based initialization
         self.weight_normalized = self.normalize_weight()
@@ -200,11 +200,11 @@ class Conv2D(nn.Conv2d):
         return F.conv2d(
             x, self.weight_normalized, bias, self.stride,
             self.padding, self.dilation, self.groups
-            )
+        )
 
     def normalize_weight(
-            self
-            ):
+        self
+    ):
         """ applies weight normalization """
         if self.log_weight_norm is not None:
             weight = normalize_weight_jit(self.log_weight_norm, self.weight)
@@ -216,63 +216,63 @@ class Conv2D(nn.Conv2d):
 
 class Identity(Module):
     def __init__(
-            self
-            ):
+        self
+    ):
         super(Identity, self).__init__()
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return x
 
 
 class SyncBatchNorm(Module):
     def __init__(
-            self,
-            *args,
-            **kwargs
-            ):
+        self,
+        *args,
+        **kwargs
+    ):
         super(SyncBatchNorm, self).__init__()
         self.bn = nn.BatchNorm2d(*args, **kwargs)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.bn(x)
 
 
 # quick switch between multi-gpu, single-gpu batch norm
 def get_batchnorm(
-        *args,
-        **kwargs
-        ):
+    *args,
+    **kwargs
+):
     return nn.BatchNorm2d(*args, **kwargs)
 
 
 class ELUConv(Module):
     def __init__(
-            self,
-            C_in,
-            C_out,
-            kernel_size,
-            stride = 1,
-            padding = 0,
-            dilation = 1
-            ):
+        self,
+        C_in,
+        C_out,
+        kernel_size,
+        stride = 1,
+        padding = 0,
+        dilation = 1
+    ):
         super(ELUConv, self).__init__()
         self.upsample = stride == -1
         stride = abs(stride)
         self.conv_0 = Conv2D(
             C_in, C_out, kernel_size, stride = stride, padding = padding, bias = True, dilation = dilation,
             data_init = True
-            )
+        )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         out = F.elu(x)
         if self.upsample:
             out = F.interpolate(out, scale_factor = 2, mode = 'nearest')
@@ -282,26 +282,26 @@ class ELUConv(Module):
 
 class BNELUConv(Module):
     def __init__(
-            self,
-            C_in,
-            C_out,
-            kernel_size,
-            stride = 1,
-            padding = 0,
-            dilation = 1
-            ):
+        self,
+        C_in,
+        C_out,
+        kernel_size,
+        stride = 1,
+        padding = 0,
+        dilation = 1
+    ):
         super(BNELUConv, self).__init__()
         self.upsample = stride == -1
         stride = abs(stride)
         self.bn = get_batchnorm(C_in, eps = BN_EPS, momentum = 0.05)
         self.conv_0 = Conv2D(
             C_in, C_out, kernel_size, stride = stride, padding = padding, bias = True, dilation = dilation
-            )
+        )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         x = self.bn(x)
         out = F.elu(x)
         if self.upsample:
@@ -314,26 +314,26 @@ class BNSwishConv(Module):
     """ReLU + Conv2d + BN."""
 
     def __init__(
-            self,
-            C_in,
-            C_out,
-            kernel_size,
-            stride = 1,
-            padding = 0,
-            dilation = 1
-            ):
+        self,
+        C_in,
+        C_out,
+        kernel_size,
+        stride = 1,
+        padding = 0,
+        dilation = 1
+    ):
         super(BNSwishConv, self).__init__()
         self.upsample = stride == -1
         stride = abs(stride)
         self.bn_act = SyncBatchNormSwish(C_in, eps = BN_EPS, momentum = 0.05)
         self.conv_0 = Conv2D(
             C_in, C_out, kernel_size, stride = stride, padding = padding, bias = True, dilation = dilation
-            )
+        )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         """
         Args:
             x (torch.Tensor): of size (B, C_in, H, W)
@@ -347,10 +347,10 @@ class BNSwishConv(Module):
 
 class FactorizedReduce(Module):
     def __init__(
-            self,
-            C_in,
-            C_out
-            ):
+        self,
+        C_in,
+        C_out
+    ):
         super(FactorizedReduce, self).__init__()
         assert C_out % 2 == 0
         self.conv_1 = Conv2D(C_in, C_out // 4, 1, stride = 2, padding = 0, bias = True)
@@ -359,9 +359,9 @@ class FactorizedReduce(Module):
         self.conv_4 = Conv2D(C_in, C_out - 3 * (C_out // 4), 1, stride = 2, padding = 0, bias = True)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         out = act(x)
         conv1 = self.conv_1(out[:, :, :, :])
         conv2 = self.conv_2(out[:, :, 1:, :])
@@ -373,36 +373,36 @@ class FactorizedReduce(Module):
 
 class UpSample(Module):
     def __init__(
-            self
-            ):
+        self
+    ):
         super(UpSample, self).__init__()
         pass
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return F.interpolate(x, scale_factor = 2, mode = 'bilinear', align_corners = True)
 
 
 class EncCombinerCell(Module):
     def __init__(
-            self,
-            Cin1,
-            Cin2,
-            Cout,
-            cell_type
-            ):
+        self,
+        Cin1,
+        Cin2,
+        Cout,
+        cell_type
+    ):
         super(EncCombinerCell, self).__init__()
         self.cell_type = cell_type
         # Cin = Cin1 + Cin2
         self.conv = Conv2D(Cin2, Cout, kernel_size = 1, stride = 1, padding = 0, bias = True)
 
     def forward(
-            self,
-            x1,
-            x2
-            ):
+        self,
+        x1,
+        x2
+    ):
         x2 = self.conv(x2)
         out = x1 + x2
         return out
@@ -411,21 +411,21 @@ class EncCombinerCell(Module):
 # original combiner
 class DecCombinerCell(Module):
     def __init__(
-            self,
-            Cin1,
-            Cin2,
-            Cout,
-            cell_type
-            ):
+        self,
+        Cin1,
+        Cin2,
+        Cout,
+        cell_type
+    ):
         super(DecCombinerCell, self).__init__()
         self.cell_type = cell_type
         self.conv = Conv2D(Cin1 + Cin2, Cout, kernel_size = 1, stride = 1, padding = 0, bias = True)
 
     def forward(
-            self,
-            x1,
-            x2
-            ):
+        self,
+        x1,
+        x2
+    ):
         out = torch.cat([x1, x2], dim = 1)
         out = self.conv(out)
         return out
@@ -433,48 +433,48 @@ class DecCombinerCell(Module):
 
 class ConvBNSwish(Module):
     def __init__(
-            self,
-            Cin,
-            Cout,
-            k = 3,
-            stride = 1,
-            groups = 1,
-            dilation = 1
-            ):
+        self,
+        Cin,
+        Cout,
+        k = 3,
+        stride = 1,
+        groups = 1,
+        dilation = 1
+    ):
         padding = dilation * (k - 1) // 2
         super(ConvBNSwish, self).__init__()
 
         self.conv = nn.Sequential(
             Conv2D(
                 Cin, Cout, k, stride, padding, groups = groups, bias = False, dilation = dilation, weight_norm = False
-                ),
+            ),
             SyncBatchNormSwish(Cout, eps = BN_EPS, momentum = 0.05)  # drop in replacement for BN + Swish
         )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.conv(x)
 
 
 class SE(Module):
     def __init__(
-            self,
-            Cin,
-            Cout
-            ):
+        self,
+        Cin,
+        Cout
+    ):
         super(SE, self).__init__()
         num_hidden = max(Cout // 16, 4)
         self.se = nn.Sequential(
             nn.Linear(Cin, num_hidden), nn.ReLU(inplace = True),
             nn.Linear(num_hidden, Cout), nn.Sigmoid()
-            )
+        )
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         se = torch.mean(x, dim = [2, 3])
         se = se.view(se.size(0), -1)
         se = self.se(se)
@@ -484,15 +484,15 @@ class SE(Module):
 
 class InvertedResidual(Module):
     def __init__(
-            self,
-            Cin,
-            Cout,
-            stride,
-            ex,
-            dil,
-            k,
-            g
-            ):
+        self,
+        Cin,
+        Cout,
+        stride,
+        ex,
+        dil,
+        k,
+        g
+    ):
         super(InvertedResidual, self).__init__()
         self.stride = stride
         assert stride in [1, 2, -1]
@@ -514,7 +514,7 @@ class InvertedResidual(Module):
         self.conv = nn.Sequential(*layers0)
 
     def forward(
-            self,
-            x
-            ):
+        self,
+        x
+    ):
         return self.conv(x)

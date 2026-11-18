@@ -21,10 +21,10 @@ class KalmanFilter:
     CONFIG_T = ConfigKalmanFilter
 
     def __init__(
-            self,
-            process_variance: float = 1e-5,
-            measurement_variance: float = 1e-1
-            ) -> None:
+        self,
+        process_variance: float = 1e-5,
+        measurement_variance: float = 1e-1
+    ) -> None:
         config = self.CONFIG_T(process_variance = process_variance, measurement_variance = measurement_variance)
         self.process_variance = config.process_variance
         self.measurement_variance = config.measurement_variance
@@ -32,9 +32,9 @@ class KalmanFilter:
         self.error_estimate = 1.0
 
     def update(
-            self,
-            measurement: float
-            ) -> float:
+        self,
+        measurement: float
+    ) -> float:
         error_prediction = self.error_estimate + self.process_variance
         gain = error_prediction / (error_prediction + self.measurement_variance)
         self.estimate += gain * (measurement - self.estimate)
@@ -42,7 +42,7 @@ class KalmanFilter:
         return self.estimate
 
     def filter_series(
-            self,
-            data: ArrayLike
-            ) -> NDArray[np.float64]:
+        self,
+        data: ArrayLike
+    ) -> NDArray[np.float64]:
         return np.asarray([self.update(float(value)) for value in np.asarray(data)])

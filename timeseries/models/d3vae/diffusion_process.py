@@ -13,11 +13,11 @@ from timeseries.utils.typing import Module
 
 
 def get_beta_schedule(
-        beta_schedule,
-        beta_start,
-        beta_end,
-        num_diffusion_timesteps
-        ):
+    beta_schedule,
+    beta_start,
+    beta_end,
+    num_diffusion_timesteps
+):
     if beta_schedule == 'quad':
         betas = np.linspace(beta_start ** 0.5, beta_end ** 0.5, num_diffusion_timesteps, dtype = np.float64) ** 2
     elif beta_schedule == 'linear':
@@ -33,19 +33,19 @@ def get_beta_schedule(
 
 
 def default(
-        val,
-        d
-        ):
+    val,
+    d
+):
     if val is not None:
         return val
     return d() if isfunction(d) else d
 
 
 def extract(
-        a,
-        t,
-        x_shape
-        ):
+    a,
+    t,
+    x_shape
+):
     # print(a.shape, t.shape)
     b, *_ = t.shape
     out = a.gather(-1, t)
@@ -54,10 +54,10 @@ def extract(
 
 
 def noise_like(
-        shape,
-        device,
-        repeat = False
-        ):
+    shape,
+    device,
+    repeat = False
+):
     repeat_noise = lambda: torch.randn((1, *shape[1:]), device = device).repeat(
         shape[0], *((1,) * (len(shape) - 1))
     )
@@ -67,16 +67,16 @@ def noise_like(
 
 class GaussianDiffusion(Module):
     def __init__(
-            self,
-            bvae,
-            input_size,
-            beta_start = 0,
-            beta_end = 0.1,
-            diff_steps = 100,
-            loss_type = "l2",
-            betas = None,
-            scale = 0.1,
-            beta_schedule = "linear",
+        self,
+        bvae,
+        input_size,
+        beta_start = 0,
+        beta_end = 0.1,
+        diff_steps = 100,
+        loss_type = "l2",
+        betas = None,
+        scale = 0.1,
+        beta_schedule = "linear",
     ):
         """
         Params:
@@ -119,11 +119,11 @@ class GaussianDiffusion(Module):
         )
 
     def q_sample(
-            self,
-            x_start,
-            t,
-            noise = None
-            ):
+        self,
+        x_start,
+        t,
+        noise = None
+    ):
         """
         Diffuse the initial input.
             :param x_start: [B, T, *]
@@ -136,11 +136,11 @@ class GaussianDiffusion(Module):
         )
 
     def q_sample_target(
-            self,
-            y_target,
-            t,
-            noise = None
-            ):
+        self,
+        y_target,
+        t,
+        noise = None
+    ):
         """
         Diffuse the target.
             :param y_target: [B1, T1, *]
@@ -154,13 +154,13 @@ class GaussianDiffusion(Module):
         )
 
     def p_losses(
-            self,
-            x_start,
-            y_target,
-            t,
-            noise = None,
-            noise1 = None
-            ):
+        self,
+        x_start,
+        y_target,
+        t,
+        noise = None,
+        noise1 = None
+    ):
         """
         Put the diffused input into the BVAE to generate the output.
         Params
@@ -195,11 +195,11 @@ class GaussianDiffusion(Module):
         return output, y_noisy, total_c, all_z
 
     def log_prob(
-            self,
-            x_input,
-            y_target,
-            time
-            ):
+        self,
+        x_input,
+        y_target,
+        time
+    ):
         output, y_noisy, total_c, all_z = self.p_losses(
             x_input, y_target, time,
         )

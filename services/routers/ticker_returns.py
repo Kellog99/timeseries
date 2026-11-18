@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends
 from fastapi import Query, Body
 from tqdm import tqdm
 
+from services.models.tickerdata import History, TickerReturn
 from services.routers.load_data import get_data
 from timeseries.metrics.returns import get_return
-from services.models.tickerdata import History, TickerReturn
 from .utils import config_field
 
 router = APIRouter(prefix = "/advance_info")
@@ -16,9 +16,9 @@ router = APIRouter(prefix = "/advance_info")
 
 @router.post("/returns", response_model = list[TickerReturn])
 def get_tickers_return(
-        tickers: list[str] = Body(...),
-        path_data: Path | str = Depends(config_field("path_data")),
-        save: bool = True
+    tickers: list[str] = Body(...),
+    path_data: Path | str = Depends(config_field("path_data")),
+    save: bool = True
 ) -> list[TickerReturn]:
     """
     This function handles the retrival of multiple ticker at the same time.
@@ -50,12 +50,12 @@ def get_tickers_return(
 
 @router.get("/return")
 def get_ticker_return(
-        ticker: str = Query(
-            default = ...,
-            description = "tickers to analyse."
-        ),
-        path_data: Path | str = Depends(config_field("path_data")),
-        save: bool = Depends(config_field("save"))
+    ticker: str = Query(
+        default = ...,
+        description = "tickers to analyse."
+    ),
+    path_data: Path | str = Depends(config_field("path_data")),
+    save: bool = Depends(config_field("save"))
 ) -> TickerReturn:
     """
     This function compute the ticker's percentage return for different type of time windows
@@ -95,8 +95,8 @@ def get_ticker_return(
         today_value = prices.get(last_date)
 
     def get_daily_return(
-            starting_date: date
-            ) -> float:
+        starting_date: date
+    ) -> float:
 
         if starting_date < first_date:
             starting_date = first_date
@@ -121,19 +121,19 @@ def get_ticker_return(
 
 @router.get("/return_distribution")
 def get_return_distribution(
-        ticker: str = Query(
-            default = ...,
-            descrption = "tickers to analyse."
-        ),
-        path_data: Path | str = Depends(config_field("path_data")),
-        save: bool = Depends(config_field("save")),
-        date_format: str = Depends(config_field("format")),
-        scale: Literal["plain", "abs", "exp"] = Query(
-            default = ...,
-            description = ""
-        ),
-        bins: int = Depends(config_field("bins")),
-        density: bool = True
+    ticker: str = Query(
+        default = ...,
+        descrption = "tickers to analyse."
+    ),
+    path_data: Path | str = Depends(config_field("path_data")),
+    save: bool = Depends(config_field("save")),
+    date_format: str = Depends(config_field("format")),
+    scale: Literal["plain", "abs", "exp"] = Query(
+        default = ...,
+        description = ""
+    ),
+    bins: int = Depends(config_field("bins")),
+    density: bool = True
 ) -> list[float]:
     """
     In this function it is created the histogram of the ticker's returns

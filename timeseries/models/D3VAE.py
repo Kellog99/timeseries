@@ -18,12 +18,12 @@ class ConfigD3VAE(ForecastConfiguration):
     future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
     future_channels: NonNegativeInt = Field(
         ..., description = 'Number of known future numerical features; zero is allowed.'
-        )
+    )
     embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
     out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
     quantiles: list[Quantile] | None = Field(
         ..., description = 'Three increasing output quantiles, or None/empty for point forecasts.'
-        )
+    )
     embedding_dimension: PositiveInt = Field(32, description = 'Feature embedding dimension.')
     scale: float = Field(0.1, description = 'Noise scale in the diffusion process.', ge = 0)
     hidden_size: PositiveInt = Field(64, description = 'Hidden size.')
@@ -52,9 +52,9 @@ class ConfigD3VAE(ForecastConfiguration):
 
 
 def copy_parameters(
-        net_source: torch.nn.Module,
-        net_dest: torch.nn.Module,
-        strict: bool = True,
+    net_source: torch.nn.Module,
+    net_dest: torch.nn.Module,
+    strict: bool = True,
 ) -> None:
     """
     Copies parameters from one network to another.
@@ -82,39 +82,39 @@ class D3VAE(Base):
     CONFIG_T: ClassVar[type[ConfigD3VAE]] = ConfigD3VAE
 
     def __init__(
-            self,
-            past_channels: int,
-            past_steps: int,
-            future_steps: int,
-            future_channels: int,
-            embs: list[int],
-            out_channels: int,
-            quantiles: list[float] | None,
-            embedding_dimension: int = 32,
-            scale: float = 0.1,
-            hidden_size: int = 64,
-            num_layers: int = 2,
-            dropout_rate: float = 0.1,
-            diff_steps: int = 200,
-            loss_type: BaseLoss = 'kl',
-            beta_end: float = 0.01,
-            beta_schedule: str = 'linear',
-            channel_mult: int = 2,
-            mult: int = 1,
-            num_preprocess_blocks: int = 1,
-            num_preprocess_cells: int = 3,
-            num_channels_enc: int = 16,
-            arch_instance: str = 'res_mbconv',
-            num_latent_per_group: int = 6,
-            num_channels_dec: int = 16,
-            groups_per_scale: int = 2,
-            num_postprocess_blocks: int = 1,
-            num_postprocess_cells: int = 2,
-            beta_start: float = 0,
-            freq: str = 'h',
-            optim: str | None = None,
-            optim_config: dict[str, Any] | None = None,
-            scheduler_config: dict[str, Any] | None = None,
+        self,
+        past_channels: int,
+        past_steps: int,
+        future_steps: int,
+        future_channels: int,
+        embs: list[int],
+        out_channels: int,
+        quantiles: list[float] | None,
+        embedding_dimension: int = 32,
+        scale: float = 0.1,
+        hidden_size: int = 64,
+        num_layers: int = 2,
+        dropout_rate: float = 0.1,
+        diff_steps: int = 200,
+        loss_type: BaseLoss = 'kl',
+        beta_end: float = 0.01,
+        beta_schedule: str = 'linear',
+        channel_mult: int = 2,
+        mult: int = 1,
+        num_preprocess_blocks: int = 1,
+        num_preprocess_cells: int = 3,
+        num_channels_enc: int = 16,
+        arch_instance: str = 'res_mbconv',
+        num_latent_per_group: int = 6,
+        num_channels_dec: int = 16,
+        groups_per_scale: int = 2,
+        num_postprocess_blocks: int = 1,
+        num_postprocess_cells: int = 2,
+        beta_start: float = 0,
+        freq: str = 'h',
+        optim: str | None = None,
+        optim_config: dict[str, Any] | None = None,
+        scheduler_config: dict[str, Any] | None = None,
     ) -> None:
         quantiles = [] if quantiles is None else quantiles
         input_dim = past_channels
@@ -141,7 +141,7 @@ class D3VAE(Base):
             num_preprocess_blocks, num_preprocess_cells, num_channels_enc, arch_instance,
             num_latent_per_group, num_channels_dec, groups_per_scale,
             num_postprocess_blocks, num_postprocess_cells
-            ).to(self.device)
+        ).to(self.device)
 
         self.denoise_net = denoise_net(
             target_dim, embedding_dimension, prediction_length, sequence_length, scale,
@@ -150,7 +150,7 @@ class D3VAE(Base):
             num_preprocess_blocks, num_preprocess_cells, num_channels_enc, arch_instance,
             num_latent_per_group, num_channels_dec, groups_per_scale, num_postprocess_blocks,
             num_postprocess_cells, beta_start, input_dim, freq, embs
-            ).to(self.device)
+        ).to(self.device)
         self.diff_step = diff_steps
         self.pred_net = pred_net(
             target_dim, embedding_dimension, prediction_length, sequence_length, scale,
@@ -159,7 +159,7 @@ class D3VAE(Base):
             num_preprocess_blocks, num_preprocess_cells, num_channels_enc, arch_instance,
             num_latent_per_group, num_channels_dec, groups_per_scale, num_postprocess_blocks,
             num_postprocess_cells, beta_start, input_dim, freq, embs
-            ).to(self.device)
+        ).to(self.device)
         # self.embedding = DataEmbedding(input_dim, embedding_dimension, freq,dropout_rate)
 
         self.psi = 0.5
@@ -170,8 +170,8 @@ class D3VAE(Base):
         self.loss = nn.MSELoss()
 
     def configure_optimizers(
-            self
-            ):
+        self
+    ):
         """
         Each model has optim_config and scheduler_config
         
@@ -180,10 +180,10 @@ class D3VAE(Base):
         return self._configure_optimizer(self.denoise_net.parameters())
 
     def training_step(
-            self,
-            batch,
-            batch_idx: int = 0
-            ):
+        self,
+        batch,
+        batch_idx: int = 0
+    ):
         """
         
         :meta private:
@@ -197,10 +197,10 @@ class D3VAE(Base):
         return loss
 
     def validation_step(
-            self,
-            batch,
-            batch_idx: int = 0
-            ):
+        self,
+        batch,
+        batch_idx: int = 0
+    ):
         """
         
         :meta private:
@@ -217,9 +217,9 @@ class D3VAE(Base):
         return mse
 
     def forward(
-            self,
-            batch: dict[str, torch.Tensor]
-            ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        self,
+        batch: dict[str, torch.Tensor]
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         B = batch['x_num_past'].shape[0]
 
         t = torch.randint(0, self.diff_step, (B,)).long().to(self.device)
@@ -235,9 +235,9 @@ class D3VAE(Base):
         return sample, y_noisy, recon, loss2, total_c
 
     def inference(
-            self,
-            batch: dict[str, torch.Tensor]
-            ) -> torch.Tensor:
+        self,
+        batch: dict[str, torch.Tensor]
+    ) -> torch.Tensor:
         """Care here, we need to implement it because for predicting the N-step it will use the prediction at step
         N-1. TODO fix if because I did not implement the
         know continuous variable presence here
