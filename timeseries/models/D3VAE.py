@@ -1,3 +1,4 @@
+# ruff: noqa: N999  # Preserve public import paths.
 from typing import Any, ClassVar
 
 import torch
@@ -5,50 +6,155 @@ from pydantic import Field
 from torch import nn
 
 from timeseries.base import Base
-from timeseries.configuration import BaseLoss
-from timeseries.configuration import ForecastConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
+from timeseries.configuration import (
+    BaseLoss,
+    ForecastConfiguration,
+    NonNegativeInt,
+    PositiveInt,
+    Probability,
+    Quantile,
+)
 from timeseries.model_register import ModelFactory
-from .d3vae.model import diffusion_generate, denoise_net, pred_net
+from .d3vae.model import denoise_net, diffusion_generate, pred_net
 
 
-class ConfigD3VAE(ForecastConfiguration):
+class ConfigD3VAE(
+    ForecastConfiguration
+):
     """Diffusion-based variational autoencoder for probabilistic forecasting."""
-    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
+    past_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of observed numerical input features.'
+    )
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
     future_channels: NonNegativeInt = Field(
-        ..., description = 'Number of known future numerical features; zero is allowed.'
+        ...,
+        description = 'Number of known future numerical features; zero is allowed.'
     )
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
+    )
+    out_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of target variables.'
+    )
     quantiles: list[Quantile] | None = Field(
-        ..., description = 'Three increasing output quantiles, or None/empty for point forecasts.'
+        ...,
+        description = 'Three increasing output quantiles, or None/empty for point forecasts.'
     )
-    embedding_dimension: PositiveInt = Field(32, description = 'Feature embedding dimension.')
-    scale: float = Field(0.1, description = 'Noise scale in the diffusion process.', ge = 0)
-    hidden_size: PositiveInt = Field(64, description = 'Hidden size.')
-    num_layers: PositiveInt = Field(2, description = 'Number of stacked network layers.')
-    dropout_rate: Probability = Field(0.1, description = 'Dropout rate.')
-    diff_steps: PositiveInt = Field(200, description = 'Number of diffusion timesteps.')
-    loss_type: BaseLoss = Field('kl', description = 'Training loss selection.')
-    beta_end: float = Field(0.01, description = 'Final diffusion noise variance.', ge = 0, le = 1)
-    beta_schedule: str = Field('linear', description = 'Diffusion noise schedule: linear, quad, const, or jsd.')
-    channel_mult: PositiveInt = Field(2, description = 'Channel multiplier across encoder scales.')
-    mult: PositiveInt = Field(1, description = 'Network width multiplier.')
-    num_preprocess_blocks: PositiveInt = Field(1, description = 'Number of preprocessing blocks.')
-    num_preprocess_cells: PositiveInt = Field(3, description = 'Number of cells per preprocessing block.')
-    num_channels_enc: PositiveInt = Field(16, description = 'Number of encoder channels.')
-    arch_instance: str = Field('res_mbconv', description = 'Architecture cell specification.')
-    num_latent_per_group: PositiveInt = Field(6, description = 'Number of latent variables in each group.')
-    num_channels_dec: PositiveInt = Field(16, description = 'Number of decoder channels.')
-    groups_per_scale: PositiveInt = Field(2, description = 'Number of latent groups per scale.')
-    num_postprocess_blocks: PositiveInt = Field(1, description = 'Number of postprocessing blocks.')
-    num_postprocess_cells: PositiveInt = Field(2, description = 'Number of cells per postprocessing block.')
-    beta_start: float = Field(0, description = 'Initial diffusion noise variance.', ge = 0, le = 1)
-    freq: str = Field('h', description = 'Time feature frequency code.')
-    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    embedding_dimension: PositiveInt = Field(
+        32,
+        description = 'Feature embedding dimension.'
+    )
+    scale: float = Field(
+        0.1,
+        description = 'Noise scale in the diffusion process.',
+        ge = 0
+    )
+    hidden_size: PositiveInt = Field(
+        64,
+        description = 'Hidden size.'
+    )
+    num_layers: PositiveInt = Field(
+        2,
+        description = 'Number of stacked network layers.'
+    )
+    dropout_rate: Probability = Field(
+        0.1,
+        description = 'Dropout rate.'
+    )
+    diff_steps: PositiveInt = Field(
+        200,
+        description = 'Number of diffusion timesteps.'
+    )
+    loss_type: BaseLoss = Field(
+        'kl',
+        description = 'Training loss selection.'
+    )
+    beta_end: float = Field(
+        0.01,
+        description = 'Final diffusion noise variance.',
+        ge = 0,
+        le = 1
+    )
+    beta_schedule: str = Field(
+        'linear',
+        description = 'Diffusion noise schedule: linear, quad, const, or jsd.'
+    )
+    channel_mult: PositiveInt = Field(
+        2,
+        description = 'Channel multiplier across encoder scales.'
+    )
+    mult: PositiveInt = Field(
+        1,
+        description = 'Network width multiplier.'
+    )
+    num_preprocess_blocks: PositiveInt = Field(
+        1,
+        description = 'Number of preprocessing blocks.'
+    )
+    num_preprocess_cells: PositiveInt = Field(
+        3,
+        description = 'Number of cells per preprocessing block.'
+    )
+    num_channels_enc: PositiveInt = Field(
+        16,
+        description = 'Number of encoder channels.'
+    )
+    arch_instance: str = Field(
+        'res_mbconv',
+        description = 'Architecture cell specification.'
+    )
+    num_latent_per_group: PositiveInt = Field(
+        6,
+        description = 'Number of latent variables in each group.'
+    )
+    num_channels_dec: PositiveInt = Field(
+        16,
+        description = 'Number of decoder channels.'
+    )
+    groups_per_scale: PositiveInt = Field(
+        2,
+        description = 'Number of latent groups per scale.'
+    )
+    num_postprocess_blocks: PositiveInt = Field(
+        1,
+        description = 'Number of postprocessing blocks.'
+    )
+    num_postprocess_cells: PositiveInt = Field(
+        2,
+        description = 'Number of cells per postprocessing block.'
+    )
+    beta_start: float = Field(
+        0,
+        description = 'Initial diffusion noise variance.',
+        ge = 0,
+        le = 1
+    )
+    freq: str = Field(
+        'h',
+        description = 'Time feature frequency code.'
+    )
+    optim: str | None = Field(
+        None,
+        description = 'Torch optimizer class name; None selects Adam.'
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
 def copy_parameters(
@@ -70,7 +176,10 @@ def copy_parameters(
         :meth:`~torch.nn.Module.state_dict` function. Default: ``True``
     """
 
-    net_dest.load_state_dict(net_source.state_dict(), strict = strict)
+    net_dest.load_state_dict(
+        net_source.state_dict(),
+        strict = strict
+    )
 
 
 @ModelFactory.register(
@@ -78,7 +187,9 @@ def copy_parameters(
     description = 'Diffusion-based variational autoencoder for probabilistic forecasting.',
     domain = 'forecasting',
 )
-class D3VAE(Base):
+class D3VAE(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigD3VAE]] = ConfigD3VAE
 
     def __init__(
@@ -135,31 +246,96 @@ class D3VAE(Base):
         )
 
         self.gen_net = diffusion_generate(
-            target_dim, embedding_dimension, prediction_length, sequence_length, scale,
-            hidden_size, num_layers, dropout_rate, diff_steps, loss_type, beta_end,
-            beta_schedule, channel_mult, mult,
-            num_preprocess_blocks, num_preprocess_cells, num_channels_enc, arch_instance,
-            num_latent_per_group, num_channels_dec, groups_per_scale,
-            num_postprocess_blocks, num_postprocess_cells
-        ).to(self.device)
+            target_dim,
+            embedding_dimension,
+            prediction_length,
+            sequence_length,
+            scale,
+            hidden_size,
+            num_layers,
+            dropout_rate,
+            diff_steps,
+            loss_type,
+            beta_end,
+            beta_schedule,
+            channel_mult,
+            mult,
+            num_preprocess_blocks,
+            num_preprocess_cells,
+            num_channels_enc,
+            arch_instance,
+            num_latent_per_group,
+            num_channels_dec,
+            groups_per_scale,
+            num_postprocess_blocks,
+            num_postprocess_cells
+        ).to(
+            self.device
+        )
 
         self.denoise_net = denoise_net(
-            target_dim, embedding_dimension, prediction_length, sequence_length, scale,
-            hidden_size, num_layers, dropout_rate, diff_steps, loss_type, beta_end,
-            beta_schedule, channel_mult, mult,
-            num_preprocess_blocks, num_preprocess_cells, num_channels_enc, arch_instance,
-            num_latent_per_group, num_channels_dec, groups_per_scale, num_postprocess_blocks,
-            num_postprocess_cells, beta_start, input_dim, freq, embs
-        ).to(self.device)
+            target_dim,
+            embedding_dimension,
+            prediction_length,
+            sequence_length,
+            scale,
+            hidden_size,
+            num_layers,
+            dropout_rate,
+            diff_steps,
+            loss_type,
+            beta_end,
+            beta_schedule,
+            channel_mult,
+            mult,
+            num_preprocess_blocks,
+            num_preprocess_cells,
+            num_channels_enc,
+            arch_instance,
+            num_latent_per_group,
+            num_channels_dec,
+            groups_per_scale,
+            num_postprocess_blocks,
+            num_postprocess_cells,
+            beta_start,
+            input_dim,
+            freq,
+            embs
+        ).to(
+            self.device
+        )
         self.diff_step = diff_steps
         self.pred_net = pred_net(
-            target_dim, embedding_dimension, prediction_length, sequence_length, scale,
-            hidden_size, num_layers, dropout_rate, diff_steps, loss_type, beta_end, beta_schedule,
-            channel_mult, mult,
-            num_preprocess_blocks, num_preprocess_cells, num_channels_enc, arch_instance,
-            num_latent_per_group, num_channels_dec, groups_per_scale, num_postprocess_blocks,
-            num_postprocess_cells, beta_start, input_dim, freq, embs
-        ).to(self.device)
+            target_dim,
+            embedding_dimension,
+            prediction_length,
+            sequence_length,
+            scale,
+            hidden_size,
+            num_layers,
+            dropout_rate,
+            diff_steps,
+            loss_type,
+            beta_end,
+            beta_schedule,
+            channel_mult,
+            mult,
+            num_preprocess_blocks,
+            num_preprocess_cells,
+            num_channels_enc,
+            arch_instance,
+            num_latent_per_group,
+            num_channels_dec,
+            groups_per_scale,
+            num_postprocess_blocks,
+            num_postprocess_cells,
+            beta_start,
+            input_dim,
+            freq,
+            embs
+        ).to(
+            self.device
+        )
         # self.embedding = DataEmbedding(input_dim, embedding_dimension, freq,dropout_rate)
 
         self.psi = 0.5
@@ -177,7 +353,9 @@ class D3VAE(Base):
         
         :meta private:
         """
-        return self._configure_optimizer(self.denoise_net.parameters())
+        return self._configure_optimizer(
+            self.denoise_net.parameters()
+        )
 
     def training_step(
         self,
@@ -188,10 +366,20 @@ class D3VAE(Base):
         
         :meta private:
         """
-        sample, y_noisy, recon, loss2, total_c = self(batch)
+        sample, y_noisy, recon, loss2, total_c = self(
+            batch
+        )
         ##self.compute_loss(batch,y_hat)
-        mse_loss = self.loss(sample, y_noisy)
-        loss1 = - torch.mean(torch.sum(recon, dim = [1, 2, 3]))
+        mse_loss = self.loss(
+            sample,
+            y_noisy
+        )
+        loss1 = - torch.mean(
+            torch.sum(
+                recon,
+                dim = [1, 2, 3]
+            )
+        )
         loss = loss1 * self.psi + loss2 * self.lambda1 + mse_loss - self.gamma * total_c
 
         return loss
@@ -206,13 +394,30 @@ class D3VAE(Base):
         :meta private:
         """
 
-        copy_parameters(self.denoise_net, self.pred_net)
-        batch_x = batch['x_num_past'].to(self.device)
-        batch_x_mark = batch['x_cat_past'].to(self.device)
-        batch_y = batch['y'].to(self.device)
+        copy_parameters(
+            self.denoise_net,
+            self.pred_net
+        )
+        batch_x = batch['x_num_past'].to(
+            self.device
+        )
+        batch_x_mark = batch['x_cat_past'].to(
+            self.device
+        )
+        batch_y = batch['y'].to(
+            self.device
+        )
 
-        _, out, _, _ = self.pred_net(batch_x, batch_x_mark)
-        mse = self.loss(out.squeeze(1), batch_y)
+        _, out, _, _ = self.pred_net(
+            batch_x,
+            batch_x_mark
+        )
+        mse = self.loss(
+            out.squeeze(
+                1
+            ),
+            batch_y
+        )
 
         return mse
 
@@ -222,14 +427,33 @@ class D3VAE(Base):
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         B = batch['x_num_past'].shape[0]
 
-        t = torch.randint(0, self.diff_step, (B,)).long().to(self.device)
+        t = torch.randint(
+            0,
+            self.diff_step,
+            (B,)
+        ).long().to(
+            self.device
+        )
 
-        batch_x = batch['x_num_past'].to(self.device)
-        x_mark = batch['x_cat_past'].to(self.device)
-        batch_y = batch['y'].to(self.device)
+        batch_x = batch['x_num_past'].to(
+            self.device
+        )
+        x_mark = batch['x_cat_past'].to(
+            self.device
+        )
+        batch_y = batch['y'].to(
+            self.device
+        )
 
-        output, y_noisy, total_c, _, loss2 = self.denoise_net(batch_x, x_mark, batch_y, t)
-        recon = output.log_prob(y_noisy)
+        output, y_noisy, total_c, _, loss2 = self.denoise_net(
+            batch_x,
+            x_mark,
+            batch_y,
+            t
+        )
+        recon = output.log_prob(
+            y_noisy
+        )
         sample = output.sample()
 
         return sample, y_noisy, recon, loss2, total_c
@@ -248,11 +472,24 @@ class D3VAE(Base):
         Returns:
             torch.tensor: result
         """
-        copy_parameters(self.denoise_net, self.pred_net)
+        copy_parameters(
+            self.denoise_net,
+            self.pred_net
+        )
 
-        batch_x = batch['x_num_past'].float().to(self.device)
-        batch_x_mark = batch['x_cat_past'].to(self.device)
-        _, out, _, _ = self.pred_net(batch_x, batch_x_mark)
+        batch_x = batch['x_num_past'].float().to(
+            self.device
+        )
+        batch_x_mark = batch['x_cat_past'].to(
+            self.device
+        )
+        _, out, _, _ = self.pred_net(
+            batch_x,
+            batch_x_mark
+        )
         # import pdb
         # pdb.set_trace()
-        return torch.permute(out, (0, 2, 1, 3))
+        return torch.permute(
+            out,
+            (0, 2, 1, 3)
+        )

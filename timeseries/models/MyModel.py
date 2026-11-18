@@ -1,6 +1,6 @@
+# ruff: noqa: N999  # Preserve public import paths.
 import logging
 from typing import Any, ClassVar
-from typing import List
 
 import numpy as np
 import torch
@@ -8,54 +8,140 @@ from pydantic import Field
 from torch import nn
 
 from timeseries.base import Base
-from timeseries.configuration import BaseLoss
-from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
+from timeseries.configuration import (
+    BaseLoss,
+    NonNegativeInt,
+    PositiveInt,
+    Probability,
+    Quantile,
+    ThreeQuantileConfiguration,
+)
 from timeseries.model_register import ModelFactory
 from timeseries.utils.torch import Permute, get_activation
 from timeseries.utils.typing import Module
 
+logger = logging.getLogger(
+    __name__
+)
 
-class ConfigMyModel(ThreeQuantileConfiguration):
+
+class ConfigMyModel(
+    ThreeQuantileConfiguration
+):
     """Convolutional and recurrent forecasting architecture."""
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
+    past_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of observed numerical input features.'
+    )
     future_channels: NonNegativeInt = Field(
-        ..., description = 'Number of known future numerical features; zero is allowed.'
+        ...,
+        description = 'Number of known future numerical features; zero is allowed.'
     )
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    cat_emb_dim: PositiveInt = Field(..., description = 'Embedding dimension for each categorical variable.')
-    hidden_RNN: PositiveInt = Field(..., description = 'Hidden recurrent state dimension.')
-    num_layers_RNN: PositiveInt = Field(..., description = 'Number of recurrent layers.')
-    kind: str = Field(..., description = 'Kind.')
-    kernel_size: PositiveInt = Field(..., description = 'Convolution or moving-average kernel width.')
-    sum_emb: bool = Field(..., description = 'Sum categorical embeddings instead of concatenating them.')
-    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
-    activation: str = Field('torch.nn.ReLU', description = 'Fully qualified torch activation class name.')
-    remove_last: bool = Field(False, description = 'Predict differences from the last observed target value.')
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
+    )
+    cat_emb_dim: PositiveInt = Field(
+        ...,
+        description = 'Embedding dimension for each categorical variable.'
+    )
+    hidden_RNN: PositiveInt = Field(
+        ...,
+        description = 'Hidden recurrent state dimension.'
+    )
+    num_layers_RNN: PositiveInt = Field(
+        ...,
+        description = 'Number of recurrent layers.'
+    )
+    kind: str = Field(
+        ...,
+        description = 'Kind.'
+    )
+    kernel_size: PositiveInt = Field(
+        ...,
+        description = 'Convolution or moving-average kernel width.'
+    )
+    sum_emb: bool = Field(
+        ...,
+        description = 'Sum categorical embeddings instead of concatenating them.'
+    )
+    out_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of target variables.'
+    )
+    activation: str = Field(
+        'torch.nn.ReLU',
+        description = 'Fully qualified torch activation class name.'
+    )
+    remove_last: bool = Field(
+        False,
+        description = 'Predict differences from the last observed target value.'
+    )
     persistence_weight: float = Field(
-        0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+        0.0,
+        description = 'Weight applied to the persistence-based loss penalty.',
+        ge = 0
     )
-    loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
+    loss_type: BaseLoss = Field(
+        'l1',
+        description = 'Training loss selection.'
+    )
     quantiles: list[Quantile] | None = Field(
-        None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
+        None,
+        description = 'Three increasing output quantiles, or None/empty for point forecasts.'
     )
-    dropout_rate: Probability = Field(0.1, description = 'Dropout rate.')
-    use_bn: bool = Field(False, description = 'Use batch normalization in place of dropout.')
-    use_glu: bool = Field(True, description = 'Enable gated feature selection.')
+    dropout_rate: Probability = Field(
+        0.1,
+        description = 'Dropout rate.'
+    )
+    use_bn: bool = Field(
+        False,
+        description = 'Use batch normalization in place of dropout.'
+    )
+    use_glu: bool = Field(
+        True,
+        description = 'Enable gated feature selection.'
+    )
     glu_percentage: float = Field(
-        1.0, description = 'Target fraction of features retained by gated selection.', ge = 0, le = 1
+        1.0,
+        description = 'Target fraction of features retained by gated selection.',
+        ge = 0,
+        le = 1
     )
-    n_classes: NonNegativeInt = Field(0, description = 'Number of classes; zero selects regression.')
-    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    n_classes: NonNegativeInt = Field(
+        0,
+        description = 'Number of classes; zero selects regression.'
+    )
+    optim: str | None = Field(
+        None,
+        description = 'Torch optimizer class name; None selects Adam.'
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
-torch.autograd.set_detect_anomaly(True)
+torch.autograd.set_detect_anomaly(
+    True
+)
 
 
-class GLU(Module):
+class GLU(
+    Module
+):
     def __init__(
         self,
         d_model: int
@@ -68,7 +154,10 @@ class GLU(Module):
             d_model (int): model dimension
         """
         super().__init__()
-        self.linear = nn.Linear(d_model, d_model)
+        self.linear = nn.Linear(
+            d_model,
+            d_model
+        )
         self.activation = nn.ReLU6()
 
     def forward(
@@ -87,15 +176,25 @@ class GLU(Module):
         """
 
         ##here comes something like BSxL
-        x1 = (self.activation(self.linear(x.unsqueeze(2))) / 6.0).squeeze()
+        x1 = (self.activation(
+            self.linear(
+                x.unsqueeze(
+                    2
+                )
+            )
+        ) / 6.0).squeeze()
         out = x1 * x  # element-wise multiplication
 
         ##get the score
-        score = torch.sign(x1).mean()
+        score = torch.sign(
+            x1
+        ).mean()
         return out, score
 
 
-class Block(Module):
+class Block(
+    Module
+):
     def __init__(
         self,
         input_channels: int,
@@ -105,28 +204,64 @@ class Block(Module):
         sum_layers: bool
     ):
 
-        super(Block, self).__init__()
+        super(
+
+        ).__init__()
 
         self.dilations = nn.ModuleList()
-        self.steps = int(np.floor(np.log2(input_size))) - 1
+        self.steps = int(
+            np.floor(
+                np.log2(
+                    input_size
+                )
+            )
+        ) - 1
 
-        if self.steps <= 1:
-            self.steps = 1
+        self.steps = max(
+            1,
+            self.steps
+        )
 
-        for i in range(self.steps):
+        for i in range(
+                self.steps
+        ):
             # dilation
             self.dilations.append(
-                nn.Conv1d(input_channels, output_channels, kernel_size, stride = 1, padding = 'same', dilation = 2 ** i)
+                nn.Conv1d(
+                    input_channels,
+                    output_channels,
+                    kernel_size,
+                    stride = 1,
+                    padding = 'same',
+                    dilation = 2 ** i
+                )
             )
-            s = max(2 ** i - 1, 1)
+            s = max(
+                2 ** i - 1,
+                1
+            )
             k = 2 ** (i + 1) + 1
-            p = int(((s - 1) * input_size + k - 1) / 2)
-            self.dilations.append(nn.Conv1d(input_channels, output_channels, k, stride = s, padding = p))
+            p = int(
+                ((s - 1) * input_size + k - 1) / 2
+            )
+            self.dilations.append(
+                nn.Conv1d(
+                    input_channels,
+                    output_channels,
+                    k,
+                    stride = s,
+                    padding = p
+                )
+            )
 
         self.sum_layers = sum_layers
         mul = 1 if sum_layers else self.steps * 2
         self.conv_final = nn.Conv1d(
-            output_channels * mul, output_channels * mul, kernel_size, stride = 1, padding = 'same'
+            output_channels * mul,
+            output_channels * mul,
+            kernel_size,
+            stride = 1,
+            padding = 'same'
         )
         self.out_channels = output_channels * mul
 
@@ -134,17 +269,34 @@ class Block(Module):
         self,
         x: torch.Tensor
     ) -> torch.Tensor:
-        x = Permute()(x)
+        x = Permute()(
+            x
+        )
         outputs = []
-        for i in range(self.steps):
-            outputs.append(self.dilations[i](x))
+        for i in range(
+                self.steps
+        ):
+            outputs.append(
+                self.dilations[i](
+                    x
+                )
+            )
 
         if self.sum_layers:
-            tmp = torch.stack(outputs).sum(dim = 0)
+            tmp = torch.stack(
+                outputs
+            ).sum(
+                dim = 0
+            )
         else:
-            tmp = torch.cat(outputs, 1)
+            tmp = torch.cat(
+                outputs,
+                1
+            )
 
-        return Permute()(tmp)
+        return Permute()(
+            tmp
+        )
 
 
 @ModelFactory.register(
@@ -152,7 +304,9 @@ class Block(Module):
     description = 'Convolutional and recurrent forecasting architecture.',
     domain = 'forecasting',
 )
-class MyModel(Base):
+class MyModel(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigMyModel]] = ConfigMyModel
 
     def __init__(
@@ -218,9 +372,13 @@ class MyModel(Base):
         """
         quantiles = [] if quantiles is None else quantiles
         if activation == 'torch.nn.SELU':
-            logging.info('SELU do not require BN')
+            logger.info(
+                'SELU do not require BN'
+            )
             use_bn = False
-        activation_factory = get_activation(activation)
+        activation_factory = get_activation(
+            activation
+        )
 
         super().__init__(
             past_steps = past_steps,
@@ -243,38 +401,77 @@ class MyModel(Base):
         self.sum_emb = sum_emb
         self.kind = kind
         self.use_glu = use_glu
-        self.glu_percentage = torch.tensor(glu_percentage).to(self.device)
+        self.glu_percentage = torch.tensor(
+            glu_percentage
+        ).to(
+            self.device
+        )
         self.remove_last = remove_last
         # assert out_channels==1, "Classification require only one channel"
 
         emb_channels = 0
 
         for k in embs:
-            self.embs.append(nn.Embedding(k + 1, cat_emb_dim))
+            self.embs.append(
+                nn.Embedding(
+                    k + 1,
+                    cat_emb_dim
+                )
+            )
             emb_channels += cat_emb_dim
 
         if sum_emb and (emb_channels > 0):
             emb_channels = cat_emb_dim
-            logging.info('Using sum')
+            logger.info(
+                'Using sum'
+            )
         else:
-            logging.info('Using stacked')
+            logger.info(
+                'Using stacked'
+            )
 
         if self.use_glu:
             self.past_glu = nn.ModuleList()
             self.future_glu = nn.ModuleList()
-            for i in range(past_channels):
-                self.past_glu.append(GLU(1))
+            for i in range(
+                    past_channels
+            ):
+                self.past_glu.append(
+                    GLU(
+                        1
+                    )
+                )
 
-            for i in range(future_channels):
-                self.future_glu.append(GLU(1))
+            for i in range(
+                    future_channels
+            ):
+                self.future_glu.append(
+                    GLU(
+                        1
+                    )
+                )
 
         self.initial_linear_encoder = nn.Sequential(
             Permute(),
-            nn.Conv1d(past_channels, (past_channels + hidden_RNN // 4) // 2, kernel_size, stride = 1, padding = 'same'),
-            activation_factory(),
-            nn.BatchNorm1d((past_channels + hidden_RNN // 4) // 2) if use_bn else nn.Dropout(dropout_rate),
             nn.Conv1d(
-                (past_channels + hidden_RNN // 4) // 2, hidden_RNN // 4, kernel_size, stride = 1, padding = 'same'
+                past_channels,
+                (past_channels + hidden_RNN // 4) // 2,
+                kernel_size,
+                stride = 1,
+                padding = 'same'
+            ),
+            activation_factory(),
+            nn.BatchNorm1d(
+                (past_channels + hidden_RNN // 4) // 2
+            ) if use_bn else nn.Dropout(
+                dropout_rate
+            ),
+            nn.Conv1d(
+                (past_channels + hidden_RNN // 4) // 2,
+                hidden_RNN // 4,
+                kernel_size,
+                stride = 1,
+                padding = 'same'
             ),
             Permute()
         )
@@ -282,17 +479,33 @@ class MyModel(Base):
         self.initial_linear_decoder = nn.Sequential(
             Permute(),
             nn.Conv1d(
-                future_channels, (future_channels + hidden_RNN // 4) // 2, kernel_size, stride = 1, padding = 'same'
+                future_channels,
+                (future_channels + hidden_RNN // 4) // 2,
+                kernel_size,
+                stride = 1,
+                padding = 'same'
             ),
             activation_factory(),
-            nn.BatchNorm1d((future_channels + hidden_RNN // 4) // 2) if use_bn else nn.Dropout(dropout_rate),
+            nn.BatchNorm1d(
+                (future_channels + hidden_RNN // 4) // 2
+            ) if use_bn else nn.Dropout(
+                dropout_rate
+            ),
             nn.Conv1d(
-                (future_channels + hidden_RNN // 4) // 2, hidden_RNN // 4, kernel_size, stride = 1, padding = 'same'
+                (future_channels + hidden_RNN // 4) // 2,
+                hidden_RNN // 4,
+                kernel_size,
+                stride = 1,
+                padding = 'same'
             ),
             Permute()
         )
         self.conv_encoder = Block(
-            emb_channels + hidden_RNN // 4, kernel_size, hidden_RNN // 2, self.past_steps, sum_emb
+            emb_channels + hidden_RNN // 4,
+            kernel_size,
+            hidden_RNN // 2,
+            self.past_steps,
+            sum_emb
         )
 
         # nn.Sequential(Permute(), nn.Conv1d(emb_channels+hidden_RNN//8, hidden_RNN//8, kernel_size, stride=1,
@@ -301,10 +514,20 @@ class MyModel(Base):
         # pdb.set_trace()
         if future_channels + emb_channels == 0:
             ## occhio che vuol dire che non ho passato , per ora ci metto una pezza e uso hidden dell'encoder
-            self.conv_decoder = Block(hidden_RNN, kernel_size, hidden_RNN // 2, self.future_steps, sum_emb)
+            self.conv_decoder = Block(
+                hidden_RNN,
+                kernel_size,
+                hidden_RNN // 2,
+                self.future_steps,
+                sum_emb
+            )
         else:
             self.conv_decoder = Block(
-                future_channels + emb_channels, kernel_size, hidden_RNN // 2, self.future_steps, sum_emb
+                future_channels + emb_channels,
+                kernel_size,
+                hidden_RNN // 2,
+                self.future_steps,
+                sum_emb
             )
             # nn.Sequential(Permute(),nn.Linear(past_steps,past_steps*2),  nn.PReLU(),nn.Dropout(0.2),
             # nn.Linear(past_steps*2, future_steps),nn.Dropout(0.3),nn.Conv1d(hidden_RNN, hidden_RNN//8, 3, stride=1,
@@ -314,51 +537,86 @@ class MyModel(Base):
                 input_size = self.conv_encoder.out_channels,  # , hidden_RNN//4,
                 hidden_size = hidden_RNN // 2,
                 num_layers = num_layers_RNN,
-                batch_first = True, bidirectional = True
+                batch_first = True,
+                bidirectional = True
             )
             self.Decoder = nn.LSTM(
                 input_size = self.conv_decoder.out_channels,  # , hidden_RNN//4,
                 hidden_size = hidden_RNN // 2,
                 num_layers = num_layers_RNN,
-                batch_first = True, bidirectional = True
+                batch_first = True,
+                bidirectional = True
             )
         elif self.kind == 'gru':
             self.Encoder = nn.GRU(
                 input_size = self.conv_encoder.out_channels,  # , hidden_RNN//4,
                 hidden_size = hidden_RNN // 2,
                 num_layers = num_layers_RNN,
-                batch_first = True, bidirectional = True
+                batch_first = True,
+                bidirectional = True
             )
             self.Decoder = nn.GRU(
                 input_size = self.conv_decoder.out_channels,  # , hidden_RNN//4,
                 hidden_size = hidden_RNN // 2,
                 num_layers = num_layers_RNN,
-                batch_first = True, bidirectional = True
+                batch_first = True,
+                bidirectional = True
             )
         else:
-            print('Specify kind= lstm or gru please')
+            print(
+                'Specify kind= lstm or gru please'
+            )
         self.final_linear = nn.ModuleList()
-        for _ in range(out_channels * self.mul):
+        for _ in range(
+                out_channels * self.mul
+        ):
             self.final_linear.append(
                 nn.Sequential(
-                    nn.Linear(hidden_RNN + emb_channels + future_channels, hidden_RNN * 2),
+                    nn.Linear(
+                        hidden_RNN + emb_channels + future_channels,
+                        hidden_RNN * 2
+                    ),
                     activation_factory(),
                     Permute() if use_bn else nn.Identity(),
-                    nn.BatchNorm1d(hidden_RNN * 2) if use_bn else nn.Dropout(dropout_rate),
+                    nn.BatchNorm1d(
+                        hidden_RNN * 2
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
                     Permute() if use_bn else nn.Identity(),
-                    nn.Linear(hidden_RNN * 2, hidden_RNN),
+                    nn.Linear(
+                        hidden_RNN * 2,
+                        hidden_RNN
+                    ),
                     activation_factory(),
                     Permute() if use_bn else nn.Identity(),
-                    nn.BatchNorm1d(hidden_RNN) if use_bn else nn.Dropout(dropout_rate),
+                    nn.BatchNorm1d(
+                        hidden_RNN
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
                     Permute() if use_bn else nn.Identity(),
-                    nn.Linear(hidden_RNN, hidden_RNN // 2),
+                    nn.Linear(
+                        hidden_RNN,
+                        hidden_RNN // 2
+                    ),
                     activation_factory(),
                     Permute() if use_bn else nn.Identity(),
-                    nn.BatchNorm1d(hidden_RNN // 2) if use_bn else nn.Dropout(dropout_rate),
+                    nn.BatchNorm1d(
+                        hidden_RNN // 2
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
                     Permute() if use_bn else nn.Identity(),
-                    nn.Linear(hidden_RNN // 2, hidden_RNN // 4),
+                    nn.Linear(
+                        hidden_RNN // 2,
+                        hidden_RNN // 4
+                    ),
                     activation_factory(),
-                    nn.Linear(hidden_RNN // 4, 1)
+                    nn.Linear(
+                        hidden_RNN // 4,
+                        1
+                    )
                 )
             )
 
@@ -371,8 +629,13 @@ class MyModel(Base):
         
         :meta private:
         """
-        y_hat, score = self(batch)
-        return self.compute_loss(batch, y_hat)
+        y_hat, _score = self(
+            batch
+        )
+        return self.compute_loss(
+            batch,
+            y_hat
+        )
 
     def validation_step(
         self,
@@ -383,8 +646,13 @@ class MyModel(Base):
         
         :meta private:
         """
-        y_hat, score = self(batch)
-        return self.compute_loss(batch, y_hat)
+        y_hat, _score = self(
+            batch
+        )
+        return self.compute_loss(
+            batch,
+            y_hat
+        )
 
     def forward(
         self,
@@ -398,100 +666,213 @@ class MyModel(Base):
         Returns:
             torch.tensor: result
         """
-        x = batch['x_num_past'].to(self.device)
-        if 'x_cat_future' in batch.keys():
-            cat_future = batch['x_cat_future'].to(self.device)
-        if 'x_cat_past' in batch.keys():
-            cat_past = batch['x_cat_past'].to(self.device)
-        if 'x_num_future' in batch.keys():
-            x_future = batch['x_num_future'].to(self.device)
-            xf = torch.clone(x_future)
+        x = batch['x_num_past'].to(
+            self.device
+        )
+        if 'x_cat_future' in batch:
+            cat_future = batch['x_cat_future'].to(
+                self.device
+            )
+        if 'x_cat_past' in batch:
+            cat_past = batch['x_cat_past'].to(
+                self.device
+            )
+        if 'x_num_future' in batch:
+            x_future = batch['x_num_future'].to(
+                self.device
+            )
+            xf = torch.clone(
+                x_future
+            )
         else:
             x_future = None
 
         if self.remove_last:
             idx_target = batch['idx_target'][0]
 
-            x_start = x[:, -1, idx_target].unsqueeze(1)
+            x_start = x[:, -1, idx_target].unsqueeze(
+                1
+            )
             ##BxC
             x[:, :, idx_target] -= x_start
 
             ## first GLU
         score = 0
-        xp = torch.clone(x)
+        xp = torch.clone(
+            x
+        )
 
         if self.use_glu:
             score_past_tot = 0
             score_future_tot = 0
 
-            for i in range(len(self.past_glu)):
-                x[:, :, i], score = self.past_glu[i](xp[:, :, i])
+            for i in range(
+                    len(
+                        self.past_glu
+                    )
+            ):
+                x[:, :, i], score = self.past_glu[i](
+                    xp[:, :, i]
+                )
                 score_past_tot += score
-            score_past_tot /= len(self.past_glu)
+            score_past_tot /= len(
+                self.past_glu
+            )
 
             if x_future is not None:
-                for i in range(len(self.future_glu)):
-                    x_future[:, :, i], score = self.future_glu[i](xf[:, :, i])
+                for i in range(
+                        len(
+                            self.future_glu
+                        )
+                ):
+                    x_future[:, :, i], score = self.future_glu[i](
+                        xf[:, :, i]
+                    )
                     score_future_tot += score
-                score_future_tot /= len(self.future_glu)
+                score_future_tot /= len(
+                    self.future_glu
+                )
             score = 0.5 * (score_past_tot + score_future_tot)
-        tmp = [self.initial_linear_encoder(x)]
+        tmp = [
+            self.initial_linear_encoder(
+                x
+            )
+        ]
 
-        for i in range(len(self.embs)):
+        tmp_emb = None
+        for i in range(
+                len(
+                    self.embs
+                )
+        ):
             if self.sum_emb:
                 if i > 0:
-                    tmp_emb += self.embs[i](cat_past[:, :, i])
+                    tmp_emb += self.embs[i](
+                        cat_past[:, :, i]
+                    )
                 else:
-                    tmp_emb = self.embs[i](cat_past[:, :, i])
+                    tmp_emb = self.embs[i](
+                        cat_past[:, :, i]
+                    )
             else:
-                tmp.append(self.embs[i](cat_past[:, :, i]))
-        if self.sum_emb and (len(self.embs) > 0):
-            tmp.append(tmp_emb)
+                tmp.append(
+                    self.embs[i](
+                        cat_past[:, :, i]
+                    )
+                )
+        if self.sum_emb and (len(
+                self.embs
+        ) > 0):
+            assert tmp_emb is not None
+            tmp.append(
+                tmp_emb
+            )
         # import pdb
         # pdb.set_trace()
-        tot = torch.cat(tmp, 2)
+        tot = torch.cat(
+            tmp,
+            2
+        )
 
-        out, hidden = self.Encoder(self.conv_encoder(tot))
+        out, hidden = self.Encoder(
+            self.conv_encoder(
+                tot
+            )
+        )
 
         tmp = []
-        for i in range(len(self.embs)):
+        tmp_emb = None
+        for i in range(
+                len(
+                    self.embs
+                )
+        ):
             if self.sum_emb:
                 if i > 0:
-                    tmp_emb += self.embs[i](cat_future[:, :, i])
+                    tmp_emb += self.embs[i](
+                        cat_future[:, :, i]
+                    )
                 else:
-                    tmp_emb = self.embs[i](cat_future[:, :, i])
+                    tmp_emb = self.embs[i](
+                        cat_future[:, :, i]
+                    )
             else:
-                tmp.append(self.embs[i](cat_future[:, :, i]))
-        if self.sum_emb and (len(self.embs)):
-            tmp.append(tmp_emb)
+                tmp.append(
+                    self.embs[i](
+                        cat_future[:, :, i]
+                    )
+                )
+        if self.sum_emb and (len(
+                self.embs
+        )):
+            assert tmp_emb is not None
+            tmp.append(
+                tmp_emb
+            )
 
         if x_future is not None:
-            tmp.append(x_future)
+            tmp.append(
+                x_future
+            )
 
-        if len(tmp) > 0:
-            tot = torch.cat(tmp, 2)
-            out, _ = self.Decoder(self.conv_decoder(tot), hidden)
+        if len(
+                tmp
+        ) > 0:
+            tot = torch.cat(
+                tmp,
+                2
+            )
+            out, _ = self.Decoder(
+                self.conv_decoder(
+                    tot
+                ),
+                hidden
+            )
             has_future = True
         else:
-            out, _ = self.Decoder(self.conv_decoder(out), hidden)
+            out, _ = self.Decoder(
+                self.conv_decoder(
+                    out
+                ),
+                hidden
+            )
             has_future = False
         res = []
 
         if has_future:
-            decoder_features = torch.cat([tot, out], dim = 2)
+            decoder_features = torch.cat(
+                [tot, out],
+                dim = 2
+            )
         else:
             decoder_features = out
         # import pdb
         # pdb.set_trace()
-        for j in range(self.out_channels * self.mul):
-            res.append(self.final_linear[j](decoder_features))
+        for j in range(
+                self.out_channels * self.mul
+        ):
+            res.append(
+                self.final_linear[j](
+                    decoder_features
+                )
+            )
 
-        res = torch.cat(res, 2)
+        res = torch.cat(
+            res,
+            2
+        )
         ##BxLxC
         B = res.shape[0]
-        res = res.reshape(B, self.future_steps, -1, self.mul)
+        res = res.reshape(
+            B,
+            self.future_steps,
+            -1,
+            self.mul
+        )
         if self.remove_last:
-            res += x_start.unsqueeze(1)
+            res += x_start.unsqueeze(
+                1
+            )
 
         return res, score
 
@@ -500,6 +881,8 @@ class MyModel(Base):
         batch: dict
     ) -> torch.Tensor:
 
-        res, score = self(batch)
-        # logging.info(score)  ##????
+        res, _score = self(
+            batch
+        )
+        # logger.info(score)  ##????
         return res

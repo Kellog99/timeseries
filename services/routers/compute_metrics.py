@@ -3,35 +3,51 @@ import json
 import sys
 from datetime import date
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import torch
-from fastapi import APIRouter, Depends
-from fastapi import Query
+from fastapi import APIRouter, Depends, Query
 from tqdm import tqdm
 
 from services.models.tickerdata import TickerData
 from .load_data import get_data
-from .utils import validate_path, base64_plot_generator, config_field, compute_correlation_matrix
+from .utils import (
+    base64_plot_generator,
+    compute_correlation_matrix,
+    config_field,
+    validate_path,
+)
 
 # Add project root to Python path
-project_root = Path(__file__).parent.parent.parent
-print(project_root)
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+project_root = Path(
+    __file__
+).parent.parent.parent
+print(
+    project_root
+)
+if str(
+        project_root
+) not in sys.path:
+    sys.path.insert(
+        0,
+        str(
+            project_root
+        )
+    )
 
 from timeseries.metrics.returns import get_return
 
-router = APIRouter(prefix = "/compute")
+router = APIRouter(
+    prefix = "/compute"
+)
 
 
 def get_cached_correlation_matrix(
     path_report: Path | str,
-    path_data: Optional[Path] = None,
+    path_data: Path | None = None,
     correlation: str = "pearson",
     device: str | torch.device = "cpu",
-    tickers: Optional[list[str]] = None,
+    tickers: list[str] | None = None,
     save: bool = True,
 ) -> np.ndarray:
     """
@@ -39,32 +55,57 @@ def get_cached_correlation_matrix(
     for executing the computation of the correlation matrix.
     """
     ############# Device #############
-    if isinstance(device, (str, torch.device)):
-        if isinstance(device, str):
-            device = torch.device(device)
+    if isinstance(
+            device,
+            (str, torch.device)
+    ):
+        if isinstance(
+                device,
+                str
+        ):
+            device = torch.device(
+                device
+            )
     else:
-        raise ValueError(
+        raise TypeError(
             f"The type of the device, {type(device)}, is not supported."
         )
     ##################################
 
     from timeseries.metrics import MetricRegister
-    if correlation.lower() not in MetricRegister.get_list_classes(domain = "dependence"):
-        raise ValueError(f"Unknown correlation metric: {correlation!r}")
+    if correlation.lower() not in MetricRegister.get_list_classes(
+            domain = "dependence"
+    ):
+        raise ValueError(
+            f"Unknown correlation metric: {correlation!r}"
+        )
     metric = correlation.lower()
 
     matrix: np.ndarray | None = None
     #################### Checking if the matrix is cached ####################
-    path_to_correlation_matrix: Path = validate_path(path_report) / f"{correlation}.json"
+    path_to_correlation_matrix: Path = validate_path(
+        path_report
+    ) / f"{correlation}.json"
     if path_to_correlation_matrix.exists():
-        with open(path_to_correlation_matrix, "r") as f:
-            correlation_matrix = json.load(f)
+        with open(
+                path_to_correlation_matrix,
+                "r"
+        ) as f:
+            correlation_matrix = json.load(
+                f
+            )
 
         # Use cache only if valid and tickers match
-        if (correlation_matrix.get("matrix") and
-                correlation_matrix.get("tickers") and
+        if (correlation_matrix.get(
+                "matrix"
+        ) and
+                correlation_matrix.get(
+                    "tickers"
+                ) and
                 correlation_matrix["tickers"] == tickers):
-            matrix = np.array(correlation_matrix["matrix"])
+            matrix = np.array(
+                correlation_matrix["matrix"]
+            )
     ##########################################################################
 
     # Compute the actual correlation matrix if not cached or invalid
@@ -76,9 +117,14 @@ def get_cached_correlation_matrix(
                 "The matrix and the data are None. Hence the tickers are required for generating the matrix."
             )
         if path_data is None:
-            raise ValueError("path_data is required when the correlation matrix is not cached.")
+            raise ValueError(
+                "path_data is required when the correlation matrix is not cached."
+            )
         data: dict[str, dict[date, float]] = {}
-        for ticker in tqdm(tickers, desc = "loading the files"):
+        for ticker in tqdm(
+                tickers,
+                desc = "loading the files"
+        ):
             # getting the history for a certain ticker
             ticker_data: TickerData = get_data(
                 path_data = path_data,
@@ -86,7 +132,9 @@ def get_cached_correlation_matrix(
                 step_size = 1,
                 save = save,
             )
-            daily_return = get_return(history = {day: value.Close for day, value in ticker_data.history.items()})
+            daily_return = get_return(
+                history = {day: value.Close for day, value in ticker_data.history.items()}
+            )
             data[ticker] = daily_return
 
         matrix: np.ndarray = compute_correlation_matrix(
@@ -96,27 +144,53 @@ def get_cached_correlation_matrix(
         )
 
         if save:
-            with open(path_to_correlation_matrix, "w") as f:
+            with open(
+                    path_to_correlation_matrix,
+                    "w"
+            ) as f:
                 json.dump(
                     {
                         "matrix": matrix.tolist(),
                         "tickers": tickers
-                    }, f
+                    },
+                    f
                 )
     return matrix
 
 
-@router.get("/correlation")
+@router.get(
+    "/correlation"
+)
 def get_correlation_matrix_plot(
     correlation: str = Query(
         default = "pearson",
         description = "Type of correlation to compute. Default: 'Pearson'",
     ),
-    path_report: Path | str = Depends(config_field("path_report")),
-    device: str = Depends(config_field("device")),
-    tickers: list[str] = Depends(config_field("tickers")),
-    path_data: Optional[Path] = Depends(config_field("path_data")),
-    save: bool = Depends(config_field("save"))
+    path_report: Path | str = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "path_report"
+        )
+    ),
+    device: str = Depends(
+        config_field(
+            "device"
+        )
+    ),
+    tickers: list[str] = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "tickers"
+        )
+    ),
+    path_data: Path | None = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "path_data"
+        )
+    ),
+    save: bool = Depends(
+        config_field(
+            "save"
+        )
+    )
 ) -> str:
     matrix: np.ndarray = get_cached_correlation_matrix(
         correlation = correlation,
@@ -126,10 +200,14 @@ def get_correlation_matrix_plot(
         path_data = path_data,
         save = save
     )
-    return base64_plot_generator(matrix)
+    return base64_plot_generator(
+        matrix
+    )
 
 
-@router.get("/corr_lead")
+@router.get(
+    "/corr_lead"
+)
 def get_leaderboard(
     k: int = Query(
         default = 10,
@@ -143,11 +221,31 @@ def get_leaderboard(
         default = True,
         description = "It tells whether the correlations are the best, True, or the worst, False."
     ),
-    path_report: Path | str = Depends(config_field("path_report")),
-    device: str = Depends(config_field("device")),
-    tickers: list[str] = Depends(config_field("tickers")),
-    path_data: Optional[Path] = Depends(config_field("path_data")),
-    save: bool = Depends(config_field("save"))
+    path_report: Path | str = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "path_report"
+        )
+    ),
+    device: str = Depends(
+        config_field(
+            "device"
+        )
+    ),
+    tickers: list[str] = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "tickers"
+        )
+    ),
+    path_data: Path | None = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "path_data"
+        )
+    ),
+    save: bool = Depends(
+        config_field(
+            "save"
+        )
+    )
 
 ) -> list[list[float | str]]:
     """
@@ -162,27 +260,44 @@ def get_leaderboard(
         save = save
     )
 
-    n = len(tickers)
+    n = len(
+        tickers
+    )
     flat_with_idx: list[list[float | str]] = [
         [tickers[i], tickers[j], matrix[i, j]]
-        for i in range(n)
-        for j in range(n)
+        for i in range(
+            n
+        )
+        for j in range(
+            n
+        )
         if i != j
     ]
-    k = min(k, len(flat_with_idx))
+    k = min(
+        k,
+        len(
+            flat_with_idx
+        )
+    )
     if best:
         return heapq.nsmallest(
-            k, flat_with_idx, key = lambda
+            k,
+            flat_with_idx,
+            key = lambda
                 x: x[2]
-            )
+        )
     else:
         return heapq.nlargest(
-            k, flat_with_idx, key = lambda
+            k,
+            flat_with_idx,
+            key = lambda
                 x: x[2]
-            )
+        )
 
 
-@router.get("/correlation_list")
+@router.get(
+    "/correlation_list"
+)
 def get_correlation(
     k: int = Query(
         default = 10,
@@ -196,11 +311,31 @@ def get_correlation(
         default = True,
         description = "It tells whether the correlations are the best, True, or the worst, False."
     ),
-    path_report: Path | str = Depends(config_field("path_report")),
-    device: str = Depends(config_field("device")),
-    tickers: list[str] = Depends(config_field("tickers")),
-    path_data: Optional[Path] = Depends(config_field("path_data")),
-    save: bool = Depends(config_field("save"))
+    path_report: Path | str = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "path_report"
+        )
+    ),
+    device: str = Depends(
+        config_field(
+            "device"
+        )
+    ),
+    tickers: list[str] = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "tickers"
+        )
+    ),
+    path_data: Path | None = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "path_data"
+        )
+    ),
+    save: bool = Depends(
+        config_field(
+            "save"
+        )
+    )
 
 ) -> list[tuple[str, float]]:
     """
@@ -216,20 +351,32 @@ def get_correlation(
     )
 
     # Removing the element in the diagonal
-    matrix -= np.eye(len(matrix))
+    matrix -= np.eye(
+        len(
+            matrix
+        )
+    )
 
-    n = len(tickers)
+    n = len(
+        tickers
+    )
     flat_with_idx: list[tuple[str, float]] = [
         (tickers[i], matrix[i].max())
-        for i in range(n)
+        for i in range(
+            n
+        )
     ]
     if best:
         return heapq.nsmallest(
-            k, flat_with_idx, key = lambda
+            k,
+            flat_with_idx,
+            key = lambda
                 x: x[1]
-            )
+        )
     else:
         return heapq.nlargest(
-            k, flat_with_idx, key = lambda
+            k,
+            flat_with_idx,
+            key = lambda
                 x: x[1]
-            )
+        )

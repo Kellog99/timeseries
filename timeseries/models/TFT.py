@@ -1,48 +1,120 @@
+# ruff: noqa: N999  # Preserve public import paths.
 from typing import Any, ClassVar
-from typing import List
 
 import torch
 from pydantic import Field
 from torch import nn
 
 from timeseries.base import Base
-from timeseries.configuration import BaseLoss
-from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
+from timeseries.configuration import (
+    BaseLoss,
+    NonNegativeInt,
+    PositiveInt,
+    Probability,
+    Quantile,
+    ThreeQuantileConfiguration,
+)
 from timeseries.model_register import ModelFactory
-from .tft import encoder, decoder, embedding_nn
+from .tft import decoder, embedding_nn, encoder
 
 
-class ConfigTFT(ThreeQuantileConfiguration):
+class ConfigTFT(
+    ThreeQuantileConfiguration
+):
     """Temporal Fusion Transformer for multivariate forecasting."""
-    use_target_past: bool = Field(..., description = 'Include past target observations as encoder inputs.')
-    use_yprec_fut: bool = Field(..., description = 'Include previous target observations in future decoding.')
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
+    use_target_past: bool = Field(
+        ...,
+        description = 'Include past target observations as encoder inputs.'
+    )
+    use_yprec_fut: bool = Field(
+        ...,
+        description = 'Include previous target observations in future decoding.'
+    )
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
+    past_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of observed numerical input features.'
+    )
     future_channels: NonNegativeInt = Field(
-        ..., description = 'Number of known future numerical features; zero is allowed.'
+        ...,
+        description = 'Number of known future numerical features; zero is allowed.'
     )
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    d_model: PositiveInt = Field(..., description = 'Dimension of the internal feature embeddings.')
-    num_heads: PositiveInt = Field(..., description = 'Number of attention heads.')
-    head_size: PositiveInt = Field(..., description = 'Feature dimension of each attention head.')
-    fw_exp: PositiveInt = Field(..., description = 'Feed-forward hidden dimension expansion factor.')
-    dropout: Probability = Field(..., description = 'Dropout.')
-    n_layer_encoder: PositiveInt = Field(..., description = 'Number of encoder layers.')
-    n_layer_decoder: PositiveInt = Field(..., description = 'Number of decoder layers.')
-    num_layers_RNN: PositiveInt = Field(..., description = 'Number of recurrent layers.')
-    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
-    kind: str = Field(..., description = 'Kind.')
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
+    )
+    d_model: PositiveInt = Field(
+        ...,
+        description = 'Dimension of the internal feature embeddings.'
+    )
+    num_heads: PositiveInt = Field(
+        ...,
+        description = 'Number of attention heads.'
+    )
+    head_size: PositiveInt = Field(
+        ...,
+        description = 'Feature dimension of each attention head.'
+    )
+    fw_exp: PositiveInt = Field(
+        ...,
+        description = 'Feed-forward hidden dimension expansion factor.'
+    )
+    dropout: Probability = Field(
+        ...,
+        description = 'Dropout.'
+    )
+    n_layer_encoder: PositiveInt = Field(
+        ...,
+        description = 'Number of encoder layers.'
+    )
+    n_layer_decoder: PositiveInt = Field(
+        ...,
+        description = 'Number of decoder layers.'
+    )
+    num_layers_RNN: PositiveInt = Field(
+        ...,
+        description = 'Number of recurrent layers.'
+    )
+    out_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of target variables.'
+    )
+    kind: str = Field(
+        ...,
+        description = 'Kind.'
+    )
     persistence_weight: float = Field(
-        0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+        0.0,
+        description = 'Weight applied to the persistence-based loss penalty.',
+        ge = 0
     )
-    loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
+    loss_type: BaseLoss = Field(
+        'l1',
+        description = 'Training loss selection.'
+    )
     quantiles: list[Quantile] | None = Field(
-        None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
+        None,
+        description = 'Three increasing output quantiles, or None/empty for point forecasts.'
     )
-    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    optim: str | None = Field(
+        None,
+        description = 'Torch optimizer class name; None selects Adam.'
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
 @ModelFactory.register(
@@ -50,7 +122,9 @@ class ConfigTFT(ThreeQuantileConfiguration):
     description = 'Temporal Fusion Transformer for multivariate forecasting.',
     domain = 'forecasting',
 )
-class TFT(Base):
+class TFT(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigTFT]] = ConfigTFT
 
     def __init__(
@@ -142,36 +216,95 @@ class TFT(Base):
         # NN of the model:
 
         # - Starting Embedding
-        self.emb_cat_var = embedding_nn.embedding_cat_variables(self.seq_len, future_steps, d_model, embs)
+        self.emb_cat_var = embedding_nn.embedding_cat_variables(
+            self.seq_len,
+            future_steps,
+            d_model,
+            embs
+        )
         if use_target_past:
-            self.emb_num_past_var = embedding_nn.embedding_num_past_variables(past_channels, d_model)
+            self.emb_num_past_var = embedding_nn.embedding_num_past_variables(
+                past_channels,
+                d_model
+            )
         if use_yprec_fut:
-            self.emb_num_fut_var = embedding_nn.embedding_num_future_variables(future_steps, out_channels, d_model)
+            self.emb_num_fut_var = embedding_nn.embedding_num_future_variables(
+                future_steps,
+                out_channels,
+                d_model
+            )
 
         # - Encoder (past)
         self.EncVariableSelection = embedding_nn.Encoder_Var_Selection(
-            self.use_target_past, len(embs) + 3, past_channels, d_model, dropout
+            self.use_target_past,
+            len(
+                embs
+            ) + 3,
+            past_channels,
+            d_model,
+            dropout
         )
-        self.EncRNN = embedding_nn.Encoder_RNN(self.type_RNN, num_layers_RNN, d_model, dropout)
-        self.EncGRN = embedding_nn.GRN(d_model, dropout)
-        self.Encoder = encoder.Encoder(n_layer_encoder, d_model, num_heads, self.head_size, fw_exp, dropout)
+        self.EncRNN = embedding_nn.Encoder_RNN(
+            self.type_RNN,
+            num_layers_RNN,
+            d_model,
+            dropout
+        )
+        self.EncGRN = embedding_nn.GRN(
+            d_model,
+            dropout
+        )
+        self.Encoder = encoder.Encoder(
+            n_layer_encoder,
+            d_model,
+            num_heads,
+            self.head_size,
+            fw_exp,
+            dropout
+        )
 
         # - Decoder (future)
         self.DecVariableSelection = embedding_nn.Decoder_Var_Selection(
-            self.use_yprec_fut, len(embs) + 3, out_channels + 1, d_model, dropout
+            self.use_yprec_fut,
+            len(
+                embs
+            ) + 3,
+            out_channels + 1,
+            d_model,
+            dropout
         )
-        self.DecRNN = embedding_nn.Decoder_RNN(self.type_RNN, num_layers_RNN, d_model, dropout)
-        self.DecGRN = embedding_nn.GRN(d_model, dropout)
+        self.DecRNN = embedding_nn.Decoder_RNN(
+            self.type_RNN,
+            num_layers_RNN,
+            d_model,
+            dropout
+        )
+        self.DecGRN = embedding_nn.GRN(
+            d_model,
+            dropout
+        )
         self.Decoder = decoder.Decoder(
-            n_layer_decoder, d_model, num_heads, self.head_size, fw_exp, future_steps, dropout
+            n_layer_decoder,
+            d_model,
+            num_heads,
+            self.head_size,
+            fw_exp,
+            future_steps,
+            dropout
         )
 
         # - PostTransformer (future)
-        self.postTransformer = embedding_nn.postTransformer(d_model, dropout)
+        self.postTransformer = embedding_nn.postTransformer(
+            d_model,
+            dropout
+        )
 
         # quantiles defines the number of predicted values: only y or also 0.1 and 0.9 quantiles
         # init the last linear, loss and mul according tothe size of quantiles
-        self.outLinear = nn.Linear(d_model, out_channels * self.mul)
+        self.outLinear = nn.Linear(
+            d_model,
+            out_channels * self.mul
+        )
 
     def forward(
         self,
@@ -204,10 +337,19 @@ class TFT(Base):
         """
 
         # categorical past var
-        x_cat_past = batch['x_cat_past'].to(self.device)
-        x_cat_future = batch['x_cat_future'].to(self.device)
+        x_cat_past = batch['x_cat_past'].to(
+            self.device
+        )
+        x_cat_future = batch['x_cat_future'].to(
+            self.device
+        )
         # embed all categorical values
-        embed_categorical = self.emb_cat_var(torch.cat((x_cat_past, x_cat_future), dim = 1))
+        embed_categorical = self.emb_cat_var(
+            torch.cat(
+                (x_cat_past, x_cat_future),
+                dim = 1
+            )
+        )
         # split for past and future
         embed_categorical_past = embed_categorical[:, :self.past_steps, :, :]
         embed_categorical_future = embed_categorical[:, -self.future_steps:, :, :]
@@ -216,58 +358,163 @@ class TFT(Base):
         # Variable Selection
         if self.use_target_past:
             # numerical past var
-            embed_num_past = self.emb_num_past_var(batch['x_num_past'].to(self.device))
-            variable_selection_past = self.EncVariableSelection(embed_categorical_past, embed_num_past)
+            embed_num_past = self.emb_num_past_var(
+                batch['x_num_past'].to(
+                    self.device
+                )
+            )
+            variable_selection_past = self.EncVariableSelection(
+                embed_categorical_past,
+                embed_num_past
+            )
         else:
-            variable_selection_past = self.EncVariableSelection(embed_categorical_past)
+            variable_selection_past = self.EncVariableSelection(
+                embed_categorical_past
+            )
         # RNN and GRN
-        past_RNN, hn = self.EncRNN(variable_selection_past)
-        encoding = self.EncGRN(past_RNN)
+        past_RNN, hn = self.EncRNN(
+            variable_selection_past
+        )
+        encoding = self.EncGRN(
+            past_RNN
+        )
         # Encoder
-        encoded = self.Encoder(encoding, encoding, encoding)
+        encoded = self.Encoder(
+            encoding,
+            encoding,
+            encoding
+        )
 
         ### FUTURE ###########
         if self.use_yprec_fut:
             # init output tensor on the right device
-            output = torch.Tensor().to(self.device)
+            output = torch.Tensor().to(
+                self.device
+            )
             # init decoder_out to store actual value predicted of the target variable
             idx_target = batch['idx_target'][0, 0].item()
-            decoder_out = batch['x_num_past'][:, -1, idx_target].unsqueeze(1).unsqueeze(2).to(self.device)
+            decoder_out = batch['x_num_past'][:, -1, idx_target].unsqueeze(
+                1
+            ).unsqueeze(
+                2
+            ).to(
+                self.device
+            )
 
             # start iterative procedure
-            for tau in range(1, self.future_steps + 1):
-                embed_tau_y = self.emb_num_fut_var(decoder_out)
-                variable_selection_fut = self.DecVariableSelection(embed_categorical_future[:, :tau, :, :], embed_tau_y)
-                fut_RNN = self.DecRNN(variable_selection_fut, hn)
-                pred_decoding = self.DecGRN(fut_RNN)
-                pred_decoded = self.Decoder(pred_decoding, encoded, encoded)
-                out = self.postTransformer(pred_decoded, pred_decoding, fut_RNN)
-                out = self.outLinear(out)  # [B, tau, self.mul]
+            for tau in range(
+                    1,
+                    self.future_steps + 1
+            ):
+                embed_tau_y = self.emb_num_fut_var(
+                    decoder_out
+                )
+                variable_selection_fut = self.DecVariableSelection(
+                    embed_categorical_future[:, :tau, :, :],
+                    embed_tau_y
+                )
+                fut_RNN = self.DecRNN(
+                    variable_selection_fut,
+                    hn
+                )
+                pred_decoding = self.DecGRN(
+                    fut_RNN
+                )
+                pred_decoded = self.Decoder(
+                    pred_decoding,
+                    encoded,
+                    encoded
+                )
+                out = self.postTransformer(
+                    pred_decoded,
+                    pred_decoding,
+                    fut_RNN
+                )
+                out = self.outLinear(
+                    out
+                )  # [B, tau, self.mul]
                 # self.mul, by assert in __init__, ==1 or ==3
                 if self.mul == 1:
-                    decoder_out = torch.cat((decoder_out, out[:, -1, :].unsqueeze(2)), dim = 1)
-                    output = torch.cat((output, out[:, -1, :].unsqueeze(1)), dim = 1)
+                    decoder_out = torch.cat(
+                        (
+                            decoder_out, out[:, -1, :].unsqueeze(
+                            2
+                        )
+                        ),
+                        dim = 1
+                    )
+                    output = torch.cat(
+                        (
+                            output, out[:, -1, :].unsqueeze(
+                            1
+                        )
+                        ),
+                        dim = 1
+                    )
                 else:
                     # self.mul ==3 -> store the median quantile[q=0.5] predicted in the dec_out
-                    dec_out = out[:, :, 1].unsqueeze(2)
+                    dec_out = out[:, :, 1].unsqueeze(
+                        2
+                    )
                     # cat to decoder_out only the actual value
-                    decoder_out = torch.cat((decoder_out, dec_out[:, -1, :].unsqueeze(2)), dim = 1)
+                    decoder_out = torch.cat(
+                        (
+                            decoder_out, dec_out[:, -1, :].unsqueeze(
+                            2
+                        )
+                        ),
+                        dim = 1
+                    )
                     # cat to output all the quantiles predicted
-                    output = torch.cat((output, out[:, -1, :].unsqueeze(1)), dim = 1)
+                    output = torch.cat(
+                        (
+                            output, out[:, -1, :].unsqueeze(
+                            1
+                        )
+                        ),
+                        dim = 1
+                    )
             # ignore the first value y_0 used to start the iterative procedure
             out = decoder_out[:, 1:, :]
             B, L, _ = output.shape
-            return output.reshape(B, L, -1, self.mul)
+            return output.reshape(
+                B,
+                L,
+                -1,
+                self.mul
+            )
         else:
             # direct prediction mod
-            variable_selection_fut = self.DecVariableSelection(embed_categorical_future)
-            fut_RNN = self.DecRNN(variable_selection_fut, hn)
-            decoding = self.DecGRN(fut_RNN)
-            decoded = self.Decoder(decoding, encoded, encoded)
-            out = self.postTransformer(decoded, decoding, fut_RNN)
-            out = self.outLinear(out)
+            variable_selection_fut = self.DecVariableSelection(
+                embed_categorical_future
+            )
+            fut_RNN = self.DecRNN(
+                variable_selection_fut,
+                hn
+            )
+            decoding = self.DecGRN(
+                fut_RNN
+            )
+            decoded = self.Decoder(
+                decoding,
+                encoded,
+                encoded
+            )
+            out = self.postTransformer(
+                decoded,
+                decoding,
+                fut_RNN
+            )
+            out = self.outLinear(
+                out
+            )
             B, L, _ = out.shape
-            return out.reshape(B, L, -1, self.mul)
+            return out.reshape(
+                B,
+                L,
+                -1,
+                self.mul
+            )
         # daje roma
 
     def inference(
@@ -282,4 +529,6 @@ class TFT(Base):
         Returns:
             torch.tensor: result
         """
-        return self(batch)  # exactly the same computations of forward
+        return self(
+            batch
+        )  # exactly the same computations of forward

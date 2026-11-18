@@ -13,16 +13,48 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 split = {
-    'start_train': datetime(2017, 11, 15, 0),
-    'end_train': datetime(2020, 1, 1, 0),
-    'start_validation': datetime(2020, 1, 1, 0),
-    'end_validation': datetime(2020, 12, 1, 0),
-    'start_test': datetime(2021, 3, 5, 0),
-    'end_test': datetime(2022, 4, 6, 0)
+    'start_train': datetime(
+        2017,
+        11,
+        15,
+        0
+    ),
+    'end_train': datetime(
+        2020,
+        1,
+        1,
+        0
+    ),
+    'start_validation': datetime(
+        2020,
+        1,
+        1,
+        0
+    ),
+    'end_validation': datetime(
+        2020,
+        12,
+        1,
+        0
+    ),
+    'start_test': datetime(
+        2021,
+        3,
+        5,
+        0
+    ),
+    'end_test': datetime(
+        2022,
+        4,
+        6,
+        0
+    )
 }
 
 
-class MyDataset(Dataset):
+class MyDataset(
+    Dataset
+):
     def __init__(
         self,
         df: pd.DataFrame,
@@ -32,30 +64,66 @@ class MyDataset(Dataset):
         columns: list,
         task: str
     ):
-        path_date = os.path.join(config['paths']['dataset'], f"dates_dataset_{task}.csv")
+        path_date = os.path.join(
+            config['paths']['dataset'],
+            f"dates_dataset_{task}.csv"
+        )
 
         self.x = []
         self.y = []
         dates = []
-        for i in tqdm(range(len(df.date) - (h_future + h_pass)), desc = f"df for {task}"):
+        for i in tqdm(
+                range(
+                    len(
+                        df.date
+                    ) - (h_future + h_pass)
+                ),
+                desc = f"df for {task}"
+        ):
             t_init = df.date.values[i]
             t_end = df.date.values[i + h_pass + h_future]
-            if np.timedelta64(t_end - t_init, 'h').astype(int) == (h_future + h_pass):
-                x = torch.tensor(df[columns].values[i:i + h_pass + h_future])
-                y = torch.tensor(df.y.values[i + h_pass:i + h_pass + h_future])
-                x[h_pass:, -1] = torch.tensor(0)
-                self.x.append(x)
-                self.y.append(y)
-                dates.append(df.date.values[i + h_pass:i + h_pass + h_future])
+            if np.timedelta64(
+                    t_end - t_init,
+                    'h'
+            ).astype(
+                int
+            ) == (h_future + h_pass):
+                x = torch.tensor(
+                    df[columns].values[i:i + h_pass + h_future]
+                )
+                y = torch.tensor(
+                    df.y.values[i + h_pass:i + h_pass + h_future]
+                )
+                x[h_pass:, -1] = torch.tensor(
+                    0
+                )
+                self.x.append(
+                    x
+                )
+                self.y.append(
+                    y
+                )
+                dates.append(
+                    df.date.values[i + h_pass:i + h_pass + h_future]
+                )
 
-        self.date = pd.DataFrame(dates)
-        self.date.columns = pd.RangeIndex(1, h_future + 1)
-        self.date.to_csv(path_date)
+        self.date = pd.DataFrame(
+            dates
+        )
+        self.date.columns = pd.RangeIndex(
+            1,
+            h_future + 1
+        )
+        self.date.to_csv(
+            path_date
+        )
 
     def __len__(
         self
     ):
-        return len(self.x)
+        return len(
+            self.x
+        )
 
     def __getitem__(
         self,
@@ -75,48 +143,103 @@ def crete_dataframe(
     config_path: str
 ):
     config = ConfigParser()
-    config.read(config_path)
+    config.read(
+        config_path
+    )
 
     ##### creo tutte le directory necessarie al config #########
     for path in config['paths']:
-        os.makedirs(config['paths'][path], exist_ok = os.path.exists(config['paths'][path]))
+        os.makedirs(
+            config['paths'][path],
+            exist_ok = os.path.exists(
+                config['paths'][path]
+            )
+        )
     ############################################################
 
-    print(f'{" Download the raw data ":=^60s}')
-    experiment_data = os.path.join(config['paths']['data'], 'data.pkl')
-    with open(experiment_data, 'rb') as f:
-        df_el, col_el, df_term, col_term, le, max_id, meteo_columns = pickle.load(f)
-        df_el.tempo = pd.to_datetime(df_el.tempo)
-    print(f'{" Download complete ":=^60s}')
+    print(
+        f'{" Download the raw data ":=^60s}'
+    )
+    experiment_data = os.path.join(
+        config['paths']['data'],
+        'data.pkl'
+    )
+    with open(
+            experiment_data,
+            'rb'
+    ) as f:
+        df_el, _col_el, _df_term, _col_term, _le, _max_id, _meteo_columns = pickle.load(
+            f
+        )
+        df_el.tempo = pd.to_datetime(
+            df_el.tempo
+        )
+    print(
+        f'{" Download complete ":=^60s}'
+    )
 
     ##### variabili di riferimento del dataset ####
-    categorical = json.loads(config.get('dataset', 'categorical'))
-    non_categorical = json.loads(config.get('dataset', 'non_categorical'))
+    categorical = json.loads(
+        config.get(
+            'dataset',
+            'categorical'
+        )
+    )
+    non_categorical = json.loads(
+        config.get(
+            'dataset',
+            'non_categorical'
+        )
+    )
     columns = categorical + non_categorical
-    h_future = config.getint('model', 'h_future')
-    h_pass = config.getint('model', 'h_pass')
+    h_future = config.getint(
+        'model',
+        'h_future'
+    )
+    h_pass = config.getint(
+        'model',
+        'h_pass'
+    )
     ###############################################
 
     ###### Pulizia del dataset ####################
     df_el = df_el[['data'] + columns]
     df = df_el[['data'] + columns]
-    df = df.fillna(-1)
-    df = df.drop(list(df[df.y <= 0].index))
-    df.ora = df.ora.astype(int)
-    df['date'] = df.data.astype(str) + ' ' + df.ora.astype(str)
-    df['date'] = list(
-        map(
-            lambda
-                x: datetime.strptime(x, '%Y-%m-%d %H'), df['date']
+    df = df.fillna(
+        -1
+    )
+    df = df.drop(
+        list(
+            df[df.y <= 0].index
         )
     )
-    df = df.sort_values(by = ['date'])
+    df.ora = df.ora.astype(
+        int
+    )
+    df['date'] = df.data.astype(
+        str
+    ) + ' ' + df.ora.astype(
+        str
+    )
+    df['date'] = [datetime.strptime(
+        x,
+        '%Y-%m-%d %H'
+    ) for x in df['date']]
+    df = df.sort_values(
+        by = ['date']
+    )
     df = df[['date'] + columns]
-    df = df.drop([0, 1]).reset_index(drop = True)
+    df = df.drop(
+        [0, 1]
+    ).reset_index(
+        drop = True
+    )
     ###############################################
 
     ####### splitting the dataset #################
-    print(f'{" Creating the dataset ":=^60s}')
+    print(
+        f'{" Creating the dataset ":=^60s}'
+    )
     # qua creo i vettori che vanno ad indicare quali sono i nodi da allenare e quale no 
     d = {}
     pd.options.mode.chained_assignment = None  # default='warn'
@@ -124,21 +247,36 @@ def crete_dataframe(
         d[step] = df[(df.date > split[f'start_{step}']) & (df.date < split[f'end_{step}'])]
 
     scaler = MinMaxScaler()
-    scaler.fit(d['train'][non_categorical].values)
-    scaler_path = os.path.join(config['paths']['dataset'], f"scaler.pkl")
+    scaler.fit(
+        d['train'][non_categorical].values
+    )
+    scaler_path = os.path.join(
+        config['paths']['dataset'],
+        "scaler.pkl"
+    )
 
-    if os.path.exists(scaler_path) != True:
-        with open(scaler_path, 'wb') as f:
-            pickle.dump(scaler, f)
-    for step in d.keys():
-        d[step][non_categorical] = scaler.transform(d[step][non_categorical].values)
+    if os.path.exists(
+            scaler_path
+    ) != True:
+        with open(
+                scaler_path,
+                'wb'
+        ) as f:
+            pickle.dump(
+                scaler,
+                f
+            )
+    for step, step_value in d.items():
+        step_value[non_categorical] = scaler.transform(
+            step_value[non_categorical].values
+        )
 
     ############################ CREO I VARI DATASET PER OGNI TASK  ##########################
     ds = {}
     date = {}
-    for key in d.keys():
+    for key, key_value in d.items():
         ds[key] = MyDataset(
-            df = d[key],
+            df = key_value,
             h_pass = h_pass,
             h_future = h_future,
             config = config,
@@ -146,37 +284,82 @@ def crete_dataframe(
             task = key
         )
 
-    path_dataset = os.path.join(config['paths']['dataset'], f"dataframes.pkl")
-    path_date = os.path.join(config['paths']['dataset'], f"dates.pkl")
+    path_dataset = os.path.join(
+        config['paths']['dataset'],
+        "dataframes.pkl"
+    )
+    path_date = os.path.join(
+        config['paths']['dataset'],
+        "dates.pkl"
+    )
 
-    with open(path_dataset, 'wb') as f:
-        pickle.dump(ds, f)
+    with open(
+            path_dataset,
+            'wb'
+    ) as f:
+        pickle.dump(
+            ds,
+            f
+        )
 
-    with open(path_date, 'wb') as f:
-        pickle.dump(date, f)
+    with open(
+            path_date,
+            'wb'
+    ) as f:
+        pickle.dump(
+            date,
+            f
+        )
 
     ################## DECIDO COME FARE EMBEDDING DELLE VARIABILI NON CATEGORICHE ############
     emb = {}
     for col in categorical:
-        n_cat = len(df_el[col].unique())
-        emb[col] = (len(df_el[col].unique()), min(600, round(1.6 * n_cat ** 0.56)))
+        n_cat = len(
+            df_el[col].unique()
+        )
+        emb[col] = (
+            len(
+                df_el[col].unique()
+            ), min(
+            600,
+            round(
+                1.6 * n_cat ** 0.56
+            )
+        )
+        )
 
-    path_emb = os.path.join(config['paths']['dataset'], f"embedding_setting.pkl")
+    path_emb = os.path.join(
+        config['paths']['dataset'],
+        "embedding_setting.pkl"
+    )
 
-    with open(path_emb, 'wb') as f:
-        pickle.dump(emb, f)
-    print(f'{" Creation complete ":=^60s}')
+    with open(
+            path_emb,
+            'wb'
+    ) as f:
+        pickle.dump(
+            emb,
+            f
+        )
+    print(
+        f'{" Creation complete ":=^60s}'
+    )
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description = "Data preparation")
+    parser = argparse.ArgumentParser(
+        description = "Data preparation"
+    )
     parser.add_argument(
-        "-c", "--config",
+        "-c",
+        "--config",
         type = str,
         required = True,
         help = "It storse the path of the config file"
     )
     args = parser.parse_args()
 
-    crete_dataframe(args.config)
+    crete_dataframe(
+        args.config
+    )
 # 166

@@ -1,11 +1,13 @@
 import torch
-import torch.nn as nn
+from torch import nn
 
 from timeseries.utils.typing import Module
 
 
 # * ENCODER
-class Head_selfEnc(Module):
+class Head_selfEnc(
+    Module
+):
     """ one head of self-att for encoder """
 
     def __init__(
@@ -16,10 +18,20 @@ class Head_selfEnc(Module):
     ):
         super().__init__()
         self.head_size = head_size
-        self.key = nn.Linear(n_embd, head_size, bias = False)
-        self.query = nn.Linear(n_embd, head_size, bias = False)
+        self.key = nn.Linear(
+            n_embd,
+            head_size,
+            bias = False
+        )
+        self.query = nn.Linear(
+            n_embd,
+            head_size,
+            bias = False
+        )
         # self.val = nn.Linear(n_embd, head_size, bias=False)
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(
+            dropout
+        )
 
     def forward(
         self,
@@ -29,20 +41,32 @@ class Head_selfEnc(Module):
     ):
         # import pdb
         # pdb.set_trace()
-        queries = self.query(queries)
-        keys = self.key(keys)
+        queries = self.query(
+            queries
+        )
+        keys = self.key(
+            keys
+        )
         wei = queries @ keys.transpose(
-            -2, -1
+            -2,
+            -1
         ) * self.head_size ** -0.5  # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
-        wei = nn.functional.softmax(wei, dim = -1)
-        wei = self.dropout(wei)
+        wei = nn.functional.softmax(
+            wei,
+            dim = -1
+        )
+        wei = self.dropout(
+            wei
+        )
 
         # values = self.val(values)
         out = wei @ values
         return out
 
 
-class MultiHeadEnc(Module):
+class MultiHeadEnc(
+    Module
+):
 
     def __init__(
         self,
@@ -54,8 +78,20 @@ class MultiHeadEnc(Module):
         super().__init__()
         self.head_size = head_size
         self.num_heads = num_heads
-        self.heads = nn.ModuleList([Head_selfEnc(n_embd, head_size, dropout) for _ in range(num_heads)])
-        self.common_values_linear = nn.Linear(n_embd, head_size, bias = False)
+        self.heads = nn.ModuleList(
+            [Head_selfEnc(
+                n_embd,
+                head_size,
+                dropout
+            ) for _ in range(
+                num_heads
+            )]
+        )
+        self.common_values_linear = nn.Linear(
+            n_embd,
+            head_size,
+            bias = False
+        )
 
     def forward(
         self,
@@ -67,16 +103,30 @@ class MultiHeadEnc(Module):
         # pdb.set_trace()
         device = queries.device.type
         B, L = queries.shape[:2]
-        out = torch.zeros(B, L, self.head_size).to(device)
+        out = torch.zeros(
+            B,
+            L,
+            self.head_size
+        ).to(
+            device
+        )
         # we want for 'values' tensor to have the same weights shared across all heads
-        common_values = self.common_values_linear(values)
+        common_values = self.common_values_linear(
+            values
+        )
         for h in self.heads:
-            out += h(queries, keys, common_values)
+            out += h(
+                queries,
+                keys,
+                common_values
+            )
         out = out / self.num_heads
         return out
 
 
-class FFN(Module):
+class FFN(
+    Module
+):
 
     def __init__(
         self,
@@ -85,20 +135,30 @@ class FFN(Module):
     ):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embd, fw_exp * n_embd),
+            nn.Linear(
+                n_embd,
+                fw_exp * n_embd
+            ),
             nn.ReLU(),
-            nn.Linear(fw_exp * n_embd, n_embd)
+            nn.Linear(
+                fw_exp * n_embd,
+                n_embd
+            )
         )
 
     def forward(
         self,
         x
     ):
-        return self.net(x)
+        return self.net(
+            x
+        )
 
 
 #   ENCODER-LAYER    #
-class EncoderLayer(Module):
+class EncoderLayer(
+    Module
+):
     def __init__(
         self,
         n_embd,
@@ -108,11 +168,26 @@ class EncoderLayer(Module):
         dropout
     ):
         super().__init__()
-        self.heads = MultiHeadEnc(n_embd, num_heads, head_size, dropout)
-        self.linear_to_embd = nn.Linear(head_size, n_embd)
-        self.ffn = FFN(n_embd, fw_exp)
-        self.norm1 = nn.LayerNorm(n_embd)
-        self.norm2 = nn.LayerNorm(n_embd)
+        self.heads = MultiHeadEnc(
+            n_embd,
+            num_heads,
+            head_size,
+            dropout
+        )
+        self.linear_to_embd = nn.Linear(
+            head_size,
+            n_embd
+        )
+        self.ffn = FFN(
+            n_embd,
+            fw_exp
+        )
+        self.norm1 = nn.LayerNorm(
+            n_embd
+        )
+        self.norm2 = nn.LayerNorm(
+            n_embd
+        )
 
     def forward(
         self,
@@ -122,13 +197,27 @@ class EncoderLayer(Module):
     ):
         # import pdb
         # pdb.set_trace()
-        queries = queries + self.linear_to_embd(self.heads(self.norm1(queries), keys, values))
-        queries = queries + self.ffn(self.norm2(queries))
+        queries = queries + self.linear_to_embd(
+            self.heads(
+                self.norm1(
+                    queries
+                ),
+                keys,
+                values
+            )
+        )
+        queries = queries + self.ffn(
+            self.norm2(
+                queries
+            )
+        )
         return queries
 
 
 #   ENCODER   #
-class Encoder(Module):
+class Encoder(
+    Module
+):
     def __init__(
         self,
         n_enc: int,
@@ -150,10 +239,20 @@ class Encoder(Module):
         """
         super().__init__()
         self.layers = nn.ModuleList(
-            [EncoderLayer(n_embd, num_heads, head_size, fw_exp, dropout)
-             for _ in range(n_enc)]
+            [EncoderLayer(
+                n_embd,
+                num_heads,
+                head_size,
+                fw_exp,
+                dropout
+            )
+                for _ in range(
+                n_enc
+            )]
         )
-        self.norm = nn.LayerNorm(n_embd)
+        self.norm = nn.LayerNorm(
+            n_embd
+        )
 
     def forward(
         self,
@@ -178,7 +277,13 @@ class Encoder(Module):
         encoding = queries
         # iterate queries over encoder layers
         for layer in self.layers:
-            encoding = layer(encoding, keys, values)
+            encoding = layer(
+                encoding,
+                keys,
+                values
+            )
         # final normalization
-        encoding = self.norm(encoding)
+        encoding = self.norm(
+            encoding
+        )
         return encoding

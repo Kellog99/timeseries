@@ -17,10 +17,16 @@ def strtobool(
         return True
     if value in {"n", "no", "f", "false", "off", "0"}:
         return False
-    raise ValueError(f"Invalid truth value: {value!r}")
+    raise ValueError(
+        f"Invalid truth value: {value!r}"
+    )
 
 
 import logging
+
+logger = logging.getLogger(
+    __name__
+)
 
 
 # Converts the contents in a .tsf file into a dataframe and returns it along with other meta-data of the dataset:
@@ -63,54 +69,102 @@ def convert_tsf_to_dataframe(
     found_data_section = False
     started_reading_data_section = False
 
-    with open(full_file_path_and_name, "r", encoding = "cp1252") as file:
+    with open(
+            full_file_path_and_name,
+            "r",
+            encoding = "cp1252"
+    ) as file:
         for line in file:
             # Strip white space from start/end of line
             line = line.strip()
 
             if line:
-                if line.startswith("@"):  # Read meta-data
-                    if not line.startswith("@data"):
-                        line_content = line.split(" ")
-                        if line.startswith("@attribute"):
+                if line.startswith(
+                        "@"
+                ):  # Read meta-data
+                    if not line.startswith(
+                            "@data"
+                    ):
+                        line_content = line.split(
+                            " "
+                        )
+                        if line.startswith(
+                                "@attribute"
+                        ):
                             if (
-                                    len(line_content) != 3
+                                    len(
+                                        line_content
+                                    ) != 3
                             ):  # Attributes have both name and type
-                                raise Exception("Invalid meta-data specification.")
+                                raise ValueError(
+                                    "Invalid meta-data specification."
+                                )
 
-                            col_names.append(line_content[1])
-                            col_types.append(line_content[2])
+                            col_names.append(
+                                line_content[1]
+                            )
+                            col_types.append(
+                                line_content[2]
+                            )
                         else:
                             if (
-                                    len(line_content) != 2
+                                    len(
+                                        line_content
+                                    ) != 2
                             ):  # Other meta-data have only values
-                                raise Exception("Invalid meta-data specification.")
-
-                            if line.startswith("@frequency"):
-                                frequency = line_content[1]
-                            elif line.startswith("@horizon"):
-                                forecast_horizon = int(line_content[1])
-                            elif line.startswith("@missing"):
-                                contain_missing_values = bool(
-                                    strtobool(line_content[1])
+                                raise ValueError(
+                                    "Invalid meta-data specification."
                                 )
-                            elif line.startswith("@equallength"):
-                                contain_equal_length = bool(strtobool(line_content[1]))
+
+                            if line.startswith(
+                                    "@frequency"
+                            ):
+                                frequency = line_content[1]
+                            elif line.startswith(
+                                    "@horizon"
+                            ):
+                                forecast_horizon = int(
+                                    line_content[1]
+                                )
+                            elif line.startswith(
+                                    "@missing"
+                            ):
+                                contain_missing_values = bool(
+                                    strtobool(
+                                        line_content[1]
+                                    )
+                                )
+                            elif line.startswith(
+                                    "@equallength"
+                            ):
+                                contain_equal_length = bool(
+                                    strtobool(
+                                        line_content[1]
+                                    )
+                                )
 
                     else:
-                        if len(col_names) == 0:
-                            raise Exception(
+                        if len(
+                                col_names
+                        ) == 0:
+                            raise ValueError(
                                 "Missing attribute section. Attribute section must come before data."
                             )
 
                         found_data_tag = True
-                elif not line.startswith("#"):
-                    if len(col_names) == 0:
-                        raise Exception(
+                elif not line.startswith(
+                        "#"
+                ):
+                    if len(
+                            col_names
+                    ) == 0:
+                        raise ValueError(
                             "Missing attribute section. Attribute section must come before data."
                         )
                     elif not found_data_tag:
-                        raise Exception("Missing @data tag.")
+                        raise ValueError(
+                            "Missing @data tag."
+                        )
                     else:
                         if not started_reading_data_section:
                             started_reading_data_section = True
@@ -120,16 +174,30 @@ def convert_tsf_to_dataframe(
                             for col in col_names:
                                 all_data[col] = []
 
-                        full_info = line.split(":")
+                        full_info = line.split(
+                            ":"
+                        )
 
-                        if len(full_info) != (len(col_names) + 1):
-                            raise Exception("Missing attributes/values in series.")
+                        if len(
+                                full_info
+                        ) != (len(
+                            col_names
+                        ) + 1):
+                            raise ValueError(
+                                "Missing attributes/values in series."
+                            )
 
-                        series = full_info[len(full_info) - 1]
-                        series = series.split(",")
+                        series = full_info[len(
+                            full_info
+                        ) - 1]
+                        series = series.split(
+                            ","
+                        )
 
-                        if len(series) == 0:
-                            raise Exception(
+                        if len(
+                                series
+                        ) == 0:
+                            raise ValueError(
                                 "A given series should contains a set of comma separated numeric values. At least one "
                                 "numeric value should be there in a series. Missing values should be indicated with ? "
                                 "symbol"
@@ -139,52 +207,87 @@ def convert_tsf_to_dataframe(
 
                         for val in series:
                             if val == "?":
-                                numeric_series.append(replace_missing_vals_with)
+                                numeric_series.append(
+                                    replace_missing_vals_with
+                                )
                             else:
-                                numeric_series.append(float(val))
+                                numeric_series.append(
+                                    float(
+                                        val
+                                    )
+                                )
 
-                        if numeric_series.count(replace_missing_vals_with) == len(
-                                numeric_series
+                        if numeric_series.count(
+                                replace_missing_vals_with
+                        ) == len(
+                            numeric_series
                         ):
-                            raise Exception(
+                            raise ValueError(
                                 "All series values are missing. A given series should contains a set of comma "
                                 "separated numeric values. At least one numeric value should be there in a series."
                             )
 
-                        all_series.append(pd.Series(numeric_series).array)
+                        all_series.append(
+                            pd.Series(
+                                numeric_series
+                            ).array
+                        )
 
-                        for i in range(len(col_names)):
+                        for i in range(
+                                len(
+                                    col_names
+                                )
+                        ):
                             att_val = None
                             if col_types[i] == "numeric":
-                                att_val = int(full_info[i])
+                                att_val = int(
+                                    full_info[i]
+                                )
                             elif col_types[i] == "string":
-                                att_val = str(full_info[i])
+                                att_val = str(
+                                    full_info[i]
+                                )
                             elif col_types[i] == "date":
                                 att_val = datetime.strptime(
-                                    full_info[i], "%Y-%m-%d %H-%M-%S"
+                                    full_info[i],
+                                    "%Y-%m-%d %H-%M-%S"
                                 )
                             else:
-                                raise Exception(
+                                raise ValueError(
                                     "Invalid attribute type."
                                 )  # Currently, the code supports only numeric, string and date types. Extend this as
                                 # required.
 
                             if att_val is None:
-                                raise Exception("Invalid attribute value.")
+                                raise ValueError(
+                                    "Invalid attribute value."
+                                )
                             else:
-                                all_data[col_names[i]].append(att_val)
+                                all_data[col_names[i]].append(
+                                    att_val
+                                )
 
                 line_count = line_count + 1
 
         if line_count == 0:
-            raise Exception("Empty file.")
-        if len(col_names) == 0:
-            raise Exception("Missing attribute section.")
+            raise ValueError(
+                "Empty file."
+            )
+        if len(
+                col_names
+        ) == 0:
+            raise ValueError(
+                "Missing attribute section."
+            )
         if not found_data_section:
-            raise Exception("Missing series information under data section.")
+            raise ValueError(
+                "Missing series information under data section."
+            )
 
         all_data[value_column_name] = all_series
-        loaded_data = pd.DataFrame(all_data)
+        loaded_data = pd.DataFrame(
+            all_data
+        )
 
         return (
             loaded_data,
@@ -214,7 +317,7 @@ def get_freq(
         return 'D'
 
 
-class Monash():
+class Monash:
 
     def __init__(
         self,
@@ -233,15 +336,29 @@ class Monash():
         self.baseUrl = baseUrl
         self.downloaded = {}
         if rebuild == False:
-            logging.info(filename)
-            if os.path.exists(filename + '.pkl'):
-                self.load(filename)
+            logger.info(
+                filename
+            )
+            if os.path.exists(
+                    filename + '.pkl'
+            ):
+                self.load(
+                    filename
+                )
             else:
-                self.get_table(baseUrl)
-                self.save(filename)
+                self.get_table(
+                    baseUrl
+                )
+                self.save(
+                    filename
+                )
         else:
-            self.get_table(baseUrl)
-            self.save(filename)
+            self.get_table(
+                baseUrl
+            )
+            self.save(
+                filename
+            )
 
     def get_table(
         self,
@@ -252,40 +369,79 @@ class Monash():
         :meta private:
         """
         with requests.Session() as s:
-            r = s.get(baseUrl)
-        soup = bs(r.content)
+            r = s.get(
+                baseUrl
+            )
+        soup = bs(
+            r.content
+        )
         header = []
-        for x in soup.find("table", {"class": "responsive-table sortable"}).find('thead').find_all('th'):
-            header.append(x.text)
-        header
+        for x in soup.find(
+                "table",
+                {"class": "responsive-table sortable"}
+        ).find(
+            'thead'
+        ).find_all(
+            'th'
+        ):
+            header.append(
+                x.text
+            )
 
         tot = []
-        for row in soup.find("table", {"class": "responsive-table sortable"}).find('tbody').find_all('tr'):
+        for row in soup.find(
+                "table",
+                {"class": "responsive-table sortable"}
+        ).find(
+            'tbody'
+        ).find_all(
+            'tr'
+        ):
             row_data = []
             links = {}
-            for i, column in enumerate(row.find_all('td')):
-                tmp_links = column.find_all('a')
-                if len(tmp_links) > 0:
+            for i, column in enumerate(
+                    row.find_all(
+                        'td'
+                    )
+            ):
+                tmp_links = column.find_all(
+                    'a'
+                )
+                if len(
+                        tmp_links
+                ) > 0:
 
                     for x in tmp_links:
                         if 'zenodo' in x['href']:
                             links[x.text] = x['href']
                             i_links = i
-                row_data.append(column.text)
-            for dataset in links:
+                row_data.append(
+                    column.text
+                )
+            for dataset, dataset_value in links.items():
                 row_to_insert = {}
-                for j, head in enumerate(header):
+                for j, head in enumerate(
+                        header
+                ):
                     if j != i_links:
                         row_to_insert[header[j]] = row_data[j]
                     else:
                         row_to_insert['freq'] = dataset
-                        row_to_insert[header[j]] = links[dataset]
-                tot.append(row_to_insert)
+                        row_to_insert[header[j]] = dataset_value
+                tot.append(
+                    row_to_insert
+                )
 
-        tot = pd.DataFrame(tot)
+        tot = pd.DataFrame(
+            tot
+        )
         tot['id'] = tot.Download.apply(
             lambda
-                x: int(x.split('/')[-1])
+                x: int(
+                x.split(
+                    '/'
+                )[-1]
+            )
         )
         self.table = tot.copy()
 
@@ -298,13 +454,21 @@ class Monash():
         Args:
             filename (str): name of the file to generate
         """
-        logging.info('Saving')
-        with open(f'{filename}.pkl', 'wb') as f:
+        logger.info(
+            'Saving'
+        )
+        with open(
+                f'{filename}.pkl',
+                'wb'
+        ) as f:
             params = self.__dict__.copy()
             # for k in ['data','data_train','data_test','data_validation']:
             #    if k in params.keys():
             #        _ = params.pop(k)
-            pickle.dump(params, f)
+            pickle.dump(
+                params,
+                f
+            )
 
     def load(
         self,
@@ -315,11 +479,22 @@ class Monash():
         Args:
             filename (str): filename to load
         """
-        logging.info('Loading')
-        with open(filename + '.pkl', 'rb') as f:
-            params = pickle.load(f)
-            for p in params:
-                setattr(self, p, params[p])
+        logger.info(
+            'Loading'
+        )
+        with open(
+                filename + '.pkl',
+                'rb'
+        ) as f:
+            params = pickle.load(
+                f
+            )
+            for p, p_value in params.items():
+                setattr(
+                    self,
+                    p,
+                    p_value
+                )
 
     def download_dataset(
         self,
@@ -335,15 +510,31 @@ class Monash():
             rebuild (bool, optional): if true the dataset will be re-downloaded. Defaults to False.
         """
 
-        if os.path.exists(path):
+        if os.path.exists(
+                path
+        ):
             pass
         else:
-            os.mkdir(path)
-        if os.path.exists(os.path.join(path, str(id))):
+            os.mkdir(
+                path
+            )
+        if os.path.exists(
+                os.path.join(
+                    path,
+                    str(
+                        id
+                    )
+                )
+        ):
             if rebuild:
                 file = self._download(
                     url = self.table.Download[self.table.id == id].values[0],
-                    path = os.path.join(path, str(id))
+                    path = os.path.join(
+                        path,
+                        str(
+                            id
+                        )
+                    )
                 )
                 self.downloaded[id] = f'{path}/{id}/{file}'
             else:
@@ -351,7 +542,12 @@ class Monash():
         else:
             file = self._download(
                 url = self.table.Download[self.table.id == id].values[0],
-                path = os.path.join(path, str(id))
+                path = os.path.join(
+                    path,
+                    str(
+                        id
+                    )
+                )
             )
             self.downloaded[id] = f'{path}/{id}/{file}'
 
@@ -365,17 +561,40 @@ class Monash():
         :meta private:
         """
         with requests.Session() as s:
-            r = s.get(url)
-            soup = bs(r.content)
+            r = s.get(
+                url
+            )
+            soup = bs(
+                r.content
+            )
 
-            url = soup.find("link", {"type": "application/zip"})['href']
-            logging.info(url)
-            with open(path + '.zip', "wb") as f:
-                f.write(s.get(url).content)
+            url = soup.find(
+                "link",
+                {"type": "application/zip"}
+            )['href']
+            logger.info(
+                url
+            )
+            with open(
+                    path + '.zip',
+                    "wb"
+            ) as f:
+                f.write(
+                    s.get(
+                        url
+                    ).content
+                )
 
-        shutil.unpack_archive(path + '.zip', path)
-        os.remove(path + '.zip')
-        return os.listdir(path)[0]
+        shutil.unpack_archive(
+            path + '.zip',
+            path
+        )
+        os.remove(
+            path + '.zip'
+        )
+        return os.listdir(
+            path
+        )[0]
 
     def generate_dataset(
         self,
@@ -390,8 +609,12 @@ class Monash():
             None or pd.DataFrame: dataframe
         """
 
-        if id not in self.downloaded.keys():
-            logging.error('please call first download dataset')
+        if id not in self.downloaded:
+            logger.error(
+                'please call first download dataset'
+            )
             return None
         else:
-            return convert_tsf_to_dataframe(self.downloaded[id])
+            return convert_tsf_to_dataframe(
+                self.downloaded[id]
+            )

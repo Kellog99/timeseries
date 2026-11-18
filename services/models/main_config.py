@@ -6,7 +6,9 @@ import torch
 from pydantic import BaseModel, Field, model_validator
 
 
-class MainConfig(BaseModel):
+class MainConfig(
+    BaseModel
+):
     ####################### CONFIG #######################
     port: int = Field(
         default = 8000,
@@ -62,16 +64,26 @@ class MainConfig(BaseModel):
         description = "Device to run the operations on."
     )
 
-    @model_validator(mode = 'after')
+    @model_validator(
+        mode = 'after'
+    )
     def create_paths(
         self
     ):
         """Create folders if they don't exist"""
         for field_name in ['path_report', 'path_data']:
-            path_str = getattr(self, field_name)
-            path = Path(path_str).expanduser()
+            path_str = getattr(
+                self,
+                field_name
+            )
+            path = Path(
+                path_str
+            ).expanduser()
             if not path.is_file() and not path.exists():
-                path.mkdir(parents = True, exist_ok = True)
+                path.mkdir(
+                    parents = True,
+                    exist_ok = True
+                )
         return self
 
 
@@ -89,7 +101,12 @@ def parsed_argument(
         field_type = field_info.annotation
 
         # Handle Optional types
-        if hasattr(field_type, '__origin__') and field_type.__origin__ is type(Optional):
+        if hasattr(
+                field_type,
+                '__origin__'
+        ) and field_type.__origin__ is type(
+            Optional
+        ):
             field_type = field_type.__args__[0]
         parser.add_argument(
             f"--{field_name}",

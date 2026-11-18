@@ -1,17 +1,19 @@
-import torch.nn.init as init
+from torch.nn import init
 
 from timeseries.utils.typing import Module
 
 
 def get_device():
-    return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    return torch.device(
+        "cuda:0" if torch.cuda.is_available() else "cpu"
+    )
 
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 
-class SinkhornDistance():
+class SinkhornDistance:
     r"""
     Given two empirical measures each with :math:`P_1` locations
     :math:`x\in\mathbb{R}^{D_1}` and :math:`P_2` locations :math:`y\in\mathbb{R}^{D_2}`,
@@ -36,7 +38,7 @@ class SinkhornDistance():
         max_iter,
         reduction = 'none'
     ):
-        super(SinkhornDistance, self).__init__()
+        super().__init__()
         self.eps = eps
         self.max_iter = max_iter
         self.reduction = reduction
@@ -47,7 +49,12 @@ class SinkhornDistance():
         y
     ):
         # The Sinkhorn algorithm takes as input three variables :
-        C = self._cost_matrix(x, y).to(x.device)  # Wasserstein cost function
+        C = self._cost_matrix(
+            x,
+            y
+        ).to(
+            x.device
+        )  # Wasserstein cost function
         x_points = x.shape[-2]
         y_points = y.shape[-2]
         if x.dim() == 2:
@@ -57,38 +64,90 @@ class SinkhornDistance():
 
         # both marginals are fixed with equal weights
         mu = torch.empty(
-            batch_size, x_points, dtype = torch.float,
+            batch_size,
+            x_points,
+            dtype = torch.float,
             requires_grad = False
-        ).fill_(1.0 / x_points).squeeze().to(x.device)
+        ).fill_(
+            1.0 / x_points
+            ).squeeze().to(
+            x.device
+        )
         nu = torch.empty(
-            batch_size, y_points, dtype = torch.float,
+            batch_size,
+            y_points,
+            dtype = torch.float,
             requires_grad = False
-        ).fill_(1.0 / y_points).squeeze().to(x.device)
+        ).fill_(
+            1.0 / y_points
+            ).squeeze().to(
+            x.device
+        )
 
-        u = torch.zeros_like(mu).to(x.device)
-        v = torch.zeros_like(nu).to(x.device)
+        u = torch.zeros_like(
+            mu
+        ).to(
+            x.device
+        )
+        v = torch.zeros_like(
+            nu
+        ).to(
+            x.device
+        )
         # To check if algorithm terminates because of threshold
         # or max iterations reached
-        actual_nits = 0
         # Stopping criterion
         thresh = 1e-1
 
         # Sinkhorn iterations
-        for i in range(self.max_iter):
+        for i in range(
+                self.max_iter
+        ):
             u1 = u  # useful to check the update
-            u = self.eps * (torch.log(mu + 1e-8) - torch.logsumexp(self.M(C, u, v), dim = -1)) + u
-            v = self.eps * (torch.log(nu + 1e-8) - torch.logsumexp(self.M(C, u, v).transpose(-2, -1), dim = -1)) + v
-            err = (u - u1).abs().sum(-1).mean()
+            u = self.eps * (torch.log(
+                mu + 1e-8
+                ) - torch.logsumexp(
+                self.M(
+                    C,
+                    u,
+                    v
+                ),
+                dim = -1
+            )) + u
+            v = self.eps * (torch.log(
+                nu + 1e-8
+                ) - torch.logsumexp(
+                self.M(
+                    C,
+                    u,
+                    v
+                ).transpose(
+                    -2,
+                    -1
+                ),
+                dim = -1
+            )) + v
+            err = (u - u1).abs().sum(
+                -1
+            ).mean()
 
-            actual_nits += 1
             if err.item() < thresh:
                 break
 
         U, V = u, v
         # Transport plan pi = diag(a)*K*diag(b)
-        pi = torch.exp(self.M(C, U, V))
+        pi = torch.exp(
+            self.M(
+                C,
+                U,
+                V
+            )
+        )
         # Sinkhorn distance
-        cost = torch.sum(pi * C, dim = (-2, -1))
+        cost = torch.sum(
+            pi * C,
+            dim = (-2, -1)
+            )
 
         if self.reduction == 'mean':
             cost = cost.mean()
@@ -105,7 +164,11 @@ class SinkhornDistance():
     ):
         "Modified cost for logarithmic updates"
         r"$M_{ij} = (-c_{ij} + u_i + v_j) / \epsilon$"
-        return (-C + u.unsqueeze(-1) + v.unsqueeze(-2)) / self.eps
+        return (-C + u.unsqueeze(
+            -1
+        ) + v.unsqueeze(
+            -2
+        )) / self.eps
 
     @staticmethod
     def _cost_matrix(
@@ -114,9 +177,18 @@ class SinkhornDistance():
         p = 2
     ):
         "Returns the matrix of $|x_i-y_j|^p$."
-        x_col = x.unsqueeze(-2)
-        y_lin = y.unsqueeze(-3)
-        C = torch.sum((torch.abs(x_col - y_lin)) ** p, -1)
+        x_col = x.unsqueeze(
+            -2
+        )
+        y_lin = y.unsqueeze(
+            -3
+        )
+        C = torch.sum(
+            (torch.abs(
+                x_col - y_lin
+                )) ** p,
+            -1
+            )
         return C
 
     @staticmethod
@@ -129,7 +201,9 @@ class SinkhornDistance():
         return tau * u + (1 - tau) * u1
 
 
-class QuantileLossMO(Module):
+class QuantileLossMO(
+    Module
+):
     """Copied from git
     """
 
@@ -147,22 +221,45 @@ class QuantileLossMO(Module):
     ):
 
         assert not target.requires_grad
-        assert preds.size(0) == target.size(0)
+        assert preds.size(
+            0
+        ) == target.size(
+            0
+        )
         tot_loss = 0
-        for j in range(preds.shape[2]):
+        for j in range(
+                preds.shape[2]
+        ):
             losses = []
             ##suppose BxLxCxMUL
-            for i, q in enumerate(self.quantiles):
+            for i, q in enumerate(
+                    self.quantiles
+            ):
                 errors = target[:, :, j] - preds[:, :, j, i]
 
-                losses.append(torch.max((q - 1) * errors, q * errors))
+                losses.append(
+                    torch.max(
+                        (q - 1) * errors,
+                        q * errors
+                        )
+                )
 
-            loss = torch.mean(torch.sum(torch.cat(losses, dim = 1), dim = 1))
+            loss = torch.mean(
+                torch.sum(
+                    torch.cat(
+                        losses,
+                        dim = 1
+                    ),
+                    dim = 1
+                )
+            )
             tot_loss += loss
         return loss
 
 
-class L1Loss(Module):
+class L1Loss(
+    Module
+):
     """Custom L1Loss
     """
 
@@ -177,10 +274,15 @@ class L1Loss(Module):
         preds,
         target
     ):
-        return self.f(preds[:, :, :, 0], target)
+        return self.f(
+            preds[:, :, :, 0],
+            target
+        )
 
 
-class Permute(Module):
+class Permute(
+    Module
+):
     def __init__(
         self
     ):
@@ -190,13 +292,18 @@ class Permute(Module):
         self,
         input
     ):
-        return torch.permute(input, (0, 2, 1))
+        return torch.permute(
+            input,
+            (0, 2, 1)
+        )
 
 
 def get_activation(
     activation
 ):
-    return eval(activation)
+    return eval(
+        activation
+    )
 
 
 def weight_init(
@@ -207,82 +314,156 @@ def weight_init(
         model = Model()
         model.apply(weight_init)
     """
-    if isinstance(m, nn.Conv1d):
-        init.normal_(m.weight.data)
+    if isinstance(
+            m,
+            nn.Conv1d
+    ):
+        init.normal_(
+            m.weight.data
+        )
         if m.bias is not None:
-            init.normal_(m.bias.data)
-    elif isinstance(m, nn.Conv2d):
-        init.xavier_normal_(m.weight.data)
+            init.normal_(
+                m.bias.data
+            )
+    elif isinstance(
+            m,
+            (nn.Conv2d, nn.Conv3d)
+    ):
+        init.xavier_normal_(
+            m.weight.data
+        )
         if m.bias is not None:
-            init.normal_(m.bias.data)
-    elif isinstance(m, nn.Conv3d):
-        init.xavier_normal_(m.weight.data)
+            init.normal_(
+                m.bias.data
+            )
+    elif isinstance(
+            m,
+            nn.ConvTranspose1d
+    ):
+        init.normal_(
+            m.weight.data
+        )
         if m.bias is not None:
-            init.normal_(m.bias.data)
-    elif isinstance(m, nn.ConvTranspose1d):
-        init.normal_(m.weight.data)
+            init.normal_(
+                m.bias.data
+            )
+    elif isinstance(
+            m,
+            (nn.ConvTranspose2d, nn.ConvTranspose3d)
+    ):
+        init.xavier_normal_(
+            m.weight.data
+        )
         if m.bias is not None:
-            init.normal_(m.bias.data)
-    elif isinstance(m, nn.ConvTranspose2d):
-        init.xavier_normal_(m.weight.data)
+            init.normal_(
+                m.bias.data
+            )
+    elif isinstance(
+            m,
+            (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)
+    ):
+        init.normal_(
+            m.weight.data,
+            mean = 1,
+            std = 0.02
+        )
+        init.constant_(
+            m.bias.data,
+            0
+        )
+    elif isinstance(
+            m,
+            nn.Linear
+    ):
+        init.xavier_normal_(
+            m.weight.data
+        )
         if m.bias is not None:
-            init.normal_(m.bias.data)
-    elif isinstance(m, nn.ConvTranspose3d):
-        init.xavier_normal_(m.weight.data)
-        if m.bias is not None:
-            init.normal_(m.bias.data)
-    elif isinstance(m, nn.BatchNorm1d):
-        init.normal_(m.weight.data, mean = 1, std = 0.02)
-        init.constant_(m.bias.data, 0)
-    elif isinstance(m, nn.BatchNorm2d):
-        init.normal_(m.weight.data, mean = 1, std = 0.02)
-        init.constant_(m.bias.data, 0)
-    elif isinstance(m, nn.BatchNorm3d):
-        init.normal_(m.weight.data, mean = 1, std = 0.02)
-        init.constant_(m.bias.data, 0)
-    elif isinstance(m, nn.Linear):
-        init.xavier_normal_(m.weight.data)
-        if m.bias is not None:
-            init.normal_(m.bias.data)
-    elif isinstance(m, nn.LSTM):
+            init.normal_(
+                m.bias.data
+            )
+    elif isinstance(
+            m,
+            (nn.LSTM, nn.LSTMCell)
+    ):
         for param in m.parameters():
-            if len(param.shape) >= 2:
-                init.orthogonal_(param.data)
+            if len(
+                    param.shape
+            ) >= 2:
+                init.orthogonal_(
+                    param.data
+                )
             else:
-                init.normal_(param.data)
-    elif isinstance(m, nn.LSTMCell):
+                init.normal_(
+                    param.data
+                )
+    elif isinstance(
+            m,
+            nn.GRU
+    ):
         for param in m.parameters():
-            if len(param.shape) >= 2:
-                init.orthogonal_(param.data)
+            if len(
+                    param.shape
+            ) >= 2:
+                init.orthogonal_(
+                    param.data
+                )
             else:
-                init.normal_(param.data)
-    elif isinstance(m, nn.GRU):
-        for param in m.parameters():
-            if len(param.shape) >= 2:
-                init.orthogonal_(param.data)
-            else:
-                init.normal_(param.data)
+                init.normal_(
+                    param.data
+                )
         for names in m._all_weights:
             for name in filter(
                     lambda
-                        n: "bias" in n, names
+                        n: "bias" in n,
+                    names
             ):
-                bias = getattr(m, name)
-                n = bias.size(0)
-                bias.data[:n // 3].fill_(-1.)
-    elif isinstance(m, nn.GRUCell):
+                bias = getattr(
+                    m,
+                    name
+                )
+                n = bias.size(
+                    0
+                )
+                bias.data[:n // 3].fill_(
+                    -1.
+                )
+    elif isinstance(
+            m,
+            nn.GRUCell
+    ):
         for param in m.parameters():
-            if len(param.shape) >= 2:
-                init.orthogonal_(param.data)
+            if len(
+                    param.shape
+            ) >= 2:
+                init.orthogonal_(
+                    param.data
+                )
             else:
-                init.normal_(param.data)
+                init.normal_(
+                    param.data
+                )
 
-    elif isinstance(m, nn.Embedding):
-        init.normal_(m.weight, mean = 0.0, std = 0.02)
+    elif isinstance(
+            m,
+            nn.Embedding
+    ):
+        init.normal_(
+            m.weight,
+            mean = 0.0,
+            std = 0.02
+        )
 
-    elif isinstance(m, nn.LayerNorm):
-        init.zeros_(m.bias)
-        init.ones_(m.weight)
+    elif isinstance(
+            m,
+            nn.LayerNorm
+    ):
+        init.zeros_(
+            m.bias
+        )
+        init.ones_(
+            m.weight
+        )
 
         #  if isinstance(module, nn.Linear):
         #      torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)

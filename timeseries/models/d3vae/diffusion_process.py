@@ -1,4 +1,3 @@
-# -*-Encoding: utf-8 -*-
 """
 Authors:
     Li,Yan (liyan22021121@gmail.com)
@@ -19,15 +18,35 @@ def get_beta_schedule(
     num_diffusion_timesteps
 ):
     if beta_schedule == 'quad':
-        betas = np.linspace(beta_start ** 0.5, beta_end ** 0.5, num_diffusion_timesteps, dtype = np.float64) ** 2
+        betas = np.linspace(
+            beta_start ** 0.5,
+            beta_end ** 0.5,
+            num_diffusion_timesteps,
+            dtype = np.float64
+        ) ** 2
     elif beta_schedule == 'linear':
-        betas = np.linspace(beta_start, beta_end, num_diffusion_timesteps, dtype = np.float64)
+        betas = np.linspace(
+            beta_start,
+            beta_end,
+            num_diffusion_timesteps,
+            dtype = np.float64
+        )
     elif beta_schedule == 'const':
-        betas = beta_end * np.ones(num_diffusion_timesteps, dtype = np.float64)
+        betas = beta_end * np.ones(
+            num_diffusion_timesteps,
+            dtype = np.float64
+        )
     elif beta_schedule == 'jsd':  # 1/T, 1/(T-1), 1/(T-2), ..., 1
-        betas = 1. / np.linspace(num_diffusion_timesteps, 1, num_diffusion_timesteps, dtype = np.float64)
+        betas = 1. / np.linspace(
+            num_diffusion_timesteps,
+            1,
+            num_diffusion_timesteps,
+            dtype = np.float64
+        )
     else:
-        raise NotImplementedError(beta_schedule)
+        raise NotImplementedError(
+            beta_schedule
+        )
     assert betas.shape == (num_diffusion_timesteps,)
     return betas
 
@@ -38,7 +57,9 @@ def default(
 ):
     if val is not None:
         return val
-    return d() if isfunction(d) else d
+    return d() if isfunction(
+        d
+    ) else d
 
 
 def extract(
@@ -48,9 +69,17 @@ def extract(
 ):
     # print(a.shape, t.shape)
     b, *_ = t.shape
-    out = a.gather(-1, t)
+    out = a.gather(
+        -1,
+        t
+    )
     # print(out.shape)
-    return out.reshape(b, *((1,) * (len(x_shape) - 1)))
+    return out.reshape(
+        b,
+        *((1,) * (len(
+            x_shape
+        ) - 1))
+    )
 
 
 def noise_like(
@@ -58,14 +87,25 @@ def noise_like(
     device,
     repeat = False
 ):
-    repeat_noise = lambda: torch.randn((1, *shape[1:]), device = device).repeat(
-        shape[0], *((1,) * (len(shape) - 1))
+    repeat_noise = lambda: torch.randn(
+        (1, *shape[1:]),
+        device = device
+    ).repeat(
+        shape[0],
+        *((1,) * (len(
+            shape
+        ) - 1))
     )
-    noise = lambda: torch.randn(shape, device = device)
+    noise = lambda: torch.randn(
+        shape,
+        device = device
+    )
     return repeat_noise() if repeat else noise()
 
 
-class GaussianDiffusion(Module):
+class GaussianDiffusion(
+    Module
+):
     def __init__(
         self,
         bvae,
@@ -92,30 +132,80 @@ class GaussianDiffusion(Module):
         self.scale = scale
         self.beta_start = beta_start
         self.beta_end = beta_end
-        betas = get_beta_schedule(beta_schedule, beta_start, beta_end, diff_steps)
+        betas = get_beta_schedule(
+            beta_schedule,
+            beta_start,
+            beta_end,
+            diff_steps
+        )
         alphas = 1.0 - betas
-        alphas_cumprod = np.cumprod(alphas, axis = 0)
+        alphas_cumprod = np.cumprod(
+            alphas,
+            axis = 0
+        )
 
         alphas_target = 1.0 - betas * scale
-        alphas_target_cumprod = np.cumprod(alphas_target, axis = 0)
+        alphas_target_cumprod = np.cumprod(
+            alphas_target,
+            axis = 0
+        )
         self.alphas_target = alphas_target
         self.alphas_target_cumprod = alphas_target_cumprod
 
         (timesteps,) = betas.shape
-        self.num_timesteps = int(timesteps)
+        self.num_timesteps = int(
+            timesteps
+        )
         self.loss_type = loss_type
 
-        to_torch = partial(torch.tensor, dtype = torch.float32)
-        self.register_buffer("betas", to_torch(betas))
-        self.register_buffer("alphas_cumprod", to_torch(alphas_cumprod))
-
-        self.register_buffer("sqrt_alphas_cumprod", to_torch(np.sqrt(alphas_cumprod)))
-        self.register_buffer("sqrt_alphas_target_cumprod", to_torch(np.sqrt(alphas_target_cumprod)))
-        self.register_buffer(
-            "sqrt_one_minus_alphas_cumprod", to_torch(np.sqrt(1.0 - alphas_cumprod))
+        to_torch = partial(
+            torch.tensor,
+            dtype = torch.float32
         )
         self.register_buffer(
-            "sqrt_one_minus_alphas_target_cumprod", to_torch(np.sqrt(1.0 - alphas_target_cumprod))
+            "betas",
+            to_torch(
+                betas
+            )
+        )
+        self.register_buffer(
+            "alphas_cumprod",
+            to_torch(
+                alphas_cumprod
+            )
+        )
+
+        self.register_buffer(
+            "sqrt_alphas_cumprod",
+            to_torch(
+                np.sqrt(
+                    alphas_cumprod
+                )
+            )
+        )
+        self.register_buffer(
+            "sqrt_alphas_target_cumprod",
+            to_torch(
+                np.sqrt(
+                    alphas_target_cumprod
+                )
+            )
+        )
+        self.register_buffer(
+            "sqrt_one_minus_alphas_cumprod",
+            to_torch(
+                np.sqrt(
+                    1.0 - alphas_cumprod
+                )
+            )
+        )
+        self.register_buffer(
+            "sqrt_one_minus_alphas_target_cumprod",
+            to_torch(
+                np.sqrt(
+                    1.0 - alphas_target_cumprod
+                )
+            )
         )
 
     def q_sample(
@@ -129,10 +219,23 @@ class GaussianDiffusion(Module):
             :param x_start: [B, T, *]
             :return: [B, T, *]
         """
-        noise = default(noise, lambda: torch.randn_like(x_start))
+        noise = default(
+            noise,
+            lambda: torch.randn_like(
+                x_start
+            )
+        )
         return (
-                extract(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start
-                + extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
+                extract(
+                    self.sqrt_alphas_cumprod,
+                    t,
+                    x_start.shape
+                ) * x_start
+                + extract(
+            self.sqrt_one_minus_alphas_cumprod,
+            t,
+            x_start.shape
+        ) * noise
         )
 
     def q_sample_target(
@@ -146,11 +249,24 @@ class GaussianDiffusion(Module):
             :param y_target: [B1, T1, *]
             :return: (tensor) [B1, T1, *]
         """
-        noise = default(noise, lambda: torch.randn_like(y_target))
+        noise = default(
+            noise,
+            lambda: torch.randn_like(
+                y_target
+            )
+        )
 
         return (
-                extract(self.sqrt_alphas_target_cumprod, t, y_target.shape) * y_target
-                + extract(self.sqrt_one_minus_alphas_target_cumprod, t, y_target.shape) * noise
+                extract(
+                    self.sqrt_alphas_target_cumprod,
+                    t,
+                    y_target.shape
+                ) * y_target
+                + extract(
+            self.sqrt_one_minus_alphas_target_cumprod,
+            t,
+            y_target.shape
+        ) * noise
         )
 
     def p_losses(
@@ -176,22 +292,68 @@ class GaussianDiffusion(Module):
         """
         B, T, _ = x_start.shape
         B1, T1, _ = y_target.shape
-        x_start = x_start.reshape(B, 1, T, -1)
-        y_target = y_target.reshape(B1, 1, T1, -1)
+        x_start = x_start.reshape(
+            B,
+            1,
+            T,
+            -1
+        )
+        y_target = y_target.reshape(
+            B1,
+            1,
+            T1,
+            -1
+        )
 
-        noise = default(noise, lambda: torch.randn_like(x_start))
-        noise1 = default(noise1, lambda: torch.randn_like(y_target))
+        noise = default(
+            noise,
+            lambda: torch.randn_like(
+                x_start
+            )
+        )
+        noise1 = default(
+            noise1,
+            lambda: torch.randn_like(
+                y_target
+            )
+        )
 
-        x_noisy = self.q_sample(x_start = x_start, t = t, noise = noise.to(x_start.device))
+        x_noisy = self.q_sample(
+            x_start = x_start,
+            t = t,
+            noise = noise.to(
+                x_start.device
+            )
+        )
 
-        y_noisy = self.q_sample_target(y_target = y_target, t = t, noise = noise1.to(y_target.device))
-        x_noisy = x_noisy.reshape(B, 1, T, -1)
+        y_noisy = self.q_sample_target(
+            y_target = y_target,
+            t = t,
+            noise = noise1.to(
+                y_target.device
+            )
+        )
+        x_noisy = x_noisy.reshape(
+            B,
+            1,
+            T,
+            -1
+        )
 
-        y_noisy = y_noisy.reshape(B1, 1, T1, -1)
+        y_noisy = y_noisy.reshape(
+            B1,
+            1,
+            T1,
+            -1
+        )
 
-        logits, total_c, all_z = self.generative(x_noisy)  ##forward dell'encoder
+        logits, total_c, all_z = self.generative(
+            x_noisy
+        )  ##forward dell'encoder
 
-        output = self.generative.decoder_output(logits)
+        output = self.generative.decoder_output(
+            logits
+        )
         return output, y_noisy, total_c, all_z
 
     def log_prob(
@@ -201,6 +363,8 @@ class GaussianDiffusion(Module):
         time
     ):
         output, y_noisy, total_c, all_z = self.p_losses(
-            x_input, y_target, time,
+            x_input,
+            y_target,
+            time,
         )
         return output, y_noisy, total_c, all_z

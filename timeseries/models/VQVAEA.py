@@ -1,8 +1,7 @@
+# ruff: noqa: N999  # Preserve public import paths.
 import logging
 from random import random
-from typing import Any, ClassVar
-from typing import List
-from typing import cast
+from typing import Any, ClassVar, cast
 
 import torch
 from pydantic import Field
@@ -10,44 +9,113 @@ from torch import nn
 from torch.nn import functional as F
 
 from timeseries.base import Base
-from timeseries.configuration import BaseLoss
-from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
+from timeseries.configuration import (
+    BaseLoss,
+    NonNegativeInt,
+    PositiveInt,
+    Probability,
+    Quantile,
+    ThreeQuantileConfiguration,
+)
 from timeseries.model_register import ModelFactory
 from .vva.minigpt import Block
 from .vva.vqvae import VQVAE
 
+logger = logging.getLogger(
+    __name__
+)
 
-class ConfigVQVAEA(ThreeQuantileConfiguration):
+
+class ConfigVQVAEA(
+    ThreeQuantileConfiguration
+):
     """Vector-quantized variational autoencoder forecasting."""
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
-    future_channels: NonNegativeInt = Field(
-        ..., description = 'Number of known future numerical features; zero is allowed.'
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
     )
-    hidden_channels: PositiveInt = Field(..., description = 'Number of hidden convolution channels.')
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    d_model: PositiveInt = Field(..., description = 'Dimension of the internal feature embeddings.')
-    max_voc_size: PositiveInt = Field(..., description = 'Maximum number of discrete tokens in the vocabulary.')
-    num_layers: PositiveInt = Field(..., description = 'Number of stacked network layers.')
-    dropout_rate: Probability = Field(..., description = 'Dropout rate.')
-    commitment_cost: float = Field(..., description = 'Weight of the vector-quantization commitment loss.', ge = 0)
-    decay: Probability = Field(..., description = 'Exponential moving-average decay for the codebook.')
-    n_heads: PositiveInt = Field(..., description = 'Number of attention heads.')
-    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
+    past_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of observed numerical input features.'
+    )
+    future_channels: NonNegativeInt = Field(
+        ...,
+        description = 'Number of known future numerical features; zero is allowed.'
+    )
+    hidden_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of hidden convolution channels.'
+    )
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
+    )
+    d_model: PositiveInt = Field(
+        ...,
+        description = 'Dimension of the internal feature embeddings.'
+    )
+    max_voc_size: PositiveInt = Field(
+        ...,
+        description = 'Maximum number of discrete tokens in the vocabulary.'
+    )
+    num_layers: PositiveInt = Field(
+        ...,
+        description = 'Number of stacked network layers.'
+    )
+    dropout_rate: Probability = Field(
+        ...,
+        description = 'Dropout rate.'
+    )
+    commitment_cost: float = Field(
+        ...,
+        description = 'Weight of the vector-quantization commitment loss.',
+        ge = 0
+    )
+    decay: Probability = Field(
+        ...,
+        description = 'Exponential moving-average decay for the codebook.'
+    )
+    n_heads: PositiveInt = Field(
+        ...,
+        description = 'Number of attention heads.'
+    )
+    out_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of target variables.'
+    )
     epoch_vqvae: PositiveInt = Field(
-        ..., description = 'Number of initial epochs devoted to training the vector-quantized autoencoder.'
+        ...,
+        description = 'Number of initial epochs devoted to training the vector-quantized autoencoder.'
     )
     persistence_weight: float = Field(
-        0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+        0.0,
+        description = 'Weight applied to the persistence-based loss penalty.',
+        ge = 0
     )
-    loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
+    loss_type: BaseLoss = Field(
+        'l1',
+        description = 'Training loss selection.'
+    )
     quantiles: list[Quantile] | None = Field(
-        None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
+        None,
+        description = 'Three increasing output quantiles, or None/empty for point forecasts.'
     )
-    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    optim: str | None = Field(
+        None,
+        description = 'Torch optimizer class name; None selects Adam.'
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
 @ModelFactory.register(
@@ -55,7 +123,9 @@ class ConfigVQVAEA(ThreeQuantileConfiguration):
     description = 'Vector-quantized variational autoencoder forecasting.',
     domain = 'forecasting',
 )
-class VQVAEA(Base):
+class VQVAEA(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigVQVAEA]] = ConfigVQVAEA
 
     def __init__(
@@ -134,13 +204,20 @@ class VQVAEA(Base):
         self.max_voc_size = max_voc_size
         self.epoch_vqvae = epoch_vqvae
         ##PRIMA VQVAE
-        assert out_channels == 1, logging.info('Working only for one singal')
-        assert past_steps % 2 == 0 and future_steps % 2 == 0, logging.info(
+        assert out_channels == 1, logger.info(
+            'Working only for one singal'
+        )
+        assert past_steps % 2 == 0 and future_steps % 2 == 0, logger.info(
             'There are some issue with the deconder in case of odd length'
         )
         self.vqvae = VQVAE(
-            in_channels = 1, hidden_channels = hidden_channels, out_channels = 1, num_embeddings = max_voc_size,
-            embedding_dim = d_model, commitment_cost = commitment_cost, decay = decay
+            in_channels = 1,
+            hidden_channels = hidden_channels,
+            out_channels = 1,
+            num_embeddings = max_voc_size,
+            embedding_dim = d_model,
+            commitment_cost = commitment_cost,
+            decay = decay
         )
 
         ##POI GPT
@@ -149,20 +226,46 @@ class VQVAEA(Base):
         self.sentence_length = future_steps // 2
 
         self.transformer = nn.ModuleDict(
-            dict(
-                wte = nn.Embedding(max_voc_size, d_model),
-                wpe = nn.Embedding(self.block_size, d_model),
-                drop = nn.Dropout(dropout_rate),
-                h = nn.ModuleList(
-                    [Block(d_model, dropout_rate, n_heads, dropout_rate, self.block_size) for _ in range(num_layers)]
+            {
+                'wte': nn.Embedding(
+                    max_voc_size,
+                    d_model
+                ),
+                'wpe': nn.Embedding(
+                    self.block_size,
+                    d_model
+                ),
+                'drop': nn.Dropout(
+                    dropout_rate
+                ),
+                'h': nn.ModuleList(
+                    [Block(
+                        d_model,
+                        dropout_rate,
+                        n_heads,
+                        dropout_rate,
+                        self.block_size
+                    ) for _ in range(
+                        num_layers
+                    )]
                 ),  ##care can be different dropouts
-                ln_f = nn.LayerNorm(d_model),
-                lm_head = nn.Linear(d_model, max_voc_size, bias = False)
-            )
+                'ln_f': nn.LayerNorm(
+                    d_model
+                ),
+                'lm_head': nn.Linear(
+                    d_model,
+                    max_voc_size,
+                    bias = False
+                )
+            }
         )
         # report number of parameters (note we don't count the decoder parameters in lm_head)
-        n_params = sum(p.numel() for p in self.transformer.parameters())
-        logging.info("number of parameters: %.2fM" % (n_params / 1e6,))
+        n_params = sum(
+            p.numel() for p in self.transformer.parameters()
+        )
+        logger.info(
+            f"number of parameters: {n_params / 1e6:.2f}M"
+        )
 
         self.use_quantiles = False
         self.is_classification = True
@@ -177,12 +280,24 @@ class VQVAEA(Base):
         return torch.optim.AdamW(
             [
                 {
-                    'params': self.vqvae.parameters(), 'lr': (self.optim_config or {}).get("lr_vqvae", 5e-5),
-                    'weight_decay': (self.optim_config or {}).get("weight_decay_vqvae", 0.0)
+                    'params': self.vqvae.parameters(), 'lr': (self.optim_config or {}).get(
+                    "lr_vqvae",
+                    5e-5
+                ),
+                    'weight_decay': (self.optim_config or {}).get(
+                        "weight_decay_vqvae",
+                        0.0
+                    )
                 },
                 {
-                    'params': self.transformer.parameters(), 'lr': (self.optim_config or {}).get("lr_gpt", 5e-5),
-                    'weight_decay': (self.optim_config or {}).get("weight_decay_gpt", 0.01)
+                    'params': self.transformer.parameters(), 'lr': (self.optim_config or {}).get(
+                    "lr_gpt",
+                    5e-5
+                ),
+                    'weight_decay': (self.optim_config or {}).get(
+                        "weight_decay_gpt",
+                        0.01
+                    )
                 },
             ]
         )
@@ -192,18 +307,40 @@ class VQVAEA(Base):
         tokens
     ):
 
-        b, t = tokens.size()
+        _b, t = tokens.size()
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
-        pos = torch.arange(0, t, dtype = torch.long, device = self.device).unsqueeze(0)  # shape (1, t)
+        pos = torch.arange(
+            0,
+            t,
+            dtype = torch.long,
+            device = self.device
+        ).unsqueeze(
+            0
+        )  # shape (1, t)
 
         # forward the GPT model itself
-        tok_emb = self.transformer["wte"](tokens)  # token embeddings of shape (b, t, n_embd)
-        pos_emb = self.transformer["wpe"](pos)  # position embeddings of shape (1, t, n_embd)
-        x = self.transformer["drop"](tok_emb + pos_emb)
-        for block in cast(nn.ModuleList, self.transformer["h"]):
-            x = block(x)
-        x = self.transformer["ln_f"](x)
-        logits = self.transformer["lm_head"](x)
+        tok_emb = self.transformer["wte"](
+            tokens
+        )  # token embeddings of shape (b, t, n_embd)
+        pos_emb = self.transformer["wpe"](
+            pos
+        )  # position embeddings of shape (1, t, n_embd)
+        x = self.transformer["drop"](
+            tok_emb + pos_emb
+            )
+        for block in cast(
+                nn.ModuleList,
+                self.transformer["h"]
+        ):
+            x = block(
+                x
+            )
+        x = self.transformer["ln_f"](
+            x
+        )
+        logits = self.transformer["lm_head"](
+            x
+        )
         return logits
 
     def forward(
@@ -226,40 +363,123 @@ class VQVAEA(Base):
         data = batch['x_num_past'][:, :, idx_target]
         if self.epoch > self.epoch_vqvae:
             with torch.no_grad():
-                vqloss, data_recon, perplexity, quantized_x, encodings_x = self.vqvae(data.permute(0, 2, 1))
+                _vqloss, data_recon, perplexity, _quantized_x, encodings_x = self.vqvae(
+                    data.permute(
+                        0,
+                        2,
+                        1
+                    )
+                )
                 loss_vqvae = 0
         else:
-            vq_loss, data_recon, perplexity, quantized_x, encodings_x = self.vqvae(data.permute(0, 2, 1))
+            vq_loss, data_recon, perplexity, _quantized_x, encodings_x = self.vqvae(
+                data.permute(
+                    0,
+                    2,
+                    1
+                )
+            )
             if random() < 0.001:
-                logging.info(perplexity)
-            recon_error = F.mse_loss(data_recon.squeeze(), data.squeeze())
+                logger.info(
+                    perplexity
+                )
+            recon_error = F.mse_loss(
+                data_recon.squeeze(),
+                data.squeeze()
+            )
             loss_vqvae = recon_error + vq_loss
 
         if self.epoch > self.epoch_vqvae:
             with torch.no_grad():
-                _, _, _, quantized_y, encodings_y = self.vqvae(batch['y'].permute(0, 2, 1))
+                _, _, _, _quantized_y, encodings_y = self.vqvae(
+                    batch['y'].permute(
+                        0,
+                        2,
+                        1
+                    )
+                )
 
             ##GPT
-            tokens = torch.cat([encodings_x.argmax(dim = 2), encodings_y.argmax(dim = 2)[:, 0:-1]], 1)
-            tokens_y = torch.cat([encodings_x.argmax(dim = 2)[:, 0:-1], encodings_y.argmax(dim = 2)], 1)
+            tokens = torch.cat(
+                [
+                    encodings_x.argmax(
+                        dim = 2
+                    ), encodings_y.argmax(
+                    dim = 2
+                )[:, 0:-1]
+                ],
+                1
+            )
+            tokens_y = torch.cat(
+                [
+                    encodings_x.argmax(
+                        dim = 2
+                    )[:, 0:-1], encodings_y.argmax(
+                    dim = 2
+                )
+                ],
+                1
+            )
             tokens_y[:, 0:encodings_x.shape[1] - 1] = -1
-            logits = self.gpt(tokens)
-            loss_gpt = F.cross_entropy(logits.view(-1, logits.size(-1)), tokens_y.view(-1), ignore_index = -1)
+            logits = self.gpt(
+                tokens
+            )
+            loss_gpt = F.cross_entropy(
+                logits.view(
+                    -1,
+                    logits.size(
+                        -1
+                    )
+                ),
+                tokens_y.view(
+                    -1
+                ),
+                ignore_index = -1
+            )
 
             ##adesso devo ricostruire la y perche' e quello che voglio come output
             with torch.no_grad():
-                encoding_indices = torch.argmax(logits.reshape(-1, self.max_voc_size), dim = 1).unsqueeze(1)  ##
+                encoding_indices = torch.argmax(
+                    logits.reshape(
+                        -1,
+                        self.max_voc_size
+                    ),
+                    dim = 1
+                ).unsqueeze(
+                    1
+                )  ##
                 encodings = torch.zeros(
-                    encoding_indices.shape[0], self.vqvae._vq_vae._num_embeddings, device = self.device
+                    encoding_indices.shape[0],
+                    self.vqvae._vq_vae._num_embeddings,
+                    device = self.device
                 )
-                encodings.scatter_(1, encoding_indices, 1)
-                quantized = torch.matmul(encodings, self.vqvae._vq_vae._embedding.weight).view(
-                    data.shape[0], -1, self.d_model
+                encodings.scatter_(
+                    1,
+                    encoding_indices,
+                    1
+                )
+                quantized = torch.matmul(
+                    encodings,
+                    self.vqvae._vq_vae._embedding.weight
+                ).view(
+                    data.shape[0],
+                    -1,
+                    self.d_model
                 )  ##B x L x hidden
-                quantized = quantized.permute(0, 2, 1).contiguous()
-                y_hat = self.vqvae._decoder(quantized, False).squeeze()[:, -self.future_steps:]
+                quantized = quantized.permute(
+                    0,
+                    2,
+                    1
+                ).contiguous()
+                y_hat = self.vqvae._decoder(
+                    quantized,
+                    False
+                ).squeeze()[:, -self.future_steps:]
 
-            l1_loss = nn.L1Loss()(y_hat, batch['y'].squeeze())
+            l1_loss = nn.L1Loss()(
+                y_hat,
+                batch['y'].squeeze()
+            )
 
             return y_hat, loss_vqvae + loss_gpt + l1_loss
         else:
@@ -274,7 +494,9 @@ class VQVAEA(Base):
         
         :meta private:
         """
-        _, loss = self(batch)
+        _, loss = self(
+            batch
+        )
         return loss
 
     def validation_step(
@@ -286,7 +508,9 @@ class VQVAEA(Base):
         
         :meta private:
         """
-        _, loss = self(batch)
+        _, loss = self(
+            batch
+        )
         return loss
 
     def generate(
@@ -303,44 +527,101 @@ class VQVAEA(Base):
         the sequence max_new_tokens times, feeding the predictions back into the model each time.
         Most likely you'll want to make sure to be in model.eval() mode of operation for this.
         """
-        assert do_sample == False, logging.info('NOT IMPLEMENTED YET')
+        assert do_sample == False, logger.info(
+            'NOT IMPLEMENTED YET'
+        )
         if do_sample:
 
-            idx = idx.repeat(num_samples, 1, 1)
-            for _ in range(max_new_tokens):
+            idx = idx.repeat(
+                num_samples,
+                1,
+                1
+            )
+            for _ in range(
+                    max_new_tokens
+            ):
                 tmp = []
-                for i in range(num_samples):
-                    idx_cond = idx[i, :, :] if idx.size(2) <= self.block_size else idx[i, :, -self.block_size:]
-                    logits = self.gpt(idx_cond)
+                for i in range(
+                        num_samples
+                ):
+                    idx_cond = idx[i, :, :] if idx.size(
+                        2
+                    ) <= self.block_size else idx[i, :, -self.block_size:]
+                    logits = self.gpt(
+                        idx_cond
+                    )
                     logits = logits[:, -1, :] / temperature
                     if top_k is not None:
-                        v, _ = torch.topk(logits, top_k)
-                        logits[logits < v[:, [-1]]] = -float('Inf')
-                    probs = F.softmax(logits, dim = -1)
-                    idx_next = torch.multinomial(probs, num_samples = 1, replacement = True)
-                    tmp.append(idx_next)
-                tmp = torch.cat(tmp, dim = 1).T.unsqueeze(2)
-                idx = torch.cat((idx, tmp), dim = 2)
+                        v, _ = torch.topk(
+                            logits,
+                            top_k
+                        )
+                        logits[logits < v[:, [-1]]] = -float(
+                            'Inf'
+                        )
+                    probs = F.softmax(
+                        logits,
+                        dim = -1
+                    )
+                    idx_next = torch.multinomial(
+                        probs,
+                        num_samples = 1,
+                        replacement = True
+                    )
+                    tmp.append(
+                        idx_next
+                    )
+                tmp = torch.cat(
+                    tmp,
+                    dim = 1
+                ).T.unsqueeze(
+                    2
+                )
+                idx = torch.cat(
+                    (idx, tmp),
+                    dim = 2
+                )
             return idx
         else:
-            for _ in range(max_new_tokens):
+            for _ in range(
+                    max_new_tokens
+            ):
 
                 # if the sequence context is growing too long we must crop it at block_size
-                idx_cond = idx if idx.size(1) <= self.block_size else idx[:, -self.block_size:]
+                idx_cond = idx if idx.size(
+                    1
+                ) <= self.block_size else idx[:, -self.block_size:]
                 # forward the model to get the logits for the index in the sequence
-                logits = self.gpt(idx_cond)
+                logits = self.gpt(
+                    idx_cond
+                )
                 # pluck the logits at the final step and scale by desired temperature
                 logits = logits[:, -1, :] / temperature
                 # optionally crop the logits to only the top k options
                 if top_k is not None:
-                    v, _ = torch.topk(logits, top_k)
-                    logits[logits < v[:, [-1]]] = -float('Inf')
+                    v, _ = torch.topk(
+                        logits,
+                        top_k
+                    )
+                    logits[logits < v[:, [-1]]] = -float(
+                        'Inf'
+                    )
                 # apply softmax to convert logits to (normalized) probabilities
-                probs = F.softmax(logits, dim = -1)
+                probs = F.softmax(
+                    logits,
+                    dim = -1
+                )
                 # either sample from the distribution or take the most likely element
-                _, idx_next = torch.topk(probs, k = 1, dim = -1)
+                _, idx_next = torch.topk(
+                    probs,
+                    k = 1,
+                    dim = -1
+                )
                 # append sampled index to the running sequence and continue
-                idx = torch.cat((idx, idx_next), dim = 1)
+                idx = torch.cat(
+                    (idx, idx_next),
+                    dim = 1
+                )
 
             return idx
 
@@ -350,20 +631,60 @@ class VQVAEA(Base):
     ) -> torch.Tensor:
 
         idx_target = batch['idx_target'][0]
-        data = batch['x_num_past'][:, :, idx_target].to(self.device)
-        vq_loss, data_recon, perplexity, quantized_x, encodings_x = self.vqvae(data.permute(0, 2, 1))
-        x = encodings_x.argmax(dim = 2)
+        data = batch['x_num_past'][:, :, idx_target].to(
+            self.device
+        )
+        _vq_loss, _data_recon, _perplexity, _quantized_x, encodings_x = self.vqvae(
+            data.permute(
+                0,
+                2,
+                1
+            )
+        )
+        x = encodings_x.argmax(
+            dim = 2
+        )
         inp = x[:, :self.sentence_length]
         # let the model sample the rest of the sequence
-        cat = self.generate(inp, self.sentence_length, do_sample = False)  # non riesco a gestirla qui :-)
-        encoding_indices = cat.flatten().unsqueeze(1)  ##
-        encodings = torch.zeros(encoding_indices.shape[0], self.vqvae._vq_vae._num_embeddings, device = self.device)
-        encodings.scatter_(1, encoding_indices, 1)
-        quantized = torch.matmul(encodings, self.vqvae._vq_vae._embedding.weight).view(
-            x.shape[0], -1, self.d_model
+        cat = self.generate(
+            inp,
+            self.sentence_length,
+            do_sample = False
+        )  # non riesco a gestirla qui :-)
+        encoding_indices = cat.flatten().unsqueeze(
+            1
+        )  ##
+        encodings = torch.zeros(
+            encoding_indices.shape[0],
+            self.vqvae._vq_vae._num_embeddings,
+            device = self.device
+        )
+        encodings.scatter_(
+            1,
+            encoding_indices,
+            1
+        )
+        quantized = torch.matmul(
+            encodings,
+            self.vqvae._vq_vae._embedding.weight
+        ).view(
+            x.shape[0],
+            -1,
+            self.d_model
         )  ##B x L x hidden
-        quantized = quantized.permute(0, 2, 1).contiguous()
-        y_hat = self.vqvae._decoder(quantized, False).squeeze()[:, -self.future_steps:]
+        quantized = quantized.permute(
+            0,
+            2,
+            1
+        ).contiguous()
+        y_hat = self.vqvae._decoder(
+            quantized,
+            False
+        ).squeeze()[:, -self.future_steps:]
 
         ## BxLxCx3
-        return y_hat.unsqueeze(2).unsqueeze(3)
+        return y_hat.unsqueeze(
+            2
+        ).unsqueeze(
+            3
+        )

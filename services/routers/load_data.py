@@ -3,20 +3,27 @@ from datetime import date, datetime
 from pathlib import Path
 
 import yfinance as yf
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi import Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pandas import DataFrame
 
 from services.models.portfolio import PortfolioSnapshot, PortfolioValuation
-from services.models.tickerdata import TickerData, Portfolio, History
-from .utils import validate_path, config_field
+from services.models.tickerdata import History, Portfolio, TickerData
+from .utils import config_field, validate_path
 
-router = APIRouter(prefix = "/load")
+router = APIRouter(
+    prefix = "/load"
+)
 
 
-@router.get("/tickers")
+@router.get(
+    "/tickers"
+)
 def get_tickers(
-    tickers: list[str] = Depends(config_field("tickers"))
+    tickers: list[str] = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "tickers"
+        )
+    )
 ) -> list[str]:
     """
     This returns the ticker list that have been saved in the config file.
@@ -24,41 +31,84 @@ def get_tickers(
     return tickers
 
 
-@router.post('/portfolio/evaluate')
+@router.post(
+    '/portfolio/evaluate'
+)
 def evaluate_portfolio(
     snapshot: PortfolioSnapshot
 ) -> PortfolioValuation:
     try:
         return snapshot.evaluate()
     except (KeyError, ValueError) as exc:
-        raise HTTPException(422, f'Invalid or missing portfolio mark: {exc}') from exc
+        raise HTTPException(
+            422,
+            f'Invalid or missing portfolio mark: {exc}'
+        ) from exc
 
 
-@router.get("/portfolio")
+@router.get(
+    "/portfolio"
+)
 def get_portfolio_analysis(
-    path_report: Path | str = Depends(config_field("path_report")),
+    path_report: Path | str = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "path_report"
+        )
+    ),
 ) -> Portfolio | PortfolioValuation:
-    path_portfolio: Path = validate_path(path_report) / "analysis.json"
+    path_portfolio: Path = validate_path(
+        path_report
+    ) / "analysis.json"
     if path_portfolio.exists():
-        with open(path_portfolio, "r") as f:
-            data_json = json.load(f)
-        return Portfolio.model_validate(data_json)
+        with open(
+                path_portfolio,
+                "r"
+        ) as f:
+            data_json = json.load(
+                f
+            )
+        return Portfolio.model_validate(
+            data_json
+        )
     else:
-        snapshot_path = validate_path(path_report) / 'portfolio.json'
+        snapshot_path = validate_path(
+            path_report
+        ) / 'portfolio.json'
         if not snapshot_path.exists():
-            raise HTTPException(404, 'Save a PortfolioSnapshot as portfolio.json or POST /load/portfolio/evaluate.')
-        return evaluate_portfolio(PortfolioSnapshot.model_validate_json(snapshot_path.read_text()))
+            raise HTTPException(
+                404,
+                'Save a PortfolioSnapshot as portfolio.json or POST /load/portfolio/evaluate.'
+            )
+        return evaluate_portfolio(
+            PortfolioSnapshot.model_validate_json(
+                snapshot_path.read_text()
+            )
+        )
 
 
-@router.get("/ticker_ts")
+@router.get(
+    "/ticker_ts"
+)
 def get_data(
     ticker: str = Query(
         default = ...,
         description = "It represent the path to the ticker time series."
     ),
-    path_data: Path | str = Depends(config_field("path_data")),
-    step_size: int = Depends(config_field("step_size")),
-    save: bool = Depends(config_field("save"))
+    path_data: Path | str = Depends(  # noqa: B008 - FastAPI dependency declaration.
+        config_field(  # noqa: B008 - FastAPI dependency declaration.
+            "path_data"
+        )
+    ),
+    step_size: int = Depends(
+        config_field(
+            "step_size"
+        )
+    ),
+    save: bool = Depends(
+        config_field(
+            "save"
+        )
+    )
 ) -> TickerData:
     """
     This function create the structure associated with the Ticker's information
@@ -77,14 +127,29 @@ def get_data(
     # 1) handle the typing of the variable
     # 2) handle the existence of the folder
     if not path_data:
-        path_data = Path("./data")
+        path_data = Path(
+            "./data"
+        )
 
-    if isinstance(path_data, (str, Path)):
-        if isinstance(path_data, str):
-            path_data = Path(path_data).expanduser()
-        path_data.mkdir(parents = True, exist_ok = True)
+    if isinstance(
+            path_data,
+            (str, Path)
+    ):
+        if isinstance(
+                path_data,
+                str
+        ):
+            path_data = Path(
+                path_data
+            ).expanduser()
+        path_data.mkdir(
+            parents = True,
+            exist_ok = True
+        )
     else:
-        raise ValueError(f"The type of path, {type(path_data)}, is not supported")
+        raise TypeError(
+            f"The type of path, {type(path_data)}, is not supported"
+        )
 
     #######################################
 
@@ -96,11 +161,21 @@ def get_data(
     if ticker_path.exists() and ticker_path.is_file():
         try:
             # Trying to parse the json file
-            with open(ticker_path, "r", encoding = "utf-8") as f:
-                data_json = json.load(f)
+            with open(
+                    ticker_path,
+                    "r",
+                    encoding = "utf-8"
+            ) as f:
+                data_json = json.load(
+                    f
+                )
 
-            out = TickerData.model_validate(data_json)
-            if data_json.get('auto_adjust') is not False or not out.history:
+            out = TickerData.model_validate(
+                data_json
+            )
+            if data_json.get(
+                    'auto_adjust'
+            ) is not False or not out.history:
                 out = None  # Rebuild legacy caches rather than mix adjustment policies.
         except (json.JSONDecodeError, ValueError):
             out = None  # Rebuild an invalid cache.
@@ -111,17 +186,27 @@ def get_data(
     if out:
         # Creating a list of date
         dates: list[date] = [
-            datetime.strptime(x, '%Y-%m-%d').date() if isinstance(x, str) else x
-            for x in out.history.keys()
+            datetime.strptime(
+                x,
+                '%Y-%m-%d'
+            ).date() if isinstance(
+                x,
+                str
+            ) else x
+            for x in out.history
         ]
-        last_date = max(dates)
+        last_date = max(
+            dates
+        )
 
     # Downloading the data in two cases:
     # 1) there is no cached ticker
     # 2) if the cached ticker is not updated
     if not out or today_date > last_date:
         ##### Data download #####
-        tick = yf.Ticker(ticker)
+        tick = yf.Ticker(
+            ticker
+        )
         if not out:
             ################# Description #################
             desc = "No description provided"
@@ -130,11 +215,11 @@ def get_data(
                 if "longBusinessSummary" in info:
                     desc = tick.info["longBusinessSummary"]
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - Convert provider failures to HTTP 503.
                 # Handle yfinance-specific errors
                 raise HTTPException(
                     status_code = 503,
-                    detail = f"Unable to fetch data for {ticker}: {str(e)}"
+                    detail = f"Unable to fetch data for {ticker}: {e!s}"
                 )
             ###############################################
             out: TickerData = TickerData(
@@ -143,16 +228,27 @@ def get_data(
                 history = {}
             )
 
-        if len(out.history) == 0:
-            history: DataFrame = tick.history(period = "max", auto_adjust = False)
+        if len(
+                out.history
+        ) == 0:
+            history: DataFrame = tick.history(
+                period = "max",
+                auto_adjust = False
+            )
         else:
-            history: DataFrame = tick.history(start = last_date, end = today_date, auto_adjust = False)
+            history: DataFrame = tick.history(
+                start = last_date,
+                end = today_date,
+                auto_adjust = False
+            )
 
-        history.reset_index(inplace = True)
+        history = history.reset_index()
         if "Date" in history.columns:
             history["Date"] = history["Date"].apply(
                 lambda
-                    x: x.strftime('%Y-%m-%d')
+                    x: x.strftime(
+                    '%Y-%m-%d'
+                )
             )
 
         ########################## Miss Labelled columns ##########################
@@ -161,9 +257,11 @@ def get_data(
             'daily_min': 'Low',
             'daily_max': 'High'
         }
-        for c in miss_labelled.keys():
+        for c, c_value in miss_labelled.items():
             if c in history.columns:
-                history.rename(columns = {c: miss_labelled[c]})
+                history.rename(
+                    columns = {c: c_value}
+                )
 
         ###########################################################################
 
@@ -171,22 +269,35 @@ def get_data(
         required_columns: list[str] = ["Open", "Close", "High", "Low", "Volume"]
 
         new_history: dict[str | date, History] = {
-            str(value["Date"]): History.model_validate(value) for value in
-            history[required_columns + ["Date"]].to_dict(orient = "records")
+            str(
+                value["Date"]
+            ): History.model_validate(
+                value
+            ) for value in
+            history[required_columns + ["Date"]].to_dict(
+                orient = "records"
+            )
         }
 
         # adding the missing history
         out.history = out.history | new_history
 
         if save:
-            with open(ticker_path, "w", encoding = "utf-8") as f:
+            with open(
+                    ticker_path,
+                    "w",
+                    encoding = "utf-8"
+            ) as f:
                 json.dump(
                     obj = {
                         "name": out.name,
                         "description": out.description,
                         "auto_adjust": False,
                         "history": {
-                            k.isoformat() if isinstance(k, date) else k: v.model_dump()
+                            k.isoformat() if isinstance(
+                                k,
+                                date
+                            ) else k: v.model_dump()
                             for k, v in out.history.items()
                         }
                     },
@@ -197,10 +308,18 @@ def get_data(
     keys = sorted(
         out.history.keys(),
         key = lambda
-            x: datetime.strptime(x, "%Y-%m-%d").date() if isinstance(x, str) else x
+            x: datetime.strptime(
+            x,
+            "%Y-%m-%d"
+        ).date() if isinstance(
+            x,
+            str
+        ) else x
     )
 
     out.history = {
-        key: out.history[key] for i, key in enumerate(keys) if i % step_size == 0
+        key: out.history[key] for i, key in enumerate(
+            keys
+        ) if i % step_size == 0
     }
     return out

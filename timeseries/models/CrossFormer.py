@@ -1,6 +1,6 @@
+# ruff: noqa: N999  # Preserve public import paths.
 from math import ceil
 from typing import Any, ClassVar
-from typing import List
 
 import torch
 from einops import repeat
@@ -8,43 +8,109 @@ from pydantic import Field
 from torch import nn
 
 from timeseries.base import Base
-from timeseries.configuration import BaseLoss
-from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
+from timeseries.configuration import (
+    BaseLoss,
+    NonNegativeInt,
+    PositiveInt,
+    Probability,
+    Quantile,
+    ThreeQuantileConfiguration,
+)
 from timeseries.model_register import ModelFactory
 from .crossformer.cross_decoder import Decoder
 from .crossformer.cross_embed import DSW_embedding
 from .crossformer.cross_encoder import Encoder
 
 
-class ConfigCrossFormer(ThreeQuantileConfiguration):
+class ConfigCrossFormer(
+    ThreeQuantileConfiguration
+):
     """Cross-dimension attention for multivariate forecasting."""
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
+    past_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of observed numerical input features.'
+    )
     future_channels: NonNegativeInt = Field(
-        ..., description = 'Number of known future numerical features; zero is allowed.'
+        ...,
+        description = 'Number of known future numerical features; zero is allowed.'
     )
-    d_model: PositiveInt = Field(..., description = 'Dimension of the internal feature embeddings.')
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    hidden_size: PositiveInt = Field(..., description = 'Hidden size.')
-    n_head: PositiveInt = Field(..., description = 'Number of attention heads.')
-    seg_len: PositiveInt = Field(..., description = 'Number of observations in each attention segment.')
-    n_layer_encoder: PositiveInt = Field(..., description = 'Number of encoder layers.')
-    win_size: PositiveInt = Field(..., description = 'Window length for merging adjacent segments.')
-    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
-    factor: PositiveInt = Field(5, description = 'Attention sparsity or routing factor.')
-    remove_last: bool = Field(False, description = 'Predict differences from the last observed target value.')
+    d_model: PositiveInt = Field(
+        ...,
+        description = 'Dimension of the internal feature embeddings.'
+    )
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
+    )
+    hidden_size: PositiveInt = Field(
+        ...,
+        description = 'Hidden size.'
+    )
+    n_head: PositiveInt = Field(
+        ...,
+        description = 'Number of attention heads.'
+    )
+    seg_len: PositiveInt = Field(
+        ...,
+        description = 'Number of observations in each attention segment.'
+    )
+    n_layer_encoder: PositiveInt = Field(
+        ...,
+        description = 'Number of encoder layers.'
+    )
+    win_size: PositiveInt = Field(
+        ...,
+        description = 'Window length for merging adjacent segments.'
+    )
+    out_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of target variables.'
+    )
+    factor: PositiveInt = Field(
+        5,
+        description = 'Attention sparsity or routing factor.'
+    )
+    remove_last: bool = Field(
+        False,
+        description = 'Predict differences from the last observed target value.'
+    )
     persistence_weight: float = Field(
-        0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+        0.0,
+        description = 'Weight applied to the persistence-based loss penalty.',
+        ge = 0
     )
-    loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
+    loss_type: BaseLoss = Field(
+        'l1',
+        description = 'Training loss selection.'
+    )
     quantiles: list[Quantile] | None = Field(
-        None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
+        None,
+        description = 'Three increasing output quantiles, or None/empty for point forecasts.'
     )
-    dropout_rate: Probability = Field(0.1, description = 'Dropout rate.')
-    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    dropout_rate: Probability = Field(
+        0.1,
+        description = 'Dropout rate.'
+    )
+    optim: str | None = Field(
+        None,
+        description = 'Torch optimizer class name; None selects Adam.'
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
 #    self, past_channels, past_steps, future_steps, seg_len, win_size = 4,
@@ -56,7 +122,9 @@ class ConfigCrossFormer(ThreeQuantileConfiguration):
     description = 'Cross-dimension attention for multivariate forecasting.',
     domain = 'forecasting',
 )
-class CrossFormer(Base):
+class CrossFormer(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigCrossFormer]] = ConfigCrossFormer
 
     def __init__(
@@ -136,28 +204,62 @@ class CrossFormer(Base):
             self.loss = nn.L1Loss()
 
         # The padding operation to handle invisible sgemnet length
-        self.pad_past_steps = ceil(1.0 * past_steps / seg_len) * seg_len
-        self.pad_future_steps = ceil(1.0 * future_steps / seg_len) * seg_len
+        self.pad_past_steps = ceil(
+            1.0 * past_steps / seg_len
+        ) * seg_len
+        self.pad_future_steps = ceil(
+            1.0 * future_steps / seg_len
+        ) * seg_len
         self.past_steps_add = self.pad_past_steps - past_steps
 
         # Embedding
-        self.enc_value_embedding = DSW_embedding(seg_len, d_model)
-        self.enc_pos_embedding = nn.Parameter(torch.randn(1, past_channels, (self.pad_past_steps // seg_len), d_model))
-        self.pre_norm = nn.LayerNorm(d_model)
+        self.enc_value_embedding = DSW_embedding(
+            seg_len,
+            d_model
+        )
+        self.enc_pos_embedding = nn.Parameter(
+            torch.randn(
+                1,
+                past_channels,
+                (self.pad_past_steps // seg_len),
+                d_model
+            )
+        )
+        self.pre_norm = nn.LayerNorm(
+            d_model
+        )
 
         # Encoder
         self.encoder = Encoder(
-            n_layer_encoder, win_size, d_model, n_head, hidden_size, block_depth = 1, \
-            dropout = dropout_rate, in_seg_num = (self.pad_past_steps // seg_len), factor = factor
+            n_layer_encoder,
+            win_size,
+            d_model,
+            n_head,
+            hidden_size,
+            block_depth = 1, \
+            dropout = dropout_rate,
+            in_seg_num = (self.pad_past_steps // seg_len),
+            factor = factor
         )
 
         # Decoder
         self.dec_pos_embedding = nn.Parameter(
-            torch.randn(1, past_channels, (self.pad_future_steps // seg_len), d_model)
+            torch.randn(
+                1,
+                past_channels,
+                (self.pad_future_steps // seg_len),
+                d_model
+            )
         )
         self.decoder = Decoder(
-            seg_len, n_layer_encoder + 1, d_model, n_head, hidden_size, dropout_rate, \
-            out_seg_num = (self.pad_future_steps // seg_len), factor = factor
+            seg_len,
+            n_layer_encoder + 1,
+            d_model,
+            n_head,
+            hidden_size,
+            dropout_rate, \
+            out_seg_num = (self.pad_future_steps // seg_len),
+            factor = factor
         )
 
     def forward(
@@ -165,26 +267,56 @@ class CrossFormer(Base):
         batch
     ):
         idx_target = batch['idx_target'][0]
-        x_seq = batch['x_num_past'].to(self.device)  # [:,:,idx_target]
+        x_seq = batch['x_num_past'].to(
+            self.device
+        )  # [:,:,idx_target]
 
         if self.remove_last:
-            x_start = x_seq[:, -1, :].unsqueeze(1)
+            x_start = x_seq[:, -1, :].unsqueeze(
+                1
+            )
             x_seq[:, :, :] -= x_start
 
         batch_size = x_seq.shape[0]
         if (self.past_steps_add != 0):
-            x_seq = torch.cat((x_seq[:, :1, :].expand(-1, self.past_steps_add, -1), x_seq), dim = 1)
+            x_seq = torch.cat(
+                (
+                    x_seq[:, :1, :].expand(
+                        -1,
+                        self.past_steps_add,
+                        -1
+                    ), x_seq
+                ),
+                dim = 1
+            )
 
-        x_seq = self.enc_value_embedding(x_seq)
+        x_seq = self.enc_value_embedding(
+            x_seq
+        )
         x_seq += self.enc_pos_embedding
-        x_seq = self.pre_norm(x_seq)
+        x_seq = self.pre_norm(
+            x_seq
+        )
 
-        enc_out = self.encoder(x_seq)
+        enc_out = self.encoder(
+            x_seq
+        )
 
-        dec_in = repeat(self.dec_pos_embedding, 'b ts_d l d -> (repeat b) ts_d l d', repeat = batch_size)
-        predict_y = self.decoder(dec_in, enc_out)
-        res = predict_y[:, :self.future_steps, :].unsqueeze(3)
+        dec_in = repeat(
+            self.dec_pos_embedding,
+            'b ts_d l d -> (repeat b) ts_d l d',
+            repeat = batch_size
+        )
+        predict_y = self.decoder(
+            dec_in,
+            enc_out
+        )
+        res = predict_y[:, :self.future_steps, :].unsqueeze(
+            3
+        )
         if self.remove_last:
-            res += x_start.unsqueeze(1)
+            res += x_start.unsqueeze(
+                1
+            )
 
         return res[:, :, idx_target, :]

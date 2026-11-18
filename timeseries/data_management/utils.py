@@ -1,16 +1,14 @@
 from enum import Enum
-from typing import Union
 
 import numpy
 import numpy as np
 import pandas
 import pandas as pd
-import torch
 from torch.utils.data import Dataset
 
 
 def extend_df(
-    x: Union[pandas.Series, numpy.ndarray],
+    x: pandas.Series | numpy.ndarray,
     freq: str
 ) -> pandas.DataFrame:
     """Utility for generating a full dataset and then merge the real data
@@ -24,11 +22,21 @@ def extend_df(
         `freq`
     """
 
-    empty = pd.DataFrame({'time': pd.date_range(x.min(), x.max(), freq = freq)})
+    empty = pd.DataFrame(
+        {
+            'time': pd.date_range(
+                x.min(),
+                x.max(),
+                freq = freq
+            )
+        }
+    )
     return empty
 
 
-class MyDataset(Dataset):
+class MyDataset(
+    Dataset
+):
 
     def __init__(
         self,
@@ -56,12 +64,16 @@ class MyDataset(Dataset):
         """
         self.data = data
         self.t = t
-        self.idx_target = np.array(idx_target) if idx_target is not None else None
+        self.idx_target = np.array(
+            idx_target
+        ) if idx_target is not None else None
 
     def __len__(
         self
     ):
-        return len(self.data['y'])
+        return len(
+            self.data['y']
+        )
 
     def __getitem__(
         self,
@@ -76,7 +88,9 @@ class MyDataset(Dataset):
         return sample
 
 
-class ActionEnum(Enum):
+class ActionEnum(
+    Enum
+):
     """action of categorical variable
     
     :meta private:

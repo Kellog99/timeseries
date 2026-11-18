@@ -14,7 +14,9 @@ from services.models import MainConfig
 from timeseries.metrics import MetricRegister
 from timeseries.utils.typing import Metric
 
-T = TypeVar("T")
+T = TypeVar(
+    "T"
+)
 
 
 ############################### Depends decorator ###############################
@@ -29,9 +31,17 @@ def config_field(
         request: Request
     ) -> T:
         config: MainConfig = request.app.state.config
-        if not hasattr(config, attr_name):
-            raise ValueError(f"Configuration attribute '{attr_name}' not found")
-        return getattr(config, attr_name)
+        if not hasattr(
+                config,
+                attr_name
+        ):
+            raise ValueError(
+                f"Configuration attribute '{attr_name}' not found"
+            )
+        return getattr(
+            config,
+            attr_name
+        )
 
     dependency.__name__ = f"get_{attr_name}"
     return dependency
@@ -46,14 +56,27 @@ def validate_path(
     """
     validate the path that are passed through the whole application
     """
-    if isinstance(path, (str, Path)):
-        if isinstance(path, str):
-            path: Path = Path(path).expanduser()
+    if isinstance(
+            path,
+            (str, Path)
+    ):
+        if isinstance(
+                path,
+                str
+        ):
+            path: Path = Path(
+                path
+            ).expanduser()
     else:
-        raise ValueError(f"The path variable has an unsupported type, {type(path)}.")
+        raise TypeError(
+            f"The path variable has an unsupported type, {type(path)}."
+        )
 
     if create:
-        path.mkdir(parents = True, exist_ok = True)
+        path.mkdir(
+            parents = True,
+            exist_ok = True
+        )
     return path
 
 
@@ -64,7 +87,9 @@ def base64_plot_generator(
     This function create the plot associated to the correlation matrix and transform it into a base64 image.
     """
     # Create the plot
-    fig, ax = plt.subplots(figsize = (10, 8))
+    fig, ax = plt.subplots(
+        figsize = (10, 8)
+    )
 
     # Use imshow for matrix visualization with a colorbar
     im = ax.imshow(
@@ -75,9 +100,17 @@ def base64_plot_generator(
         vmax = 1
     )
     # Add colorbar with white text
-    cbar = plt.colorbar(im, ax = ax)
-    cbar.ax.tick_params(labelcolor = 'white', color = 'white')
-    cbar.ax.spines['outline'].set_edgecolor('white')
+    cbar = plt.colorbar(
+        im,
+        ax = ax
+    )
+    cbar.ax.tick_params(
+        labelcolor = 'white',
+        color = 'white'
+    )
+    cbar.ax.spines['outline'].set_edgecolor(
+        'white'
+    )
 
     # Remove axis if desired
     ax.set_axis_off()
@@ -91,11 +124,19 @@ def base64_plot_generator(
         dpi = 100,
         transparent = True
     )
-    buffer.seek(0)
-    plt.close(fig)  # Close the figure to free memory
+    buffer.seek(
+        0
+    )
+    plt.close(
+        fig
+    )  # Close the figure to free memory
 
     # Encode to base64
-    image_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+    image_base64 = base64.b64encode(
+        buffer.read()
+    ).decode(
+        'utf-8'
+    )
     return f"data:image/png;base64,{image_base64}"
 
 
@@ -116,31 +157,70 @@ def compute_correlation_matrix(
         np.ndarray of size len(tickers) x len(tickers)
     """
 
-    matrix: np.ndarray = np.eye(len(data))
-    tickers: list[str] = list(data.keys())
-    metric = (MetricRegister.create(metric_type) if isinstance(metric_type, str) else metric_type()).to(device)
+    matrix: np.ndarray = np.eye(
+        len(
+            data
+        )
+    )
+    tickers: list[str] = list(
+        data.keys()
+    )
+    metric = (MetricRegister.create(
+        metric_type
+    ) if isinstance(
+        metric_type,
+        str
+    ) else metric_type()).to(
+        device
+    )
 
-    for i, ticker_i in tqdm(enumerate(tickers), desc = "Computing the correlation"):
-        dates_i: set[str] = set(data[ticker_i].keys())
-        for j, ticker_j in enumerate(tickers[i + 1:], start = i + 1):
+    for i, ticker_i in tqdm(
+            enumerate(
+                tickers
+            ),
+            desc = "Computing the correlation"
+    ):
+        dates_i: set[str] = set(
+            data[ticker_i].keys()
+        )
+        for j, ticker_j in enumerate(
+                tickers[i + 1:],
+                start = i + 1
+        ):
             ############# Resetting the correlation functions #############
             metric.reset()
             ###############################################################
-            dates_j: set[str] = set(data[ticker_j].keys())
-            common_dates: list[str] = sorted(dates_i.intersection(dates_j))
-            if len(common_dates) >= 2:
+            dates_j: set[str] = set(
+                data[ticker_j].keys()
+            )
+            common_dates: list[str] = sorted(
+                dates_i.intersection(
+                    dates_j
+                )
+            )
+            if len(
+                    common_dates
+            ) >= 2:
                 with torch.no_grad():
                     metric.update(
                         torch.tensor(
-                            [data[ticker_i][cd] for cd in common_dates], dtype = torch.float64, device = device
+                            [data[ticker_i][cd] for cd in common_dates],
+                            dtype = torch.float64,
+                            device = device
                         ),
                         torch.tensor(
-                            [data[ticker_j][cd] for cd in common_dates], dtype = torch.float64, device = device
+                            [data[ticker_j][cd] for cd in common_dates],
+                            dtype = torch.float64,
+                            device = device
                         )
                     )
                     corr: float = metric.compute()
                 # save the results into the matrices
-                matrix[i][j] = abs(corr)
-                matrix[j][i] = abs(corr)
+                matrix[i][j] = abs(
+                    corr
+                )
+                matrix[j][i] = abs(
+                    corr
+                )
 
     return matrix

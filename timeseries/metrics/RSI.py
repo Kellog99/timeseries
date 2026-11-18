@@ -1,7 +1,8 @@
+# ruff: noqa: N999  # Preserve public import paths.
 """Historical module name retained for the windowed metrics API."""
 
 from numbers import Integral
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 from torch import Tensor
@@ -9,10 +10,12 @@ from torch import Tensor
 from timeseries.metric_register import MetricFactory
 from .risk import ReturnMetric, divide
 
-Period = Optional[int | Literal["max"]]
+type Period = int | Literal["max"] | None
 
 
-class WindowMetric(ReturnMetric):
+class WindowMetric(
+    ReturnMetric
+):
 
     def __init__(
         self,
@@ -20,9 +23,19 @@ class WindowMetric(ReturnMetric):
     ) -> None:
         super().__init__()
         if period is not None and period != "max":
-            if isinstance(period, bool) or not isinstance(period, Integral) or period <= 0:
-                raise ValueError("period must be a positive integer.")
-            period = int(period)
+            if isinstance(
+                    period,
+                    bool
+            ) or not isinstance(
+                period,
+                Integral
+            ) or period <= 0:
+                raise ValueError(
+                    "period must be a positive integer."
+                )
+            period = int(
+                period
+            )
         self.period = period
 
     def reduce(
@@ -36,25 +49,43 @@ class WindowMetric(ReturnMetric):
     ) -> list[float]:
         values = self.values()
         period = values.numel() if self.period is None or self.period == "max" else self.period
-        return [self.reduce(window).item() for window in values.split(period)]
+        return [self.reduce(
+            window
+        ).item() for window in values.split(
+            period
+        )]
 
     def update(
         self,
         data: Tensor | list[float]
     ) -> None:
         # Means and variances also accept arbitrary finite observations, not only returns.
-        values = torch.as_tensor(data, dtype = torch.float64, device = self.device)
-        if values.ndim != 1 or not torch.isfinite(values).all():
-            raise ValueError("Expected a finite one-dimensional sequence.")
-        self.returns.append(values.detach())
+        values = torch.as_tensor(
+            data,
+            dtype = torch.float64,
+            device = self.device
+        )
+        if values.ndim != 1 or not torch.isfinite(
+                values
+        ).all():
+            raise ValueError(
+                "Expected a finite one-dimensional sequence."
+            )
+        self.returns.append(
+            values.detach()
+        )
 
 
 @MetricFactory.register(
     name = 'MovingAverage',
     description = 'Arithmetic mean in non-overlapping windows.',
-    id = 'moving_average', domain = 'statistics', actions = {"performance"},
+    id = 'moving_average',
+    domain = 'statistics',
+    actions = {"performance"},
 )
-class MovingAverage(WindowMetric):
+class MovingAverage(
+    WindowMetric
+):
 
     def reduce(
         self,
@@ -66,33 +97,53 @@ class MovingAverage(WindowMetric):
 @MetricFactory.register(
     name = 'MovingVariance',
     description = 'Population variance in non-overlapping windows.',
-    id = 'moving_variance', domain = 'statistics', actions = {"performance"},
+    id = 'moving_variance',
+    domain = 'statistics',
+    actions = {"performance"},
 )
-class MovingVariance(WindowMetric):
+class MovingVariance(
+    WindowMetric
+):
 
     def reduce(
         self,
         window: Tensor
     ) -> Tensor:
-        return window.var(correction = 0)
+        return window.var(
+            correction = 0
+        )
 
 
 @MetricFactory.register(
     name = 'MovingSR',
     description = 'Unannualized Sharpe ratio in non-overlapping windows.',
-    id = 'moving_sr', domain = 'risk', actions = {"performance"},
+    id = 'moving_sr',
+    domain = 'risk',
+    actions = {"performance"},
 )
-class MovingSR(WindowMetric):
+class MovingSR(
+    WindowMetric
+):
 
     def update(
         self,
         data: Tensor | list[float]
     ) -> None:
-        ReturnMetric.update(self, data)
+        ReturnMetric.update(
+            self,
+            data
+        )
 
     def reduce(
         self,
         window: Tensor
     ) -> Tensor:
-        std = window.std() if window.numel() > 1 else window.new_tensor(float("nan"))
-        return divide(window.mean(), std)
+        std = window.std() if window.numel() > 1 else window.new_tensor(
+            float(
+                "nan"
+            )
+        )
+        return divide(
+            window.mean(),
+            std
+        )

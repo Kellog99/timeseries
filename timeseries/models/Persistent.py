@@ -1,23 +1,42 @@
+# ruff: noqa: N999  # Preserve public import paths.
 from typing import Any, ClassVar
 
 from pydantic import Field
 
 from timeseries.base import Base
-from timeseries.configuration import BaseLoss
-from timeseries.configuration import ForecastConfiguration, PositiveInt
+from timeseries.configuration import BaseLoss, ForecastConfiguration, PositiveInt
 from timeseries.model_register import ModelFactory
 
 
-class ConfigPersistent(ForecastConfiguration):
+class ConfigPersistent(
+    ForecastConfiguration
+):
     """Baseline repeating the last observed target."""
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    loss_type: BaseLoss | None = Field(None, description = 'Training loss selection.')
-    persistence_weight: float = Field(
-        0.1, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
     )
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    loss_type: BaseLoss | None = Field(
+        None,
+        description = 'Training loss selection.'
+    )
+    persistence_weight: float = Field(
+        0.1,
+        description = 'Weight applied to the persistence-based loss penalty.',
+        ge = 0
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
 @ModelFactory.register(
@@ -25,7 +44,9 @@ class ConfigPersistent(ForecastConfiguration):
     description = 'Baseline repeating the last observed target.',
     domain = 'forecasting',
 )
-class Persistent(Base):
+class Persistent(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigPersistent]] = ConfigPersistent
 
     def __init__(
@@ -70,12 +91,22 @@ class Persistent(Base):
         Returns:
             torch.tensor: result
         """
-        x = batch['x_num_past'].to(self.device)
+        x = batch['x_num_past'].to(
+            self.device
+        )
         idx_target = batch['idx_target'][0]
-        x_start = x[:, -1, idx_target].unsqueeze(1)
+        x_start = x[:, -1, idx_target].unsqueeze(
+            1
+        )
         # this is B,1,C
 
         # [B,L,C,1] remember the outoput size
-        res = x_start.repeat(1, self.future_steps, 1).unsqueeze(3)
+        res = x_start.repeat(
+            1,
+            self.future_steps,
+            1
+        ).unsqueeze(
+            3
+        )
 
         return res

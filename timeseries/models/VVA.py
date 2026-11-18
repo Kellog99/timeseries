@@ -1,7 +1,6 @@
+# ruff: noqa: N999  # Preserve public import paths.
 import math
-from typing import Any, ClassVar
-from typing import List
-from typing import cast
+from typing import Any, ClassVar, cast
 
 import torch
 from pydantic import Field
@@ -9,38 +8,95 @@ from torch import nn
 from torch.nn import functional as F
 
 from timeseries.base import Base
-from timeseries.configuration import BaseLoss
-from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
+from timeseries.configuration import (
+    BaseLoss,
+    NonNegativeInt,
+    PositiveInt,
+    Probability,
+    Quantile,
+    ThreeQuantileConfiguration,
+)
 from timeseries.model_register import ModelFactory
 from .vva.minigpt import Block
 
 
-class ConfigVVA(ThreeQuantileConfiguration):
+class ConfigVVA(
+    ThreeQuantileConfiguration
+):
     """Token-based autoregressive time series forecasting."""
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
+    past_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of observed numerical input features.'
+    )
     future_channels: NonNegativeInt = Field(
-        ..., description = 'Number of known future numerical features; zero is allowed.'
+        ...,
+        description = 'Number of known future numerical features; zero is allowed.'
     )
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    d_model: PositiveInt = Field(..., description = 'Dimension of the internal feature embeddings.')
-    max_voc_size: PositiveInt = Field(..., description = 'Maximum number of discrete tokens in the vocabulary.')
-    token_split: PositiveInt = Field(..., description = 'Number of observations represented by each token.')
-    num_layers: PositiveInt = Field(..., description = 'Number of stacked network layers.')
-    dropout_rate: Probability = Field(..., description = 'Dropout rate.')
-    n_heads: PositiveInt = Field(..., description = 'Number of attention heads.')
-    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
+    )
+    d_model: PositiveInt = Field(
+        ...,
+        description = 'Dimension of the internal feature embeddings.'
+    )
+    max_voc_size: PositiveInt = Field(
+        ...,
+        description = 'Maximum number of discrete tokens in the vocabulary.'
+    )
+    token_split: PositiveInt = Field(
+        ...,
+        description = 'Number of observations represented by each token.'
+    )
+    num_layers: PositiveInt = Field(
+        ...,
+        description = 'Number of stacked network layers.'
+    )
+    dropout_rate: Probability = Field(
+        ...,
+        description = 'Dropout rate.'
+    )
+    n_heads: PositiveInt = Field(
+        ...,
+        description = 'Number of attention heads.'
+    )
+    out_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of target variables.'
+    )
     persistence_weight: float = Field(
-        0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+        0.0,
+        description = 'Weight applied to the persistence-based loss penalty.',
+        ge = 0
     )
-    loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
+    loss_type: BaseLoss = Field(
+        'l1',
+        description = 'Training loss selection.'
+    )
     quantiles: list[Quantile] | None = Field(
-        None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
+        None,
+        description = 'Three increasing output quantiles, or None/empty for point forecasts.'
     )
-    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    optim: str | None = Field(
+        None,
+        description = 'Torch optimizer class name; None selects Adam.'
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
 @ModelFactory.register(
@@ -48,7 +104,9 @@ class ConfigVVA(ThreeQuantileConfiguration):
     description = 'Token-based autoregressive time series forecasting.',
     domain = 'forecasting',
 )
-class VVA(Base):
+class VVA(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigVVA]] = ConfigVVA
 
     def __init__(
@@ -125,25 +183,59 @@ class VVA(Base):
         self.sentence_length = future_steps // token_split
 
         self.transformer = nn.ModuleDict(
-            dict(
-                wte = nn.Embedding(max_voc_size, d_model),
-                wpe = nn.Embedding(self.block_size, d_model),
-                drop = nn.Dropout(dropout_rate),
-                h = nn.ModuleList(
-                    [Block(d_model, dropout_rate, n_heads, dropout_rate, self.block_size) for _ in range(num_layers)]
+            {
+                'wte': nn.Embedding(
+                    max_voc_size,
+                    d_model
+                ),
+                'wpe': nn.Embedding(
+                    self.block_size,
+                    d_model
+                ),
+                'drop': nn.Dropout(
+                    dropout_rate
+                ),
+                'h': nn.ModuleList(
+                    [Block(
+                        d_model,
+                        dropout_rate,
+                        n_heads,
+                        dropout_rate,
+                        self.block_size
+                    ) for _ in range(
+                        num_layers
+                    )]
                 ),  ##care can be different dropouts
-                ln_f = nn.LayerNorm(d_model),
-            )
+                'ln_f': nn.LayerNorm(
+                    d_model
+                ),
+            }
         )
-        self.lm_head = nn.Linear(d_model, max_voc_size, bias = False)
+        self.lm_head = nn.Linear(
+            d_model,
+            max_voc_size,
+            bias = False
+        )
 
         for pn, p in self.named_parameters():
-            if pn.endswith('c_proj.weight'):
-                torch.nn.init.normal_(p, mean = 0.0, std = 0.02 / math.sqrt(2 * num_layers))
+            if pn.endswith(
+                    'c_proj.weight'
+            ):
+                torch.nn.init.normal_(
+                    p,
+                    mean = 0.0,
+                    std = 0.02 / math.sqrt(
+                        2 * num_layers
+                        )
+                )
 
         # report number of parameters (note we don't count the decoder parameters in lm_head)
-        n_params = sum(p.numel() for p in self.transformer.parameters())
-        print("number of parameters: %.2fM" % (n_params / 1e6,))
+        n_params = sum(
+            p.numel() for p in self.transformer.parameters()
+        )
+        print(
+            f"number of parameters: {n_params / 1e6:.2f}M"
+        )
 
         self.use_quantiles = True
         self.is_classification = True
@@ -165,41 +257,76 @@ class VVA(Base):
         blacklist_weight_modules = (torch.nn.LayerNorm, torch.nn.Embedding)
         for mn, m in self.named_modules():
             for pn, p in m.named_parameters():
-                fpn = '%s.%s' % (mn, pn) if mn else pn  # full param name
+                fpn = f'{mn}.{pn}' if mn else pn  # full param name
                 # random note: because named_modules and named_parameters are recursive
                 # we will see the same tensors p many many times. but doing it this way
                 # allows us to know which parent module any tensor p belongs to...
-                if pn.endswith('bias'):
+                if pn.endswith(
+                        'bias'
+                ):
                     # all biases will not be decayed
-                    no_decay.add(fpn)
-                elif pn.endswith('weight') and isinstance(m, whitelist_weight_modules):
+                    no_decay.add(
+                        fpn
+                    )
+                elif pn.endswith(
+                        'weight'
+                ) and isinstance(
+                        m,
+                        whitelist_weight_modules
+                ):
                     # weights of whitelist modules will be weight decayed
-                    decay.add(fpn)
-                elif pn.endswith('weight') and isinstance(m, blacklist_weight_modules):
+                    decay.add(
+                        fpn
+                    )
+                elif pn.endswith(
+                        'weight'
+                ) and isinstance(
+                        m,
+                        blacklist_weight_modules
+                ):
                     # weights of blacklist modules will NOT be weight decayed
-                    no_decay.add(fpn)
+                    no_decay.add(
+                        fpn
+                    )
 
         # validate that we considered every parameter
         param_dict = {pn: p for pn, p in self.named_parameters()}
         inter_params = decay & no_decay
         union_params = decay | no_decay
-        assert len(inter_params) == 0, "parameters %s made it into both decay/no_decay sets!" % (str(inter_params),)
+        assert len(
+            inter_params
+        ) == 0, f"parameters {inter_params!s} made it into both decay/no_decay sets!"
         assert len(
             param_dict.keys() - union_params
-        ) == 0, "parameters %s were not separated into either decay/no_decay set!" \
-                % (str(param_dict.keys() - union_params),)
+        ) == 0, f"parameters {param_dict.keys() - union_params!s} were not separated into either decay/no_decay set!"
 
         # create the pytorch optimizer object
         optim_groups = [
             {
-                "params": [param_dict[pn] for pn in sorted(list(decay))],
-                "weight_decay": (self.optim_config or {}).get("weight_decay", 0.01)
+                "params": [param_dict[pn] for pn in sorted(
+                    decay
+                )],
+                "weight_decay": (self.optim_config or {}).get(
+                    "weight_decay",
+                    0.01
+                )
             },
-            {"params": [param_dict[pn] for pn in sorted(list(no_decay))], "weight_decay": 0.0},
+            {
+                "params": [param_dict[pn] for pn in sorted(
+                    no_decay
+                )], "weight_decay": 0.0
+            },
         ]
         optimizer = torch.optim.AdamW(
-            optim_groups, lr = (self.optim_config or {}).get("lr", 5e-5),
-            betas = (self.optim_config or {}).get("betas", (0.9, 0.999))
+            optim_groups,
+            lr = (self.optim_config or {}).get(
+                "lr",
+                5e-5
+            ),
+            betas = (self.optim_config or {}).get(
+                "betas",
+                (0.9, 0.999)
+            )
         )
         return optimizer
 
@@ -214,24 +341,57 @@ class VVA(Base):
         
         :meta private:
         """
-        return F.cross_entropy(y_hat.view(-1, y_hat.size(-1)), batch['y_emb'].view(-1), ignore_index = -1)
+        return F.cross_entropy(
+            y_hat.view(
+                -1,
+                y_hat.size(
+                    -1
+                )
+            ),
+            batch['y_emb'].view(
+                -1
+            ),
+            ignore_index = -1
+        )
 
     def forward(
         self,
         batch
     ):
-        b, t = batch['x_emb'].size()
+        _b, t = batch['x_emb'].size()
         assert t <= self.block_size, f"Cannot forward sequence of length {t}, block size is only {self.block_size}"
-        pos = torch.arange(0, t, dtype = torch.long, device = self.device).unsqueeze(0)  # shape (1, t)
+        pos = torch.arange(
+            0,
+            t,
+            dtype = torch.long,
+            device = self.device
+        ).unsqueeze(
+            0
+        )  # shape (1, t)
 
         # forward the GPT model itself
-        tok_emb = self.transformer["wte"](batch['x_emb'])  # token embeddings of shape (b, t, n_embd)
-        pos_emb = self.transformer["wpe"](pos)  # position embeddings of shape (1, t, n_embd)
-        x = self.transformer["drop"](tok_emb + pos_emb)
-        for block in cast(nn.ModuleList, self.transformer["h"]):
-            x = block(x)
-        x = self.transformer["ln_f"](x)
-        logits = self.lm_head(x)
+        tok_emb = self.transformer["wte"](
+            batch['x_emb']
+        )  # token embeddings of shape (b, t, n_embd)
+        pos_emb = self.transformer["wpe"](
+            pos
+        )  # position embeddings of shape (1, t, n_embd)
+        x = self.transformer["drop"](
+            tok_emb + pos_emb
+            )
+        for block in cast(
+                nn.ModuleList,
+                self.transformer["h"]
+        ):
+            x = block(
+                x
+            )
+        x = self.transformer["ln_f"](
+            x
+        )
+        logits = self.lm_head(
+            x
+        )
 
         return logits
 
@@ -250,57 +410,123 @@ class VVA(Base):
         Most likely you'll want to make sure to be in model.eval() mode of operation for this.
         """
         if do_sample:
-            idx = idx.repeat(num_samples, 1, 1)
-            for _ in range(max_new_tokens):
+            idx = idx.repeat(
+                num_samples,
+                1,
+                1
+            )
+            for _ in range(
+                    max_new_tokens
+            ):
                 tmp = []
-                for i in range(num_samples):
-                    idx_cond = idx[i, :, :] if idx.size(2) <= self.block_size else idx[i, :, -self.block_size:]
-                    logits = self({'x_emb': idx_cond})
+                for i in range(
+                        num_samples
+                ):
+                    idx_cond = idx[i, :, :] if idx.size(
+                        2
+                    ) <= self.block_size else idx[i, :, -self.block_size:]
+                    logits = self(
+                        {'x_emb': idx_cond}
+                    )
                     logits = logits[:, -1, :] / temperature
                     if top_k is not None:
-                        v, _ = torch.topk(logits, top_k)
-                        logits[logits < v[:, [-1]]] = -float('Inf')
-                    probs = F.softmax(logits, dim = -1)
-                    idx_next = torch.multinomial(probs, num_samples = 1, replacement = True)
-                    tmp.append(idx_next)
-                tmp = torch.cat(tmp, dim = 1).T.unsqueeze(2)
-                idx = torch.cat((idx, tmp), dim = 2)
+                        v, _ = torch.topk(
+                            logits,
+                            top_k
+                        )
+                        logits[logits < v[:, [-1]]] = -float(
+                            'Inf'
+                        )
+                    probs = F.softmax(
+                        logits,
+                        dim = -1
+                    )
+                    idx_next = torch.multinomial(
+                        probs,
+                        num_samples = 1,
+                        replacement = True
+                    )
+                    tmp.append(
+                        idx_next
+                    )
+                tmp = torch.cat(
+                    tmp,
+                    dim = 1
+                ).T.unsqueeze(
+                    2
+                )
+                idx = torch.cat(
+                    (idx, tmp),
+                    dim = 2
+                )
             return idx
         else:
-            for _ in range(max_new_tokens):
+            for _ in range(
+                    max_new_tokens
+            ):
 
                 # if the sequence context is growing too long we must crop it at block_size
-                idx_cond = idx if idx.size(1) <= self.block_size else idx[:, -self.block_size:]
+                idx_cond = idx if idx.size(
+                    1
+                ) <= self.block_size else idx[:, -self.block_size:]
                 # forward the model to get the logits for the index in the sequence
-                logits = self({'x_emb': idx_cond})
+                logits = self(
+                    {'x_emb': idx_cond}
+                )
                 # pluck the logits at the final step and scale by desired temperature
                 logits = logits[:, -1, :] / temperature
                 # optionally crop the logits to only the top k options
                 if top_k is not None:
-                    v, _ = torch.topk(logits, top_k)
-                    logits[logits < v[:, [-1]]] = -float('Inf')
+                    v, _ = torch.topk(
+                        logits,
+                        top_k
+                    )
+                    logits[logits < v[:, [-1]]] = -float(
+                        'Inf'
+                    )
                 # apply softmax to convert logits to (normalized) probabilities
-                probs = F.softmax(logits, dim = -1)
+                probs = F.softmax(
+                    logits,
+                    dim = -1
+                )
                 # either sample from the distribution or take the most likely element
-                _, idx_next = torch.topk(probs, k = 1, dim = -1)
+                _, idx_next = torch.topk(
+                    probs,
+                    k = 1,
+                    dim = -1
+                )
                 # append sampled index to the running sequence and continue
-                idx = torch.cat((idx, idx_next), dim = 1)
+                idx = torch.cat(
+                    (idx, idx_next),
+                    dim = 1
+                )
 
-            return idx.unsqueeze(0)
+            return idx.unsqueeze(
+                0
+            )
 
     def inference(
         self,
         batch: dict
     ) -> torch.Tensor:
-        x = batch['x_emb'].to(self.device)
+        x = batch['x_emb'].to(
+            self.device
+        )
 
         # isolate the input pattern alone
         inp = x[:, :self.sentence_length]
 
         # let the model sample the rest of the sequence
         cat = self.generate(
-            inp, self.sentence_length, do_sample = True, num_samples = 3
+            inp,
+            self.sentence_length,
+            do_sample = True,
+            num_samples = 3
         )  # using greedy argmax, not samplingv ##todo here add sampling
         sol_candidate = cat[:, :, self.sentence_length:]
 
-        return sol_candidate.permute(1, 2, 0)
+        return sol_candidate.permute(
+            1,
+            2,
+            0
+        )

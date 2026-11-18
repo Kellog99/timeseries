@@ -1,38 +1,87 @@
 from typing import ClassVar
 
 import torch
-import torch.nn as nn
 from pydantic import Field
+from torch import nn
 
-from timeseries.configuration import ForecastConfiguration, PositiveInt, NonNegativeInt
+from timeseries.configuration import ForecastConfiguration, NonNegativeInt, PositiveInt
 from timeseries.model_register import ModelFactory
 from timeseries.utils.typing import Module
 
 
-class ConfigGNN(ForecastConfiguration):
+class ConfigGNN(
+    ForecastConfiguration
+):
     """Graph neural network for connected time series."""
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    future_channel: NonNegativeInt = Field(..., description = 'Number of known future numerical features.')
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    cat_emb_dim: PositiveInt = Field(..., description = 'Embedding dimension for each categorical variable.')
-    hidden_GNN: PositiveInt = Field(..., description = 'Hidden graph network dimension.')
-    in_feat: PositiveInt = Field(..., description = 'Number of input features per graph node.')
-    past: PositiveInt = Field(..., description = 'Number of past graph nodes.')
-    future: PositiveInt = Field(..., description = 'Number of future graph nodes.')
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
+    future_channel: NonNegativeInt = Field(
+        ...,
+        description = 'Number of known future numerical features.'
+    )
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
+    )
+    cat_emb_dim: PositiveInt = Field(
+        ...,
+        description = 'Embedding dimension for each categorical variable.'
+    )
+    hidden_GNN: PositiveInt = Field(
+        ...,
+        description = 'Hidden graph network dimension.'
+    )
+    in_feat: PositiveInt = Field(
+        ...,
+        description = 'Number of input features per graph node.'
+    )
+    past: PositiveInt = Field(
+        ...,
+        description = 'Number of past graph nodes.'
+    )
+    future: PositiveInt = Field(
+        ...,
+        description = 'Number of future graph nodes.'
+    )
     emb: dict[str, tuple[PositiveInt, PositiveInt]] = Field(
         ...,
         description = 'Embedding cardinality and dimension per categorical feature.'
     )
-    device: str = Field(..., description = 'Torch device, for example cpu or cuda:0.')
-    nfeat_out_gnn: PositiveInt = Field(16, description = 'Output feature width of each graph network.')
-    num_layer1: PositiveInt = Field(1, description = 'Number of layers in the first graph network.')
-    num_layer2: PositiveInt = Field(1, description = 'Number of layers in the second graph network.')
-    hid_out_features1: PositiveInt = Field(16, description = 'Hidden feature width of the first graph network.')
-    hid_out_features2: PositiveInt = Field(16, description = 'Hidden feature width of the second graph network.')
+    device: str = Field(
+        ...,
+        description = 'Torch device, for example cpu or cuda:0.'
+    )
+    nfeat_out_gnn: PositiveInt = Field(
+        16,
+        description = 'Output feature width of each graph network.'
+    )
+    num_layer1: PositiveInt = Field(
+        1,
+        description = 'Number of layers in the first graph network.'
+    )
+    num_layer2: PositiveInt = Field(
+        1,
+        description = 'Number of layers in the second graph network.'
+    )
+    hid_out_features1: PositiveInt = Field(
+        16,
+        description = 'Hidden feature width of the first graph network.'
+    )
+    hid_out_features2: PositiveInt = Field(
+        16,
+        description = 'Hidden feature width of the second graph network.'
+    )
 
 
-class pre_processing(Module):
+class pre_processing(
+    Module
+):
     def __init__(
         self,
         in_feat: int,
@@ -41,9 +90,11 @@ class pre_processing(Module):
     ) -> None:
         super().__init__()
         self.in_feat = in_feat
-        self.emb = nn.ModuleDict({})
+        self.emb = nn.ModuleDict(
+            {}
+        )
         out = 0
-        for key in emb.keys():
+        for key in emb:
             self.emb[key] = nn.Embedding(
                 num_embeddings = emb[key][0],
                 embedding_dim = emb[key][1],
@@ -54,7 +105,9 @@ class pre_processing(Module):
         # sommo le tre variabili non categoriche dell'input
         out += 3
 
-        self.norm = nn.BatchNorm1d(265)
+        self.norm = nn.BatchNorm1d(
+            265
+        )
         self.linear = nn.Sequential(
             nn.Linear(
                 in_features = out,
@@ -77,18 +130,41 @@ class pre_processing(Module):
         x: torch.Tensor
     ) -> torch.Tensor:
         embeddings: list[torch.Tensor] = []
-        for i, key in enumerate(self.emb.keys()):
-            embeddings.append(self.emb[key](x[:, :, i].int().to(x.device.type)))
-        out = torch.cat(embeddings, -1)
-        out = self.norm(out.float())
-        out = torch.cat((out, x[:, :, -3:]), -1)
-        out = self.linear(out.float())
-        out = torch.cat((out, x[:, :, -1:]), -1)
+        for i, key in enumerate(
+                self.emb.keys()
+        ):
+            embeddings.append(
+                self.emb[key](
+                    x[:, :, i].int().to(
+                        x.device.type
+                    )
+                )
+            )
+        out = torch.cat(
+            embeddings,
+            -1
+        )
+        out = self.norm(
+            out.float()
+        )
+        out = torch.cat(
+            (out, x[:, :, -3:]),
+            -1
+        )
+        out = self.linear(
+            out.float()
+        )
+        out = torch.cat(
+            (out, x[:, :, -1:]),
+            -1
+        )
 
         return out.float()
 
 
-class my_gcnn(Module):
+class my_gcnn(
+    Module
+):
 
     def __init__(
         self,
@@ -118,24 +194,64 @@ class my_gcnn(Module):
         x, A = x0
         # Inserisco una threshold
         # se i valori sono più piccoli di un tot significa che non ci è connessione
-        D = torch.sign(self.relu(A - 1e-15))
-        D = torch.diag((1 + torch.sum(D, 1)) ** (-0.5))
+        D = torch.sign(
+            self.relu(
+                A - 1e-15
+            )
+        )
+        D = torch.diag(
+            (1 + torch.sum(
+                D,
+                1
+            )) ** (-0.5)
+        )
         node_start = A.shape[0]
         node_end = A.shape[1]
 
         if node_start == node_end:
-            A_tilde = A + torch.diag(torch.ones(node_start)).to(A.device.type)
+            A_tilde = A + torch.diag(
+                torch.ones(
+                    node_start
+                )
+            ).to(
+                A.device.type
+            )
             D1 = D2 = D
         else:
-            I = torch.diag(torch.ones(node_end))[node_end - node_start:]
-            A_tilde = A + I.to(A.device.type)
+            I = torch.diag(
+                torch.ones(
+                    node_end
+                )
+            )[node_end - node_start:]
+            A_tilde = A + I.to(
+                A.device.type
+            )
             D1 = D ** 2
-            D2 = torch.diag(torch.ones(node_end)).to(A.device.type)
+            D2 = torch.diag(
+                torch.ones(
+                    node_end
+                )
+            ).to(
+                A.device.type
+            )
 
-        x = self.lin(x)
-        out = torch.matmul(D1, A_tilde)
-        out = torch.matmul(out, D2)
-        out = self.act(torch.matmul(out, x))
+        x = self.lin(
+            x
+        )
+        out = torch.matmul(
+            D1,
+            A_tilde
+        )
+        out = torch.matmul(
+            out,
+            D2
+        )
+        out = self.act(
+            torch.matmul(
+                out,
+                x
+            )
+        )
 
         return (out.float(), A)
 
@@ -145,7 +261,9 @@ class my_gcnn(Module):
     description = 'Graph neural network for connected time series.',
     domain = 'forecasting',
 )
-class GNN(Module):
+class GNN(
+    Module
+):
     CONFIG_T: ClassVar[type[ConfigGNN]] = ConfigGNN
 
     def __init__(
@@ -219,7 +337,7 @@ class GNN(Module):
 
         ########## PREPROCESSING PART #############
         out = 3
-        for key in emb.keys():
+        for key in emb:
             out += emb[key][1]
         self.out_preprocess = out
         self.pre_processing = pre_processing(
@@ -229,10 +347,26 @@ class GNN(Module):
         )
 
         N = past + future
-        self.M = torch.nn.Parameter(torch.randn(N, N))  # Matrice di adiacenza
-        self.mask = torch.tril(torch.ones(N, N)) - torch.diag(torch.ones(N))
+        self.M = torch.nn.Parameter(
+            torch.randn(
+                N,
+                N
+            )
+        )  # Matrice di adiacenza
+        self.mask = torch.tril(
+            torch.ones(
+                N,
+                N
+            )
+        ) - torch.diag(
+            torch.ones(
+                N
+            )
+        )
         self.relu = nn.ReLU()
-        self.softmax = nn.Softmax(dim = 1)
+        self.softmax = nn.Softmax(
+            dim = 1
+        )
 
         ########## FIRST GAT PART #############
         # B * P, O ---> B * T, O-1
@@ -243,12 +377,19 @@ class GNN(Module):
                 relu = False
             )
         else:
-            layers = [my_gcnn(
-                in_channels = self.out_preprocess,
-                out_channels = hid_out_features1
-            )]
+            layers = [
+                my_gcnn(
+                    in_channels = self.out_preprocess,
+                    out_channels = hid_out_features1
+                )
+            ]
 
-            for _ in range(max(0, num_layer1 - 2)):
+            for _ in range(
+                    max(
+                        0,
+                        num_layer1 - 2
+                    )
+            ):
                 layers.append(
                     my_gcnn(
                         in_channels = hid_out_features1,
@@ -264,7 +405,9 @@ class GNN(Module):
                 )
             )
 
-            self.gnn1 = nn.Sequential(*layers)
+            self.gnn1 = nn.Sequential(
+                *layers
+            )
 
         ########## SECOND GAT PART #############
 
@@ -275,12 +418,19 @@ class GNN(Module):
                 relu = False
             )
         else:
-            layers = [my_gcnn(
-                in_channels = self.out_preprocess - 1,
-                out_channels = hid_out_features2
-            )]
+            layers = [
+                my_gcnn(
+                    in_channels = self.out_preprocess - 1,
+                    out_channels = hid_out_features2
+                )
+            ]
 
-            for _ in range(max(0, num_layer2 - 2)):
+            for _ in range(
+                    max(
+                        0,
+                        num_layer2 - 2
+                    )
+            ):
                 layers.append(
                     my_gcnn(
                         in_channels = hid_out_features2,
@@ -296,7 +446,9 @@ class GNN(Module):
                 )
             )
 
-            self.gnn2 = nn.Sequential(*layers)
+            self.gnn2 = nn.Sequential(
+                *layers
+            )
 
         self.prop_gnn = my_gcnn(
             in_channels = self.out_gnn,
@@ -304,8 +456,12 @@ class GNN(Module):
             relu = False
         )
         self.propagation = nn.Sequential(
-            nn.Flatten(-2),
-            nn.BatchNorm1d(self.out_gnn * self.future),
+            nn.Flatten(
+                -2
+            ),
+            nn.BatchNorm1d(
+                self.out_gnn * self.future
+            ),
             nn.Linear(
                 in_features = self.out_gnn * self.future,
                 out_features = 128
@@ -327,15 +483,34 @@ class GNN(Module):
         data: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
 
-        A = self.relu(torch.matmul(self.M, self.M.T))
-        masked = self.mask.to(A.device) == 0
+        A = self.relu(
+            torch.matmul(
+                self.M,
+                self.M.T
+            )
+        )
+        masked = self.mask.to(
+            A.device
+        ) == 0
         # The first node has no predecessors. An all -inf row produces NaNs in
         # softmax backward even when its output is subsequently masked to zero.
-        A = self.softmax(A.masked_fill(masked, torch.finfo(A.dtype).min))
-        A = A.masked_fill(masked, 0)
+        A = self.softmax(
+            A.masked_fill(
+                masked,
+                torch.finfo(
+                    A.dtype
+                ).min
+            )
+        )
+        A = A.masked_fill(
+            masked,
+            0
+        )
 
         # pre-processing dei dati
-        x = self.pre_processing(data)
+        x = self.pre_processing(
+            data
+        )
 
         # creation of the 2 subgraph
         sg1 = x[:, :self.past, :]
@@ -343,19 +518,45 @@ class GNN(Module):
 
         ########## GNN processing ######################
 
-        x1, _ = self.gnn1((sg1, A[:self.past, :self.past]))
-        x2, _ = self.gnn2((sg2[:, :, :-1], A[self.past:, self.past:]))
-        x = torch.cat((x1, x2), -2)
+        x1, _ = self.gnn1(
+            (sg1, A[:self.past, :self.past])
+        )
+        x2, _ = self.gnn2(
+            (sg2[:, :, :-1], A[self.past:, self.past:])
+        )
+        x = torch.cat(
+            (x1, x2),
+            -2
+        )
 
         ########## PROPAGATION PART ####################
-        D = torch.sign(self.relu(A - 1e-15))
-        D = torch.diag((1 + torch.sum(D, 1)) ** (-0.5))
+        D = torch.sign(
+            self.relu(
+                A - 1e-15
+            )
+        )
+        D = torch.diag(
+            (1 + torch.sum(
+                D,
+                1
+            )) ** (-0.5)
+        )
 
-        future, _ = self.prop_gnn((x, A[self.past:, :]))
-        future = self.propagation(future)
+        future, _ = self.prop_gnn(
+            (x, A[self.past:, :])
+        )
+        future = self.propagation(
+            future
+        )
 
         ########## PREPARE THE DIRICHLET ENERGY ##########
-        x = torch.matmul(D, x)
-        x = torch.cdist(x, x)
+        x = torch.matmul(
+            D,
+            x
+        )
+        x = torch.cdist(
+            x,
+            x
+        )
 
         return future.float(), x, A

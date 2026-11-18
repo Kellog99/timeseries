@@ -7,37 +7,44 @@ function types. The checking-only declarations preserve their actual binding
 without changing model inheritance, hooks, serialization, or metric wrappers.
 """
 
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 from torch import nn
 from torchmetrics import Metric as TorchMetric
 
 if TYPE_CHECKING:
-    class Module(nn.Module):
+    class Module(
+        nn.Module
+    ):
         def forward(
             self,
             *args: Any,
             **kwargs: Any
-        ) -> Any:  # ty: ignore[invalid-mutable-override]
+        ) -> Any:
             raise NotImplementedError
 
 
-    class _BoundMetricCalls(TorchMetric):
+    class _BoundMetricCalls(
+        TorchMetric
+    ):
         update: Callable[..., None]
         compute: Callable[[], Any]
 
 
-    class Metric(_BoundMetricCalls):
+    class Metric(
+        _BoundMetricCalls
+    ):
         def update(
             self,
             *args: Any,
             **kwargs: Any
-        ) -> None:  # ty: ignore[invalid-mutable-override]
+        ) -> None:
             raise NotImplementedError
 
         def compute(
             self
-        ) -> Any:  # ty: ignore[invalid-mutable-override]
+        ) -> Any:
             raise NotImplementedError
 else:
     Module = nn.Module

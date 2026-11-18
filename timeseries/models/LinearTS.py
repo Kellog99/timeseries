@@ -1,51 +1,123 @@
+# ruff: noqa: N999  # Preserve public import paths.
 import logging
 from typing import Any, ClassVar
-from typing import List
 
 import torch
 from pydantic import Field
 from torch import nn
 
 from timeseries.base import Base
-from timeseries.configuration import BaseLoss
-from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
+from timeseries.configuration import (
+    BaseLoss,
+    NonNegativeInt,
+    PositiveInt,
+    Probability,
+    Quantile,
+    ThreeQuantileConfiguration,
+)
 from timeseries.model_register import ModelFactory
 from timeseries.utils.torch import get_activation
 from timeseries.utils.typing import Module
 
+logger = logging.getLogger(
+    __name__
+)
 
-class ConfigLinearTS(ThreeQuantileConfiguration):
+
+class ConfigLinearTS(
+    ThreeQuantileConfiguration
+):
     """Linear and decomposition-based time series forecasting."""
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
+    past_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of observed numerical input features.'
+    )
     future_channels: NonNegativeInt = Field(
-        ..., description = 'Number of known future numerical features; zero is allowed.'
+        ...,
+        description = 'Number of known future numerical features; zero is allowed.'
     )
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    cat_emb_dim: PositiveInt = Field(..., description = 'Embedding dimension for each categorical variable.')
-    kernel_size: PositiveInt = Field(..., description = 'Convolution or moving-average kernel width.')
-    sum_emb: bool = Field(..., description = 'Sum categorical embeddings instead of concatenating them.')
-    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
-    hidden_size: PositiveInt = Field(..., description = 'Hidden size.')
-    dropout_rate: Probability = Field(0.1, description = 'Dropout rate.')
-    activation: str = Field('torch.nn.ReLU', description = 'Fully qualified torch activation class name.')
-    kind: str = Field('linear', description = 'Kind.')
-    use_bn: bool = Field(False, description = 'Use batch normalization in place of dropout.')
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
+    )
+    cat_emb_dim: PositiveInt = Field(
+        ...,
+        description = 'Embedding dimension for each categorical variable.'
+    )
+    kernel_size: PositiveInt = Field(
+        ...,
+        description = 'Convolution or moving-average kernel width.'
+    )
+    sum_emb: bool = Field(
+        ...,
+        description = 'Sum categorical embeddings instead of concatenating them.'
+    )
+    out_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of target variables.'
+    )
+    hidden_size: PositiveInt = Field(
+        ...,
+        description = 'Hidden size.'
+    )
+    dropout_rate: Probability = Field(
+        0.1,
+        description = 'Dropout rate.'
+    )
+    activation: str = Field(
+        'torch.nn.ReLU',
+        description = 'Fully qualified torch activation class name.'
+    )
+    kind: str = Field(
+        'linear',
+        description = 'Kind.'
+    )
+    use_bn: bool = Field(
+        False,
+        description = 'Use batch normalization in place of dropout.'
+    )
     persistence_weight: float = Field(
-        0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+        0.0,
+        description = 'Weight applied to the persistence-based loss penalty.',
+        ge = 0
     )
-    loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
+    loss_type: BaseLoss = Field(
+        'l1',
+        description = 'Training loss selection.'
+    )
     quantiles: list[Quantile] | None = Field(
-        None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
+        None,
+        description = 'Three increasing output quantiles, or None/empty for point forecasts.'
     )
-    n_classes: NonNegativeInt = Field(0, description = 'Number of classes; zero selects regression.')
-    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    n_classes: NonNegativeInt = Field(
+        0,
+        description = 'Number of classes; zero selects regression.'
+    )
+    optim: str | None = Field(
+        None,
+        description = 'Torch optimizer class name; None selects Adam.'
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
-class moving_avg(Module):
+class moving_avg(
+    Module
+):
     """
     Moving average block to highlight the trend of time series
     """
@@ -55,24 +127,53 @@ class moving_avg(Module):
         kernel_size,
         stride
     ):
-        super(moving_avg, self).__init__()
+        super(
+
+        ).__init__()
         self.kernel_size = kernel_size
-        self.avg = nn.AvgPool1d(kernel_size = kernel_size, stride = stride, padding = 0)
+        self.avg = nn.AvgPool1d(
+            kernel_size = kernel_size,
+            stride = stride,
+            padding = 0
+        )
 
     def forward(
         self,
         x
     ):
         # padding on the both ends of time series
-        front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)
-        end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
-        x = torch.cat([front, x, end], dim = 1)
-        x = self.avg(x.permute(0, 2, 1))
-        x = x.permute(0, 2, 1)
+        front = x[:, 0:1, :].repeat(
+            1,
+            (self.kernel_size - 1) // 2,
+            1
+        )
+        end = x[:, -1:, :].repeat(
+            1,
+            (self.kernel_size - 1) // 2,
+            1
+        )
+        x = torch.cat(
+            [front, x, end],
+            dim = 1
+        )
+        x = self.avg(
+            x.permute(
+                0,
+                2,
+                1
+            )
+        )
+        x = x.permute(
+            0,
+            2,
+            1
+        )
         return x
 
 
-class series_decomp(Module):
+class series_decomp(
+    Module
+):
     """
     Series decomposition block
     """
@@ -81,14 +182,21 @@ class series_decomp(Module):
         self,
         kernel_size
     ):
-        super(series_decomp, self).__init__()
-        self.moving_avg = moving_avg(kernel_size, stride = 1)
+        super(
+
+        ).__init__()
+        self.moving_avg = moving_avg(
+            kernel_size,
+            stride = 1
+        )
 
     def forward(
         self,
         x
     ):
-        moving_mean = self.moving_avg(x)
+        moving_mean = self.moving_avg(
+            x
+        )
         res = x - moving_mean
         return res, moving_mean
 
@@ -98,7 +206,9 @@ class series_decomp(Module):
     description = 'Linear and decomposition-based time series forecasting.',
     domain = 'forecasting',
 )
-class LinearTS(Base):
+class LinearTS(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigLinearTS]] = ConfigLinearTS
 
     def __init__(
@@ -156,10 +266,14 @@ class LinearTS(Base):
         quantiles = [] if quantiles is None else quantiles
 
         if activation == 'torch.nn.SELU':
-            logging.info('SELU do not require BN')
+            logger.info(
+                'SELU do not require BN'
+            )
             use_bn = False
 
-        activation_factory = get_activation(activation)
+        activation_factory = get_activation(
+            activation
+        )
 
         super().__init__(
             past_steps = past_steps,
@@ -184,25 +298,45 @@ class LinearTS(Base):
         emb_channels = 0
 
         for k in embs:
-            self.embs.append(nn.Embedding(k + 1, cat_emb_dim))
+            self.embs.append(
+                nn.Embedding(
+                    k + 1,
+                    cat_emb_dim
+                )
+            )
             emb_channels += cat_emb_dim
 
         if sum_emb and (emb_channels > 0):
             emb_channels = cat_emb_dim
-            logging.info('Using sum')
+            logger.info(
+                'Using sum'
+            )
         else:
-            logging.info('Using stacked')
+            logger.info(
+                'Using stacked'
+            )
 
         ## ne faccio uno per ogni canale
         self.linear = nn.ModuleList()
 
         if kind == 'dlinear':
-            self.decompsition = series_decomp(kernel_size)
+            self.decompsition = series_decomp(
+                kernel_size
+            )
             self.Linear_Trend = nn.ModuleList()
-            for _ in range(out_channels):
-                self.Linear_Trend.append(nn.Linear(past_steps, future_steps))
+            for _ in range(
+                    out_channels
+            ):
+                self.Linear_Trend.append(
+                    nn.Linear(
+                        past_steps,
+                        future_steps
+                    )
+                )
 
-        for _ in range(out_channels):
+        for _ in range(
+                out_channels
+        ):
             self.linear.append(
                 nn.Sequential(
                     nn.Linear(
@@ -212,17 +346,45 @@ class LinearTS(Base):
                         hidden_size
                     ),
                     activation_factory(),
-                    nn.BatchNorm1d(hidden_size) if use_bn else nn.Dropout(dropout_rate),
-                    nn.Linear(hidden_size, hidden_size // 2),
+                    nn.BatchNorm1d(
+                        hidden_size
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
+                    nn.Linear(
+                        hidden_size,
+                        hidden_size // 2
+                    ),
                     activation_factory(),
-                    nn.BatchNorm1d(hidden_size // 2) if use_bn else nn.Dropout(dropout_rate),
-                    nn.Linear(hidden_size // 2, hidden_size // 4),
+                    nn.BatchNorm1d(
+                        hidden_size // 2
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
+                    nn.Linear(
+                        hidden_size // 2,
+                        hidden_size // 4
+                    ),
                     activation_factory(),
-                    nn.BatchNorm1d(hidden_size // 4) if use_bn else nn.Dropout(dropout_rate),
-                    nn.Linear(hidden_size // 4, hidden_size // 8),
+                    nn.BatchNorm1d(
+                        hidden_size // 4
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
+                    nn.Linear(
+                        hidden_size // 4,
+                        hidden_size // 8
+                    ),
                     activation_factory(),
-                    nn.BatchNorm1d(hidden_size // 8) if use_bn else nn.Dropout(dropout_rate),
-                    nn.Linear(hidden_size // 8, self.future_steps * self.mul)
+                    nn.BatchNorm1d(
+                        hidden_size // 8
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
+                    nn.Linear(
+                        hidden_size // 8,
+                        self.future_steps * self.mul
+                    )
                 )
             )
 
@@ -238,10 +400,14 @@ class LinearTS(Base):
         Returns:
             torch.tensor: result
         """
-        x = batch['x_num_past'].to(self.device)
+        x = batch['x_num_past'].to(
+            self.device
+        )
         if self.kind == 'nlinear':
             idx_target = batch['idx_target'][0]
-            x_start = x[:, -1, idx_target].unsqueeze(1)
+            x_start = x[:, -1, idx_target].unsqueeze(
+                1
+            )
             ##BxC
             x[:, :, idx_target] -= x_start
 
@@ -253,76 +419,179 @@ class LinearTS(Base):
             idx_target = batch['idx_target'][0]
             x_start = x[:, :, idx_target]
 
-            seasonal_init, trend_init = self.decompsition(x_start.permute(0, 2, 1))
-            seasonal_init, trend_init = seasonal_init.permute(0, 2, 1), trend_init.permute(0, 2, 1)
+            seasonal_init, trend_init = self.decompsition(
+                x_start.permute(
+                    0,
+                    2,
+                    1
+                )
+            )
+            seasonal_init, trend_init = seasonal_init.permute(
+                0,
+                2,
+                1
+            ), trend_init.permute(
+                0,
+                2,
+                1
+            )
 
             x[:, :, idx_target] = seasonal_init
 
             tmp = []
-            for j in range(len(self.Linear_Trend)):
-                tmp.append(self.Linear_Trend[j](trend_init[:, :, j]))
+            for j in range(
+                    len(
+                        self.Linear_Trend
+                    )
+            ):
+                tmp.append(
+                    self.Linear_Trend[j](
+                        trend_init[:, :, j]
+                    )
+                )
 
-            trend = torch.stack(tmp, 2)
+            trend = torch.stack(
+                tmp,
+                2
+            )
 
-        if 'x_cat_future' in batch.keys():
-            cat_future = batch['x_cat_future'].to(self.device)
-        if 'x_cat_past' in batch.keys():
-            cat_past = batch['x_cat_past'].to(self.device)
-        if 'x_num_future' in batch.keys():
-            x_future = batch['x_num_future'].to(self.device)
+        if 'x_cat_future' in batch:
+            cat_future = batch['x_cat_future'].to(
+                self.device
+            )
+        if 'x_cat_past' in batch:
+            cat_past = batch['x_cat_past'].to(
+                self.device
+            )
+        if 'x_num_future' in batch:
+            x_future = batch['x_num_future'].to(
+                self.device
+            )
         else:
             x_future = None
 
         tmp = [x]
 
-        for i in range(len(self.embs)):
+        tmp_emb = None
+        for i in range(
+                len(
+                    self.embs
+                )
+        ):
             if self.sum_emb:
                 if i > 0:
-                    tmp_emb += self.embs[i](cat_past[:, :, i])
+                    tmp_emb += self.embs[i](
+                        cat_past[:, :, i]
+                    )
                 else:
-                    tmp_emb = self.embs[i](cat_past[:, :, i])
+                    tmp_emb = self.embs[i](
+                        cat_past[:, :, i]
+                    )
             else:
-                tmp.append(self.embs[i](cat_past[:, :, i]))
-        if self.sum_emb and (len(self.embs) > 0):
-            tmp.append(tmp_emb)
+                tmp.append(
+                    self.embs[i](
+                        cat_past[:, :, i]
+                    )
+                )
+        if self.sum_emb and (len(
+                self.embs
+        ) > 0):
+            assert tmp_emb is not None
+            tmp.append(
+                tmp_emb
+            )
         ##BxLxC
-        tot_past = torch.cat(tmp, 2).flatten(1)
+        tot_past = torch.cat(
+            tmp,
+            2
+        ).flatten(
+            1
+        )
 
         tmp = []
-        for i in range(len(self.embs)):
+        tmp_emb = None
+        for i in range(
+                len(
+                    self.embs
+                )
+        ):
             if self.sum_emb:
                 if i > 0:
-                    tmp_emb += self.embs[i](cat_future[:, :, i])
+                    tmp_emb += self.embs[i](
+                        cat_future[:, :, i]
+                    )
                 else:
-                    tmp_emb = self.embs[i](cat_future[:, :, i])
+                    tmp_emb = self.embs[i](
+                        cat_future[:, :, i]
+                    )
             else:
-                tmp.append(self.embs[i](cat_future[:, :, i]))
-        if self.sum_emb and (len(self.embs)):
-            tmp.append(tmp_emb)
+                tmp.append(
+                    self.embs[i](
+                        cat_future[:, :, i]
+                    )
+                )
+        if self.sum_emb and (len(
+                self.embs
+        )):
+            assert tmp_emb is not None
+            tmp.append(
+                tmp_emb
+            )
 
         if x_future is not None:
-            tmp.append(x_future)
-        if len(tmp) > 0:
+            tmp.append(
+                x_future
+            )
+        if len(
+                tmp
+        ) > 0:
 
-            tot_future = torch.cat(tmp, 2).flatten(1)
-            tot = torch.cat([tot_past, tot_future], 1)
+            tot_future = torch.cat(
+                tmp,
+                2
+            ).flatten(
+                1
+            )
+            tot = torch.cat(
+                [tot_past, tot_future],
+                1
+            )
 
         else:
             tot = tot_past
 
         res = []
         B = tot.shape[0]
-        for j in range(len(self.linear)):
-            res.append(self.linear[j](tot).reshape(B, -1, self.mul))
+        for j in range(
+                len(
+                    self.linear
+                )
+        ):
+            res.append(
+                self.linear[j](
+                    tot
+                ).reshape(
+                    B,
+                    -1,
+                    self.mul
+                )
+            )
         ## BxLxCxMUL
-        res = torch.stack(res, 2)
+        res = torch.stack(
+            res,
+            2
+        )
 
         if self.kind == 'nlinear':
             # res BxLxCx3
             # start BxCx1
-            res += x_start.unsqueeze(1)
+            res += x_start.unsqueeze(
+                1
+            )
 
         if self.kind == 'dlinear':
-            res = res + trend.unsqueeze(3)
+            res = res + trend.unsqueeze(
+                3
+            )
 
         return res

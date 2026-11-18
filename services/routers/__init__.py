@@ -10,8 +10,18 @@ from .ticker_returns import router as return_router
 
 api_router = APIRouter()
 
-api_router.include_router(data_router)
-api_router.include_router(metrics_router)
-api_router.include_router(return_router)
-api_router.include_router(indicators_router)
-api_router.include_router(options_router)
+api_router.include_router(
+    data_router
+)
+api_router.include_router(
+    metrics_router
+)
+api_router.include_router(
+    return_router
+)
+api_router.include_router(
+    indicators_router
+)
+api_router.include_router(
+    options_router
+)

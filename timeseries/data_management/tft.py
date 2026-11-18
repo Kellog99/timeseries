@@ -28,55 +28,157 @@ def dataloading(
         'end_test': '2022-04-06'
     }
 
-    with open(path, 'rb') as f:
-        df_el, _, _, _, _, _, _ = pickle.load(f)
-        df_el.tempo = pd.to_datetime(df_el.tempo)
+    with open(
+            path,
+            'rb'
+    ) as f:
+        df_el, _, _, _, _, _, _ = pickle.load(
+            f
+        )
+        df_el.tempo = pd.to_datetime(
+            df_el.tempo
+        )
         f.close()
 
     df = df_el[['tempo', 'is_low', 'y']]
     df.y[df.y < 0] = np.nan
 
-    train_df = df[df.tempo.between(to_datetime(dictbound['start_train']), to_datetime(dictbound['end_train']))][:-1]
-    val_df = df[df.tempo.between(to_datetime(dictbound['start_val']), to_datetime(dictbound['end_val']))][:-1]
-    test_df = df[df.tempo.between(to_datetime(dictbound['start_test']), to_datetime(dictbound['end_test']))][:-1]
+    train_df = df[df.tempo.between(
+        to_datetime(
+            dictbound['start_train']
+        ),
+        to_datetime(
+            dictbound['end_train']
+        )
+    )][:-1]
+    val_df = df[df.tempo.between(
+        to_datetime(
+            dictbound['start_val']
+        ),
+        to_datetime(
+            dictbound['end_val']
+        )
+    )][:-1]
+    test_df = df[df.tempo.between(
+        to_datetime(
+            dictbound['start_test']
+        ),
+        to_datetime(
+            dictbound['end_test']
+        )
+    )][:-1]
 
     # scaler fitted over training y
-    train_y = torch.tensor(train_df['y'].values)
-    scaler_y.fit(train_y.unsqueeze(1))
+    train_y = torch.tensor(
+        train_df['y'].values
+    )
+    scaler_y.fit(
+        train_y.unsqueeze(
+            1
+        )
+    )
 
-    print('-' * 50 + '\n')
+    print(
+        '-' * 50 + '\n'
+    )
     if train_bool:
-        train_Ds = CustomDataset(train_df, scaler_y, seq_len, lag, step, hour = hour_learning)
-        val_Ds = CustomDataset(val_df, scaler_y, seq_len, lag, step, hour = hour_learning)
-        test_Ds = CustomDataset(test_df, scaler_y, seq_len, lag, step, hour = hour_inference)
+        train_Ds = CustomDataset(
+            train_df,
+            scaler_y,
+            seq_len,
+            lag,
+            step,
+            hour = hour_learning
+        )
+        val_Ds = CustomDataset(
+            val_df,
+            scaler_y,
+            seq_len,
+            lag,
+            step,
+            hour = hour_learning
+        )
+        test_Ds = CustomDataset(
+            test_df,
+            scaler_y,
+            seq_len,
+            lag,
+            step,
+            hour = hour_inference
+        )
 
-        train_dl = DataLoader(train_Ds, batch_size = batch_size, shuffle = True)
-        val_dl = DataLoader(val_Ds, batch_size = batch_size, shuffle = True)
-        test_dl = DataLoader(test_Ds, batch_size = batch_size_test, shuffle = False)
+        train_dl = DataLoader(
+            train_Ds,
+            batch_size = batch_size,
+            shuffle = True
+        )
+        val_dl = DataLoader(
+            val_Ds,
+            batch_size = batch_size,
+            shuffle = True
+        )
+        test_dl = DataLoader(
+            test_Ds,
+            batch_size = batch_size_test,
+            shuffle = False
+        )
 
-        print('Learning & Testing')
-        print(f'Hour Learning = {hour_learning}, Hour Testing = {hour_inference}')
-        print(f'> len_train_dl = {len(train_dl)}')
-        print(f'> len_val_dl   = {len(val_dl)}')
-        print(f'> len_test_dl  = {len(test_dl)}')
-        print(f'Train & Val Batch_size = {batch_size}')
+        print(
+            'Learning & Testing'
+        )
+        print(
+            f'Hour Learning = {hour_learning}, Hour Testing = {hour_inference}'
+        )
+        print(
+            f'> len_train_dl = {len(train_dl)}'
+        )
+        print(
+            f'> len_val_dl   = {len(val_dl)}'
+        )
+        print(
+            f'> len_test_dl  = {len(test_dl)}'
+        )
+        print(
+            f'Train & Val Batch_size = {batch_size}'
+        )
 
     else:
-        test_Ds = CustomDataset(test_df, scaler_y, seq_len, lag, step, hour = hour_inference)
+        test_Ds = CustomDataset(
+            test_df,
+            scaler_y,
+            seq_len,
+            lag,
+            step,
+            hour = hour_inference
+        )
 
         train_dl = None
         val_dl = None
-        test_dl = DataLoader(test_Ds, batch_size = batch_size_test, shuffle = False)
+        test_dl = DataLoader(
+            test_Ds,
+            batch_size = batch_size_test,
+            shuffle = False
+        )
 
-        print('Only Testing')
-        print(f'Hour Testing = {hour_inference}')
-        print(f'len_test_dl = {len(test_dl)}')
+        print(
+            'Only Testing'
+        )
+        print(
+            f'Hour Testing = {hour_inference}'
+        )
+        print(
+            f'len_test_dl = {len(test_dl)}'
+        )
 
-    print(f'Test Batch_size = {batch_size_test}')
+    print(
+        f'Test Batch_size = {batch_size_test}'
+    )
     return train_dl, val_dl, test_dl, scaler_y
 
 
-class CustomDataset(torch.utils.data.Dataset):
+class CustomDataset(
+    torch.utils.data.Dataset
+):
     def __init__(
         self,
         df,
@@ -91,12 +193,30 @@ class CustomDataset(torch.utils.data.Dataset):
 
         x = df.tempo.apply(
             lambda
-                x: [int(c) for c in x.strftime('%Y %m %d %H %w').split()]
+                x: [int(
+                c
+            ) for c in x.strftime(
+                '%Y %m %d %H %w'
+            ).split()]
         ).values
-        x = torch.tensor(np.array([np.array(c) for c in x]))
-        y = torch.tensor(df.y.values)
-        y = scaler.transform(y.unsqueeze(1)).squeeze()
-        is_low = torch.tensor(df.is_low.values)
+        x = torch.tensor(
+            np.array(
+                [np.array(
+                    c
+                ) for c in x]
+            )
+        )
+        y = torch.tensor(
+            df.y.values
+        )
+        y = scaler.transform(
+            y.unsqueeze(
+                1
+            )
+        ).squeeze()
+        is_low = torch.tensor(
+            df.is_low.values
+        )
 
         # # for correct embedding?
         # max_month = max(x[:,1])
@@ -105,27 +225,62 @@ class CustomDataset(torch.utils.data.Dataset):
         # max_dow = max(x[:,4])
         # max_low = max(is_low)
 
-        for i in range(seq_len, len(df), step):
-            if not (np.isnan(df.y[i - seq_len:i]).any()):
-                if not 0 in is_low[i - lag:i]:
-                    if hour == 24:
-                        # ALL SEQUENCES
-                        X.append(torch.cat((x[i - seq_len:i], is_low[i - seq_len:i].unsqueeze(1)), dim = 1))
-                        Y.append(y[i - seq_len:i])
+        for i in range(
+                seq_len,
+                len(
+                    df
+                ),
+                step
+        ):
+            if not (np.isnan(
+                    df.y[i - seq_len:i]
+            ).any()) and not 0 in is_low[i - lag:i]:
+                if hour == 24:
+                    # ALL SEQUENCES
+                    X.append(
+                        torch.cat(
+                            (
+                                x[i - seq_len:i], is_low[i - seq_len:i].unsqueeze(
+                                1
+                            )
+                            ),
+                            dim = 1
+                        )
+                    )
+                    Y.append(
+                        y[i - seq_len:i]
+                    )
 
-                    else:
-                        # SEQUENCES WITH REDICTION STARTING FROM 'hour'
-                        if x[i - lag, -2] == hour:  # x is [y,m,d,h,dow]
-                            X.append(torch.cat((x[i - seq_len:i], is_low[i - seq_len:i].unsqueeze(1)), dim = 1))
-                            Y.append(y[i - seq_len:i])
+                else:
+                    # SEQUENCES WITH REDICTION STARTING FROM 'hour'
+                    if x[i - lag, -2] == hour:  # x is [y,m,d,h,dow]
+                        X.append(
+                            torch.cat(
+                                (
+                                    x[i - seq_len:i], is_low[i - seq_len:i].unsqueeze(
+                                    1
+                                )
+                                ),
+                                dim = 1
+                            )
+                        )
+                        Y.append(
+                            y[i - seq_len:i]
+                        )
 
-        self.x = np.stack(X)  # %Y %m %d %H %w is_low
-        self.y = np.stack(Y)
+        self.x = np.stack(
+            X
+        )  # %Y %m %d %H %w is_low
+        self.y = np.stack(
+            Y
+        )
 
     def __len__(
         self
     ):
-        return len(self.x)
+        return len(
+            self.x
+        )
 
     def __getitem__(
         self,

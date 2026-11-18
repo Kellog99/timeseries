@@ -19,20 +19,30 @@ app.add_middleware(
     allow_headers = ["*"],
 )
 # Include routers
-app.include_router(api_router)
+app.include_router(
+    api_router
+)
 
 
 ###########################################################
 
 
-@app.get("/")
+@app.get(
+    "/"
+)
 def root():
     return {"message": "Welcome to the Finance Job API"}
 
 
 if __name__ == "__main__":
-    args = parsed_argument(MainConfig)
-    config = MainConfig(**vars(args))
+    args = parsed_argument(
+        MainConfig
+    )
+    config = MainConfig(
+        **vars(
+            args
+        )
+    )
     app.state.config = config
     uvicorn.run(
         app,  # Use the app object directly instead of string

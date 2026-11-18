@@ -12,8 +12,13 @@ def load_paths(
         '/storage/DSIP/edison/anmartinelli/config.yaml'
         if cluster else '/home/andrea/timeseries/anmartinelli/config.yaml'
     )
-    with open(config_path, encoding = 'utf-8') as config_file:
-        conf = yaml.safe_load(config_file)
+    with open(
+            config_path,
+            encoding = 'utf-8'
+    ) as config_file:
+        conf = yaml.safe_load(
+            config_file
+        )
     paths = conf['cl' if cluster else 'loc']
     return paths['data'], paths['folder_works']
 
@@ -42,5 +47,7 @@ def get_model(
         quantiles = conf_params.strategy_dict['quantiles'],
         path_model_save = path,
         model_name = conf_params.name
-    ).to(device)
+    ).to(
+        device
+    )
     return model

@@ -1,53 +1,131 @@
+# ruff: noqa: N999  # Preserve public import paths.
 from typing import Any, ClassVar
-from typing import List
 
 import torch
 from pydantic import Field
 from torch import nn
 
 from timeseries.base import Base
-from timeseries.configuration import BaseLoss
-from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
+from timeseries.configuration import (
+    BaseLoss,
+    NonNegativeInt,
+    PositiveInt,
+    Probability,
+    Quantile,
+    ThreeQuantileConfiguration,
+)
 from timeseries.model_register import ModelFactory
-from .informer.attn import FullAttention, ProbAttention, AttentionLayer
+from .informer.attn import AttentionLayer, FullAttention, ProbAttention
 from .informer.decoder import Decoder, DecoderLayer
 from .informer.embed import DataEmbedding
-from .informer.encoder import Encoder, EncoderLayer, ConvLayer
+from .informer.encoder import ConvLayer, Encoder, EncoderLayer
 
 
-class ConfigInformer(ThreeQuantileConfiguration):
+class ConfigInformer(
+    ThreeQuantileConfiguration
+):
     """Sparse-attention Transformer for long sequence forecasting."""
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
+    past_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of observed numerical input features.'
+    )
     future_channels: NonNegativeInt = Field(
-        ..., description = 'Number of known future numerical features; zero is allowed.'
+        ...,
+        description = 'Number of known future numerical features; zero is allowed.'
     )
-    d_model: PositiveInt = Field(..., description = 'Dimension of the internal feature embeddings.')
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    hidden_size: PositiveInt = Field(..., description = 'Hidden size.')
-    n_layer_encoder: PositiveInt = Field(..., description = 'Number of encoder layers.')
-    n_layer_decoder: PositiveInt = Field(..., description = 'Number of decoder layers.')
-    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
-    mix: bool = Field(True, description = 'Mix attention heads in the Informer decoder.')
-    activation: str = Field('torch.nn.ReLU', description = 'Fully qualified torch activation class name.')
-    remove_last: bool = Field(False, description = 'Predict differences from the last observed target value.')
-    attn: str = Field('prob', description = 'Attention mechanism: prob for sparse attention or full.')
-    output_attention: bool = Field(False, description = 'Return attention weights alongside model predictions.')
-    distil: bool = Field(True, description = 'Use convolutional distillation between encoder layers.')
-    factor: PositiveInt = Field(5, description = 'Attention sparsity or routing factor.')
-    n_head: PositiveInt = Field(1, description = 'Number of attention heads.')
+    d_model: PositiveInt = Field(
+        ...,
+        description = 'Dimension of the internal feature embeddings.'
+    )
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
+    )
+    hidden_size: PositiveInt = Field(
+        ...,
+        description = 'Hidden size.'
+    )
+    n_layer_encoder: PositiveInt = Field(
+        ...,
+        description = 'Number of encoder layers.'
+    )
+    n_layer_decoder: PositiveInt = Field(
+        ...,
+        description = 'Number of decoder layers.'
+    )
+    out_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of target variables.'
+    )
+    mix: bool = Field(
+        True,
+        description = 'Mix attention heads in the Informer decoder.'
+    )
+    activation: str = Field(
+        'torch.nn.ReLU',
+        description = 'Fully qualified torch activation class name.'
+    )
+    remove_last: bool = Field(
+        False,
+        description = 'Predict differences from the last observed target value.'
+    )
+    attn: str = Field(
+        'prob',
+        description = 'Attention mechanism: prob for sparse attention or full.'
+    )
+    output_attention: bool = Field(
+        False,
+        description = 'Return attention weights alongside model predictions.'
+    )
+    distil: bool = Field(
+        True,
+        description = 'Use convolutional distillation between encoder layers.'
+    )
+    factor: PositiveInt = Field(
+        5,
+        description = 'Attention sparsity or routing factor.'
+    )
+    n_head: PositiveInt = Field(
+        1,
+        description = 'Number of attention heads.'
+    )
     persistence_weight: float = Field(
-        0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+        0.0,
+        description = 'Weight applied to the persistence-based loss penalty.',
+        ge = 0
     )
-    loss_type: BaseLoss = Field('l1', description = 'Training loss selection.')
+    loss_type: BaseLoss = Field(
+        'l1',
+        description = 'Training loss selection.'
+    )
     quantiles: list[Quantile] | None = Field(
-        None, description = 'Three increasing output quantiles, or None/empty for point forecasts.'
+        None,
+        description = 'Three increasing output quantiles, or None/empty for point forecasts.'
     )
-    dropout_rate: Probability = Field(0.1, description = 'Dropout rate.')
-    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    dropout_rate: Probability = Field(
+        0.1,
+        description = 'Dropout rate.'
+    )
+    optim: str | None = Field(
+        None,
+        description = 'Torch optimizer class name; None selects Adam.'
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
 @ModelFactory.register(
@@ -55,7 +133,9 @@ class ConfigInformer(ThreeQuantileConfiguration):
     description = 'Sparse-attention Transformer for long sequence forecasting.',
     domain = 'forecasting',
 )
-class Informer(Base):
+class Informer(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigInformer]] = ConfigInformer
 
     def __init__(
@@ -144,8 +224,18 @@ class Informer(Base):
         else:
             self.loss = nn.L1Loss()
 
-        self.enc_embedding = DataEmbedding(past_channels, d_model, embs, dropout_rate)
-        self.dec_embedding = DataEmbedding(future_channels, d_model, embs, dropout_rate)
+        self.enc_embedding = DataEmbedding(
+            past_channels,
+            d_model,
+            embs,
+            dropout_rate
+        )
+        self.dec_embedding = DataEmbedding(
+            future_channels,
+            d_model,
+            embs,
+            dropout_rate
+        )
         # Attention
         Attn = ProbAttention if attn == 'prob' else FullAttention
         # Encoder
@@ -153,45 +243,80 @@ class Informer(Base):
             [
                 EncoderLayer(
                     AttentionLayer(
-                        Attn(False, factor, attention_dropout = dropout_rate, output_attention = output_attention),
-                        d_model, n_head, mix = False
+                        Attn(
+                            False,
+                            factor,
+                            attention_dropout = dropout_rate,
+                            output_attention = output_attention
+                        ),
+                        d_model,
+                        n_head,
+                        mix = False
                     ),
                     d_model,
                     hidden_size,
                     dropout = dropout_rate,
                     activation = activation
-                ) for l in range(n_layer_encoder)
+                ) for l in range(
+                n_layer_encoder
+            )
             ],
             [
                 ConvLayer(
                     d_model
-                ) for l in range(n_layer_encoder - 1)
+                ) for l in range(
+                n_layer_encoder - 1
+            )
             ] if distil else None,
-            norm_layer = torch.nn.LayerNorm(d_model)
+            norm_layer = torch.nn.LayerNorm(
+                d_model
+            )
         )
         # Decoder
         self.decoder = Decoder(
             [
                 DecoderLayer(
                     AttentionLayer(
-                        Attn(True, factor, attention_dropout = dropout_rate, output_attention = False),
-                        d_model, n_head, mix = mix
+                        Attn(
+                            True,
+                            factor,
+                            attention_dropout = dropout_rate,
+                            output_attention = False
+                        ),
+                        d_model,
+                        n_head,
+                        mix = mix
                     ),
                     AttentionLayer(
-                        FullAttention(False, factor, attention_dropout = dropout_rate, output_attention = False),
-                        d_model, n_head, mix = False
+                        FullAttention(
+                            False,
+                            factor,
+                            attention_dropout = dropout_rate,
+                            output_attention = False
+                        ),
+                        d_model,
+                        n_head,
+                        mix = False
                     ),
                     d_model,
                     hidden_size,
                     dropout = dropout_rate,
                     activation = activation,
                 )
-                for l in range(n_layer_decoder)
+                for l in range(
+                n_layer_decoder
+            )
             ],
-            norm_layer = torch.nn.LayerNorm(d_model)
+            norm_layer = torch.nn.LayerNorm(
+                d_model
+            )
         )
 
-        self.projection = nn.Linear(d_model, out_channels, bias = True)
+        self.projection = nn.Linear(
+            d_model,
+            out_channels,
+            bias = True
+        )
 
     def forward(
         self,
@@ -199,20 +324,28 @@ class Informer(Base):
     ):
         # x_enc, x_mark_enc, x_dec, x_mark_dec,enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
 
-        x_enc = batch['x_num_past'].to(self.device)
-        if 'x_cat_past' in batch.keys():
-            x_mark_enc = batch['x_cat_past'].to(self.device)
+        x_enc = batch['x_num_past'].to(
+            self.device
+        )
+        if 'x_cat_past' in batch:
+            x_mark_enc = batch['x_cat_past'].to(
+                self.device
+            )
         else:
             x_mark_enc = None
         enc_self_mask = None
 
-        x_dec = batch['x_num_future'].to(self.device)
+        x_dec = batch['x_num_future'].to(
+            self.device
+        )
 
         ##FIX THIS, now all are 0!
         x_dec[:, -self.future_steps:, :] = 0
 
-        if 'x_cat_future' in batch.keys():
-            x_mark_dec = batch['x_cat_future'].to(self.device)
+        if 'x_cat_future' in batch:
+            x_mark_dec = batch['x_cat_future'].to(
+                self.device
+            )
         else:
             x_mark_dec = None
         dec_self_mask = None
@@ -220,24 +353,46 @@ class Informer(Base):
 
         if self.remove_last:
             idx_target = batch['idx_target'][0]
-            x_start = x_enc[:, -1, idx_target].unsqueeze(1)
+            x_start = x_enc[:, -1, idx_target].unsqueeze(
+                1
+            )
             x_enc[:, :, idx_target] -= x_start
 
-        enc_out = self.enc_embedding(x_enc, x_mark_enc)
-        enc_out, attns = self.encoder(enc_out, attn_mask = enc_self_mask)
+        enc_out = self.enc_embedding(
+            x_enc,
+            x_mark_enc
+        )
+        enc_out, attns = self.encoder(
+            enc_out,
+            attn_mask = enc_self_mask
+        )
 
-        dec_out = self.dec_embedding(x_dec, x_mark_dec)
-        dec_out = self.decoder(dec_out, enc_out, x_mask = dec_self_mask, cross_mask = dec_enc_mask)
-        dec_out = self.projection(dec_out)
+        dec_out = self.dec_embedding(
+            x_dec,
+            x_mark_dec
+        )
+        dec_out = self.decoder(
+            dec_out,
+            enc_out,
+            x_mask = dec_self_mask,
+            cross_mask = dec_enc_mask
+        )
+        dec_out = self.projection(
+            dec_out
+        )
 
         # dec_out = self.end_conv1(dec_out)
         # dec_out = self.end_conv2(dec_out.transpose(2,1)).transpose(1,2)
 
         # import pdb
         # pdb.set_trace()
-        res = dec_out[:, -self.future_steps:, :].unsqueeze(3)
+        res = dec_out[:, -self.future_steps:, :].unsqueeze(
+            3
+        )
         if self.remove_last:
-            res += x_start.unsqueeze(1)
+            res += x_start.unsqueeze(
+                1
+            )
 
         if self.output_attention:
             return res, attns

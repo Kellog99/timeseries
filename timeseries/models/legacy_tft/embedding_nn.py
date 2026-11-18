@@ -1,10 +1,12 @@
 import torch
-import torch.nn as nn
+from torch import nn
 
 from timeseries.utils.typing import Module
 
 
-class embedding_cat_variables(Module):
+class embedding_cat_variables(
+    Module
+):
     # at the moment cat_past and cat_fut together
     def __init__(
         self,
@@ -27,10 +29,13 @@ class embedding_cat_variables(Module):
         self.seq_len = seq_len
         self.lag = lag
         self.device = device
-        self.cat_embeds = emb_dims + [seq_len, lag + 1, 2]  #
+        self.cat_embeds = emb_dims + [seq_len, lag + 1, 2]
         self.cat_n_embd = nn.ModuleList(
             [
-                nn.Embedding(emb_dim, d_model) for emb_dim in self.cat_embeds
+                nn.Embedding(
+                    emb_dim,
+                    d_model
+                ) for emb_dim in self.cat_embeds
             ]
         )
 
@@ -50,27 +55,65 @@ class embedding_cat_variables(Module):
             torch.Tensor: [bs, seq_len num_vars+3, n_embd] 
         """
         B, _, _ = x.shape
-        pos_seq = self.get_pos_seq(bs = B)
-        pos_fut = self.get_pos_fut(bs = B)
-        is_fut = self.get_is_fut(bs = B)
-        cat_vars = torch.cat((x, pos_seq, pos_fut, is_fut), dim = 2)
-        cat_n_embd = self.get_cat_n_embd(cat_vars)
+        pos_seq = self.get_pos_seq(
+            bs = B
+        )
+        pos_fut = self.get_pos_fut(
+            bs = B
+        )
+        is_fut = self.get_is_fut(
+            bs = B
+        )
+        cat_vars = torch.cat(
+            (x, pos_seq, pos_fut, is_fut),
+            dim = 2
+        )
+        cat_n_embd = self.get_cat_n_embd(
+            cat_vars
+        )
         return cat_n_embd
 
     def get_pos_seq(
         self,
         bs
     ):
-        pos_seq = torch.arange(0, self.seq_len)
-        pos_seq = pos_seq.repeat(bs, 1).unsqueeze(2).to(self.device)
+        pos_seq = torch.arange(
+            0,
+            self.seq_len
+        )
+        pos_seq = pos_seq.repeat(
+            bs,
+            1
+        ).unsqueeze(
+            2
+        ).to(
+            self.device
+        )
         return pos_seq
 
     def get_pos_fut(
         self,
         bs
     ):
-        pos_fut = torch.cat((torch.zeros((self.seq_len - self.lag), dtype = torch.long), torch.arange(1, self.lag + 1)))
-        pos_fut = pos_fut.repeat(bs, 1).unsqueeze(2).to(self.device)
+        pos_fut = torch.cat(
+            (
+                torch.zeros(
+                    (self.seq_len - self.lag),
+                    dtype = torch.long
+                ), torch.arange(
+                1,
+                self.lag + 1
+            )
+            )
+        )
+        pos_fut = pos_fut.repeat(
+            bs,
+            1
+        ).unsqueeze(
+            2
+        ).to(
+            self.device
+        )
         return pos_fut
 
     def get_is_fut(
@@ -78,23 +121,53 @@ class embedding_cat_variables(Module):
         bs
     ):
         is_fut = torch.cat(
-            (torch.zeros((self.seq_len - self.lag), dtype = torch.long), torch.ones((self.lag), dtype = torch.long))
+            (
+                torch.zeros(
+                    (self.seq_len - self.lag),
+                    dtype = torch.long
+                ), torch.ones(
+                (self.lag),
+                dtype = torch.long
+            )
+            )
         )
-        is_fut = is_fut.repeat(bs, 1).unsqueeze(2).to(self.device)
+        is_fut = is_fut.repeat(
+            bs,
+            1
+        ).unsqueeze(
+            2
+        ).to(
+            self.device
+        )
         return is_fut
 
     def get_cat_n_embd(
         self,
         cat_vars
     ):
-        cat_n_embd = torch.Tensor().to(self.device)
-        for index, layer in enumerate(self.cat_n_embd):
-            emb = layer(cat_vars[:, :, index])
-            cat_n_embd = torch.cat((cat_n_embd, emb.unsqueeze(2)), dim = 2)
+        cat_n_embd = torch.Tensor().to(
+            self.device
+        )
+        for index, layer in enumerate(
+                self.cat_n_embd
+        ):
+            emb = layer(
+                cat_vars[:, :, index]
+            )
+            cat_n_embd = torch.cat(
+                (
+                    cat_n_embd, emb.unsqueeze(
+                    2
+                )
+                ),
+                dim = 2
+            )
         return cat_n_embd
 
 
-class embedding_target(Module):
+class embedding_target(
+    Module
+):
     def __init__(
         self,
         d_model: int
@@ -105,7 +178,11 @@ class embedding_target(Module):
             d_model (int): -
         """
         super().__init__()
-        self.y_lin = nn.Linear(1, d_model, bias = False)
+        self.y_lin = nn.Linear(
+            1,
+            d_model,
+            bias = False
+        )
 
     def forward(
         self,
@@ -119,11 +196,15 @@ class embedding_target(Module):
         Returns:
             torch.Tensor: [bs, seq_len, d_model]
         """
-        y = self.y_lin(y.float())
+        y = self.y_lin(
+            y.float()
+        )
         return y
 
 
-class GLU(Module):
+class GLU(
+    Module
+):
     # sub net of GRN 
     def __init__(
         self,
@@ -135,8 +216,14 @@ class GLU(Module):
             d_model (int): -
         """
         super().__init__()
-        self.linear1 = nn.Linear(d_model, d_model)
-        self.linear2 = nn.Linear(d_model, d_model)
+        self.linear1 = nn.Linear(
+            d_model,
+            d_model
+        )
+        self.linear2 = nn.Linear(
+            d_model,
+            d_model
+        )
         self.sigmoid = nn.Sigmoid()
 
     def forward(
@@ -151,13 +238,21 @@ class GLU(Module):
         Returns:
             torch.Tensor: [bs, seq_len, d_model]
         """
-        x1 = self.sigmoid(self.linear1(x))
-        x2 = self.linear2(x)
+        x1 = self.sigmoid(
+            self.linear1(
+                x
+            )
+        )
+        x2 = self.linear2(
+            x
+        )
         out = x1 * x2  # element-wise multiplication
         return out
 
 
-class GRN(Module):
+class GRN(
+    Module
+):
     def __init__(
         self,
         d_model: int,
@@ -170,12 +265,24 @@ class GRN(Module):
             dropout (float): -
         """
         super().__init__()
-        self.linear1 = nn.Linear(d_model, d_model)
+        self.linear1 = nn.Linear(
+            d_model,
+            d_model
+        )
         self.elu = nn.ELU()
-        self.linear2 = nn.Linear(d_model, d_model)
-        self.dropout = nn.Dropout(dropout)
-        self.glu = GLU(d_model)
-        self.norm = nn.LayerNorm(d_model)
+        self.linear2 = nn.Linear(
+            d_model,
+            d_model
+        )
+        self.dropout = nn.Dropout(
+            dropout
+        )
+        self.glu = GLU(
+            d_model
+        )
+        self.norm = nn.LayerNorm(
+            d_model
+        )
 
     def forward(
         self,
@@ -189,13 +296,27 @@ class GRN(Module):
         Returns:
             torch.Tensor: [bs, seq_len, d_model]
         """
-        eta1 = self.elu(self.linear1(x))
-        eta2 = self.dropout(self.linear2(eta1))
-        out = self.norm(x + self.glu(eta2))
+        eta1 = self.elu(
+            self.linear1(
+                x
+            )
+        )
+        eta2 = self.dropout(
+            self.linear2(
+                eta1
+            )
+        )
+        out = self.norm(
+            x + self.glu(
+                eta2
+            )
+        )
         return out
 
 
-class flatten_GRN(Module):
+class flatten_GRN(
+    Module
+):
     def __init__(
         self,
         emb_dims: list,
@@ -209,15 +330,37 @@ class flatten_GRN(Module):
         """
         super().__init__()
         start_emb, mid_emb, end_emb = emb_dims
-        self.res_conn = nn.Linear(start_emb, end_emb, bias = False)
-        self.dropout_res_conn = nn.Dropout(dropout)
-        self.linear1 = nn.Linear(start_emb, mid_emb, bias = False)
+        self.res_conn = nn.Linear(
+            start_emb,
+            end_emb,
+            bias = False
+        )
+        self.dropout_res_conn = nn.Dropout(
+            dropout
+        )
+        self.linear1 = nn.Linear(
+            start_emb,
+            mid_emb,
+            bias = False
+        )
         self.elu = nn.ELU()
-        self.linear2 = nn.Linear(mid_emb, end_emb, bias = False)
-        self.dropout = nn.Dropout(dropout)
-        self.glu = GLU(end_emb)
-        self.norm = nn.LayerNorm(end_emb)
-        self.softmax = nn.Softmax(dim = 2)
+        self.linear2 = nn.Linear(
+            mid_emb,
+            end_emb,
+            bias = False
+        )
+        self.dropout = nn.Dropout(
+            dropout
+        )
+        self.glu = GLU(
+            end_emb
+        )
+        self.norm = nn.LayerNorm(
+            end_emb
+        )
+        self.softmax = nn.Softmax(
+            dim = 2
+        )
 
     def forward(
         self,
@@ -231,15 +374,35 @@ class flatten_GRN(Module):
         Returns:
             torch.Tensor: [bs, seq_len, emb_dims[-1]]
         """
-        res_conn = self.dropout_res_conn(self.res_conn(x))
-        eta1 = self.elu(self.linear1(x))
-        eta2 = self.dropout(self.linear2(eta1))
-        out = self.norm(res_conn + self.glu(eta2))
-        out = self.softmax(out)
+        res_conn = self.dropout_res_conn(
+            self.res_conn(
+                x
+            )
+        )
+        eta1 = self.elu(
+            self.linear1(
+                x
+            )
+        )
+        eta2 = self.dropout(
+            self.linear2(
+                eta1
+            )
+        )
+        out = self.norm(
+            res_conn + self.glu(
+                eta2
+            )
+        )
+        out = self.softmax(
+            out
+        )
         return out
 
 
-class Encoder_Var_Selection(Module):  # input already embedded
+class Encoder_Var_Selection(
+    Module
+):  # input already embedded
     def __init__(
         self,
         use_target_past: bool,
@@ -267,7 +430,12 @@ class Encoder_Var_Selection(Module):  # input already embedded
         self.n_grn_cat = n_past_cat_var
         self.GRNs_cat = nn.ModuleList(
             [
-                GRN(d_model, dropout) for _ in range(self.n_grn_cat)
+                GRN(
+                    d_model,
+                    dropout
+                ) for _ in range(
+                self.n_grn_cat
+            )
             ]
         )
         tot_var = n_past_cat_var
@@ -276,13 +444,25 @@ class Encoder_Var_Selection(Module):  # input already embedded
             self.n_grn_tar = n_past_tar_var
             self.GRNs_num = nn.ModuleList(
                 [
-                    GRN(d_model, dropout) for _ in range(self.n_grn_tar)
+                    GRN(
+                        d_model,
+                        dropout
+                    ) for _ in range(
+                    self.n_grn_tar
+                )
                 ]
             )
             tot_var = tot_var + n_past_tar_var
         # flatten
-        emb_dims = [d_model * tot_var, int((d_model + tot_var) / 2), tot_var]
-        self.flatten_GRN = flatten_GRN(emb_dims, dropout)
+        emb_dims = [
+            d_model * tot_var, int(
+                (d_model + tot_var) / 2
+            ), tot_var
+        ]
+        self.flatten_GRN = flatten_GRN(
+            emb_dims,
+            dropout
+        )
 
     def forward(
         self,
@@ -299,49 +479,99 @@ class Encoder_Var_Selection(Module):  # input already embedded
             torch.Tensor: [bs, past_steps, d_model]
         """
         # categorical var_selection
-        var_sel = self.get_cat_GRN(categorical)
+        var_sel = self.get_cat_GRN(
+            categorical
+        )
         to_be_flat = categorical
         if y is not None:
             assert self.use_target_past == True  # you don't have y if mix is not True
-            num_var_sel = self.get_num_GRN(y)
-            var_sel = torch.cat((var_sel, num_var_sel), dim = 2)
-            to_be_flat = torch.cat((to_be_flat, y), dim = 2)
+            num_var_sel = self.get_num_GRN(
+                y
+            )
+            var_sel = torch.cat(
+                (var_sel, num_var_sel),
+                dim = 2
+            )
+            to_be_flat = torch.cat(
+                (to_be_flat, y),
+                dim = 2
+            )
 
-        var_sel_wei = self.get_flat_GRN(to_be_flat)
-        out = var_sel * var_sel_wei.unsqueeze(3)
-        out = torch.sum(out, 2) / out.shape[2]
+        var_sel_wei = self.get_flat_GRN(
+            to_be_flat
+        )
+        out = var_sel * var_sel_wei.unsqueeze(
+            3
+        )
+        out = torch.sum(
+            out,
+            2
+        ) / out.shape[2]
         return out
 
     def get_cat_GRN(
         self,
         x: torch.Tensor
     ) -> torch.Tensor:
-        cat_after_GRN = torch.Tensor().to(self.device)
-        for index, layer in enumerate(self.GRNs_cat):
-            grn = layer(x[:, :, index, :])
-            cat_after_GRN = torch.cat((cat_after_GRN, grn.unsqueeze(2)), dim = 2)
+        cat_after_GRN = torch.Tensor().to(
+            self.device
+        )
+        for index, layer in enumerate(
+                self.GRNs_cat
+        ):
+            grn = layer(
+                x[:, :, index, :]
+            )
+            cat_after_GRN = torch.cat(
+                (
+                    cat_after_GRN, grn.unsqueeze(
+                    2
+                )
+                ),
+                dim = 2
+            )
         return cat_after_GRN
 
     def get_num_GRN(
         self,
         x: torch.Tensor
     ) -> torch.Tensor:
-        num_after_GRN = torch.Tensor().to(self.device)
-        for index, layer in enumerate(self.GRNs_num):
-            grn = layer(x[:, :, index, :])
-            num_after_GRN = torch.cat((num_after_GRN, grn.unsqueeze(2)), dim = 2)
+        num_after_GRN = torch.Tensor().to(
+            self.device
+        )
+        for index, layer in enumerate(
+                self.GRNs_num
+        ):
+            grn = layer(
+                x[:, :, index, :]
+            )
+            num_after_GRN = torch.cat(
+                (
+                    num_after_GRN, grn.unsqueeze(
+                    2
+                )
+                ),
+                dim = 2
+            )
         return num_after_GRN
 
     def get_flat_GRN(
         self,
         to_be_flat: torch.Tensor
     ) -> torch.Tensor:
-        emb = torch.flatten(to_be_flat, start_dim = 2)
-        var_sel_wei = self.flatten_GRN(emb)
+        emb = torch.flatten(
+            to_be_flat,
+            start_dim = 2
+        )
+        var_sel_wei = self.flatten_GRN(
+            emb
+        )
         return var_sel_wei
 
 
-class Encoder_LSTM(Module):
+class Encoder_LSTM(
+    Module
+):
     def __init__(
         self,
         n_layers_LSTM: int,
@@ -362,11 +592,20 @@ class Encoder_LSTM(Module):
         self.n_layers_EncLSTM = n_layers_LSTM
         self.hidden_size = d_model
         self.LSTM = nn.LSTM(
-            input_size = d_model, hidden_size = self.hidden_size, num_layers = self.n_layers_EncLSTM, batch_first = True
+            input_size = d_model,
+            hidden_size = self.hidden_size,
+            num_layers = self.n_layers_EncLSTM,
+            batch_first = True
         )
-        self.dropout = nn.Dropout(dropout)
-        self.LSTM_enc_GLU = GLU(d_model)
-        self.norm = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(
+            dropout
+        )
+        self.LSTM_enc_GLU = GLU(
+            d_model
+        )
+        self.norm = nn.LayerNorm(
+            d_model
+        )
 
     def forward(
         self,
@@ -380,15 +619,46 @@ class Encoder_LSTM(Module):
         Returns:
             list of tensors: [output_enc, hn, cn] where hn and cn must be used for Decoder_LSTM. 
         """
-        h0 = torch.zeros(self.n_layers_EncLSTM, x.size(0), x.size(2)).to(self.device)
-        c0 = torch.zeros(self.n_layers_EncLSTM, x.size(0), x.size(2)).to(self.device)
-        lstm_enc, (hn, cn) = self.LSTM(x, (h0, c0))
-        lstm_enc = self.dropout(lstm_enc)
-        output_enc = self.norm(self.LSTM_enc_GLU(lstm_enc) + x)
+        h0 = torch.zeros(
+            self.n_layers_EncLSTM,
+            x.size(
+                0
+            ),
+            x.size(
+                2
+            )
+        ).to(
+            self.device
+        )
+        c0 = torch.zeros(
+            self.n_layers_EncLSTM,
+            x.size(
+                0
+            ),
+            x.size(
+                2
+            )
+        ).to(
+            self.device
+        )
+        lstm_enc, (hn, cn) = self.LSTM(
+            x,
+            (h0, c0)
+        )
+        lstm_enc = self.dropout(
+            lstm_enc
+        )
+        output_enc = self.norm(
+            self.LSTM_enc_GLU(
+                lstm_enc
+            ) + x
+        )
         return [output_enc, hn, cn]
 
 
-class Decoder_Var_Selection(Module):  # input already embedded
+class Decoder_Var_Selection(
+    Module
+):  # input already embedded
     def __init__(
         self,
         use_yprec: bool,
@@ -415,7 +685,12 @@ class Decoder_Var_Selection(Module):  # input already embedded
         self.n_grn_cat = n_fut_cat_var
         self.GRNs_cat = nn.ModuleList(
             [
-                GRN(d_model, dropout) for _ in range(self.n_grn_cat)
+                GRN(
+                    d_model,
+                    dropout
+                ) for _ in range(
+                self.n_grn_cat
+            )
             ]
         )
         tot_var = n_fut_cat_var
@@ -424,13 +699,25 @@ class Decoder_Var_Selection(Module):  # input already embedded
             self.n_grn_num = n_fut_tar_var
             self.GRNs_num = nn.ModuleList(
                 [
-                    GRN(d_model, dropout) for _ in range(self.n_grn_num)
+                    GRN(
+                        d_model,
+                        dropout
+                    ) for _ in range(
+                    self.n_grn_num
+                )
                 ]
             )
             tot_var = tot_var + n_fut_tar_var
         # flatten
-        emb_dims = [d_model * tot_var, int((d_model + tot_var) / 2), tot_var]
-        self.flatten_GRN = flatten_GRN(emb_dims, dropout)
+        emb_dims = [
+            d_model * tot_var, int(
+                (d_model + tot_var) / 2
+            ), tot_var
+        ]
+        self.flatten_GRN = flatten_GRN(
+            emb_dims,
+            dropout
+        )
 
     def forward(
         self,
@@ -446,36 +733,81 @@ class Decoder_Var_Selection(Module):  # input already embedded
         Returns:
             torch.Tensor: [bs, past_steps, d_model]
         """
-        var_sel = self.get_cat_GRN(categorical)
+        var_sel = self.get_cat_GRN(
+            categorical
+        )
         to_be_flat = categorical
         if y is not None:
             assert self.use_yprec == True
-            num_after_GRN = self.get_num_GRN(y)
-            var_sel = torch.cat((var_sel, num_after_GRN), dim = 2)
-            to_be_flat = torch.cat((to_be_flat, y), dim = 2)
-        var_sel_wei = self.get_flat_GRN(to_be_flat)
-        out = var_sel * var_sel_wei.unsqueeze(3)
-        out = torch.sum(out, 2) / out.size(2)
+            num_after_GRN = self.get_num_GRN(
+                y
+            )
+            var_sel = torch.cat(
+                (var_sel, num_after_GRN),
+                dim = 2
+            )
+            to_be_flat = torch.cat(
+                (to_be_flat, y),
+                dim = 2
+            )
+        var_sel_wei = self.get_flat_GRN(
+            to_be_flat
+        )
+        out = var_sel * var_sel_wei.unsqueeze(
+            3
+        )
+        out = torch.sum(
+            out,
+            2
+        ) / out.size(
+            2
+        )
         return out
 
     def get_cat_GRN(
         self,
         x
     ):
-        cat_after_GRN = torch.Tensor().to(self.device)
-        for index, layer in enumerate(self.GRNs_cat):
-            grn = layer(x[:, :, index, :])
-            cat_after_GRN = torch.cat((cat_after_GRN, grn.unsqueeze(2)), dim = 2)
+        cat_after_GRN = torch.Tensor().to(
+            self.device
+        )
+        for index, layer in enumerate(
+                self.GRNs_cat
+        ):
+            grn = layer(
+                x[:, :, index, :]
+            )
+            cat_after_GRN = torch.cat(
+                (
+                    cat_after_GRN, grn.unsqueeze(
+                    2
+                )
+                ),
+                dim = 2
+            )
         return cat_after_GRN
 
     def get_num_GRN(
         self,
         x
     ):
-        num_after_GRN = torch.Tensor().to(self.device)
-        for index, layer in enumerate(self.GRNs_num):
-            grn = layer(x[:, :, index, :])
-            num_after_GRN = torch.cat((num_after_GRN, grn.unsqueeze(2)), dim = 2)
+        num_after_GRN = torch.Tensor().to(
+            self.device
+        )
+        for index, layer in enumerate(
+                self.GRNs_num
+        ):
+            grn = layer(
+                x[:, :, index, :]
+            )
+            num_after_GRN = torch.cat(
+                (
+                    num_after_GRN, grn.unsqueeze(
+                    2
+                )
+                ),
+                dim = 2
+            )
         return num_after_GRN
 
     def get_flat_GRN(
@@ -483,12 +815,19 @@ class Decoder_Var_Selection(Module):  # input already embedded
         to_be_flat: torch.Tensor
     ) -> torch.Tensor:
         # apply flatten_GRN and softmax
-        emb = torch.flatten(to_be_flat, start_dim = 2)
-        var_sel_wei = self.flatten_GRN(emb)
+        emb = torch.flatten(
+            to_be_flat,
+            start_dim = 2
+        )
+        var_sel_wei = self.flatten_GRN(
+            emb
+        )
         return var_sel_wei
 
 
-class Decoder_LSTM(Module):
+class Decoder_LSTM(
+    Module
+):
     def __init__(
         self,
         n_layers_LSTM: int,
@@ -506,11 +845,20 @@ class Decoder_LSTM(Module):
         self.n_layers_DecLSTM = n_layers_LSTM
         self.hidden_size = d_model
         self.LSTM = nn.LSTM(
-            input_size = d_model, hidden_size = self.hidden_size, num_layers = self.n_layers_DecLSTM, batch_first = True
+            input_size = d_model,
+            hidden_size = self.hidden_size,
+            num_layers = self.n_layers_DecLSTM,
+            batch_first = True
         )
-        self.dropout = nn.Dropout(dropout)
-        self.LSTM_enc_GLU = GLU(d_model)
-        self.norm = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(
+            dropout
+        )
+        self.LSTM_enc_GLU = GLU(
+            d_model
+        )
+        self.norm = nn.LayerNorm(
+            d_model
+        )
 
     def forward(
         self,
@@ -528,13 +876,24 @@ class Decoder_LSTM(Module):
         Returns:
             torch.Tensor: [bs, past_steps, d_model]
         """
-        lstm_dec, _ = self.LSTM(x, (hn, cn))
-        lstm_dec = self.dropout(lstm_dec)
-        output_dec = self.norm(self.LSTM_enc_GLU(lstm_dec) + x)
+        lstm_dec, _ = self.LSTM(
+            x,
+            (hn, cn)
+        )
+        lstm_dec = self.dropout(
+            lstm_dec
+        )
+        output_dec = self.norm(
+            self.LSTM_enc_GLU(
+                lstm_dec
+            ) + x
+        )
         return output_dec
 
 
-class postTransformer(Module):
+class postTransformer(
+    Module
+):
     def __init__(
         self,
         d_model: int,
@@ -547,12 +906,25 @@ class postTransformer(Module):
             dropout (float): -
         """
         super().__init__()
-        self.dropout = nn.Dropout(dropout)
-        self.GLU1 = GLU(d_model)
-        self.norm1 = nn.LayerNorm(d_model)
-        self.GRN = GRN(d_model, dropout)
-        self.GLU2 = GLU(d_model)
-        self.norm2 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(
+            dropout
+        )
+        self.GLU1 = GLU(
+            d_model
+        )
+        self.norm1 = nn.LayerNorm(
+            d_model
+        )
+        self.GRN = GRN(
+            d_model,
+            dropout
+        )
+        self.GLU2 = GLU(
+            d_model
+        )
+        self.norm2 = nn.LayerNorm(
+            d_model
+        )
 
     def forward(
         self,
@@ -570,8 +942,20 @@ class postTransformer(Module):
         Returns:
             torch.Tensor: [bs, past_steps, d_model]
         """
-        x = self.dropout(x)
-        x = self.norm1(res_conn_dec + self.GLU1(x))
-        x = self.GRN(x)
-        out = self.norm2(res_conn_grn + self.GLU2(x))
+        x = self.dropout(
+            x
+        )
+        x = self.norm1(
+            res_conn_dec + self.GLU1(
+                x
+            )
+        )
+        x = self.GRN(
+            x
+        )
+        out = self.norm2(
+            res_conn_grn + self.GLU2(
+                x
+            )
+        )
         return out

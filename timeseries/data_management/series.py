@@ -1,28 +1,36 @@
 import logging
 from datetime import datetime
-from typing import List, Literal, Union
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-from .utils import extend_df, MyDataset, ActionEnum
+from .utils import ActionEnum, MyDataset, extend_df
 
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler())
+logger = logging.getLogger(
+    __name__
+)
+
+log = logging.getLogger(
+    __name__
+)
+log.addHandler(
+    logging.NullHandler()
+)
 
 
-class Categorical():
+class Categorical:
 
     def __init__(
         self,
         name: str,
         frequency: int,
-        duration: List[int],
+        duration: list[int],
         classes: int,
         action: ActionEnum | Literal["multiplicative", "additive"],
-        level: List[float]
+        level: list[float]
     ):
         """Class for generating toy categorical data
 
@@ -40,7 +48,9 @@ class Categorical():
         self.frequency = frequency
         self.duration = duration
         self.classes = classes
-        self.action = ActionEnum(action)
+        self.action = ActionEnum(
+            action
+        )
         self.level = level
 
         self.validate()
@@ -52,10 +62,14 @@ class Categorical():
         
         :meta private:
         """
-        if len(self.level) == self.classes:
+        if len(
+                self.level
+        ) == self.classes:
             pass
         else:
-            raise ValueError("Length must match")
+            raise ValueError(
+                "Length must match"
+            )
 
     def generate_signal(
         self,
@@ -67,11 +81,17 @@ class Categorical():
             length (int): length of the signal
         """
         if self.action == ActionEnum.multiplicative:
-            signal = np.ones(length)
+            signal = np.ones(
+                length
+            )
         elif self.action == ActionEnum.additive:
-            signal = np.zeros(length)
+            signal = np.zeros(
+                length
+            )
         else:
-            raise ValueError("Unsupported categorical action.")
+            raise ValueError(
+                "Unsupported categorical action."
+            )
         classes = []
         _class = 0
         _level = self.level[0]
@@ -79,10 +99,14 @@ class Categorical():
 
         count = 0
         count_freq = 0
-        for i in range(length):
+        for i in range(
+                length
+        ):
             if count_freq % self.frequency == 0:
                 signal[i] = _level
-                classes.append(_class)
+                classes.append(
+                    _class
+                )
                 count += 1
                 if count == _duration:
                     # change class
@@ -95,7 +119,9 @@ class Categorical():
 
 
             else:
-                classes.append(-1)
+                classes.append(
+                    -1
+                )
                 count_freq += 1
 
         self.classes_array = classes
@@ -107,13 +133,25 @@ class Categorical():
         """Plot the series
         """
         tmp = pd.DataFrame(
-            {'time': range(len(self.classes_array)), 'signal': self.signal_array, 'class': self.classes_array}
+            {
+                'time': range(
+                    len(
+                        self.classes_array
+                    )
+                ), 'signal': self.signal_array, 'class': self.classes_array
+            }
         )
-        fig = px.scatter(tmp, x = 'time', y = 'signal', color = 'class', title = self.name)
+        fig = px.scatter(
+            tmp,
+            x = 'time',
+            y = 'signal',
+            color = 'class',
+            title = self.name
+        )
         fig.show()
 
 
-class TimeSeries():
+class TimeSeries:
 
     def __init__(
         self,
@@ -171,10 +209,16 @@ class TimeSeries():
             type (int, optional): Type of the generated timeseries. Defaults to 0.
         """
         if type == 0:
-            self.base_signal = 10 * np.cos(np.arange(length) / (2 * np.pi * length / 100))
+            self.base_signal = 10 * np.cos(
+                np.arange(
+                    length
+                ) / (2 * np.pi * length / 100)
+            )
             self.out_vars = 1
         else:
-            logging.error('Please implement your own method')
+            logger.error(
+                'Please implement your own method'
+            )
         """
         
         """
@@ -182,7 +226,7 @@ class TimeSeries():
     def generate_signal(
         self,
         length: int = 5000,
-        categorical_variables: List[Categorical] = [],
+        categorical_variables: list[Categorical] | None = None,
         noise_mean: int = 1,
         type: int = 0
     ) -> None:
@@ -197,23 +241,44 @@ class TimeSeries():
             type (int, optional): type of the timeseries (only type=0 available right now). Defaults to 0.
         """
 
-        dataset = pd.DataFrame({'time': range(length)})
-        self._generate_base(length, type)
+        if categorical_variables is None:
+            categorical_variables = []
+        dataset = pd.DataFrame(
+            {
+                'time': range(
+                    length
+                )
+            }
+        )
+        self._generate_base(
+            length,
+            type
+        )
         signal = self.base_signal.copy()
-        additive = np.zeros(length)
+        additive = np.zeros(
+            length
+        )
         self.cat_var = []
         for c in categorical_variables:
-            c.generate_signal(length)
+            c.generate_signal(
+                length
+            )
             _signal = c.signal_array
             classes = c.classes_array
             dataset[c.name] = classes
-            self.cat_var.append(c.name)
+            self.cat_var.append(
+                c.name
+            )
             if c.action == ActionEnum.multiplicative:
                 signal *= _signal
             else:
                 additive += _signal
         signal += additive
-        dataset['signal'] = signal + noise_mean * np.random.randn(len(signal))
+        dataset['signal'] = signal + noise_mean * np.random.randn(
+            len(
+                signal
+            )
+        )
         self.scalers_fitted = False
         self.dataset = dataset
 
@@ -221,7 +286,17 @@ class TimeSeries():
         self.future_variables = []
         self.target_variables = ['signal']
         self.num_var = list(
-            set(self.past_variables).union(set(self.future_variables)).union(set(self.target_variables))
+            set(
+                self.past_variables
+            ).union(
+                set(
+                    self.future_variables
+                )
+            ).union(
+                set(
+                    self.target_variables
+                )
+            )
         )
 
     def enrich(
@@ -238,16 +313,18 @@ class TimeSeries():
         elif columns == 'minute':
             dataset[columns] = dataset.time.dt.minute
         else:
-            logging.info('I can not automatically add column {c} plase update this function accordlyng')
+            logger.info(
+                'I can not automatically add column {c} plase update this function accordlyng'
+            )
 
     def load_signal(
         self,
         data: pd.DataFrame,
-        enrich_cat: List[str] = [],
-        past_variables: List[str] = [],
-        future_variables: List[str] = [],
-        target_variables: List[str] = [],
-        cat_var: List[str] = [],
+        enrich_cat: list[str] | None = None,
+        past_variables: list[str] | None = None,
+        future_variables: list[str] | None = None,
+        target_variables: list[str] | None = None,
+        cat_var: list[str] | None = None,
         check_past: bool = True
     ) -> None:
         """ This is a crucial point in the data structure. We expect here to have a dataset with time as timestamp.
@@ -269,48 +346,113 @@ class TimeSeries():
             check_past (bool, optional): see `target_variables`. Defaults to True.
         """
 
+        if cat_var is None:
+            cat_var = []
+        if target_variables is None:
+            target_variables = []
+        if future_variables is None:
+            future_variables = []
+        if past_variables is None:
+            past_variables = []
+        if enrich_cat is None:
+            enrich_cat = []
         dataset = data.copy()
-        logging.info('################I will drop duplicates, I dont like them###################')
-        dataset.drop_duplicates(subset = ['time'], keep = 'first', inplace = True, ignore_index = True)
+        logger.info(
+            '################I will drop duplicates, I dont like them###################'
+        )
+        dataset.drop_duplicates(
+            subset = ['time'],
+            keep = 'first',
+            inplace = True,
+            ignore_index = True
+        )
 
         if dataset.time.diff()[1:].nunique() > 1:
-            logging.info(
+            logger.info(
                 "#########There are holes in the dataset i will try to extend the dataframe inserting NAN#############3"
             )
-            freq = pd.to_timedelta(np.diff(dataset.time).min())
-            logging.info(f'#############Detected minumum frequency: {freq}#############')
-            dataset = extend_df(dataset.time, freq).merge(dataset, how = 'left')
+            freq = pd.to_timedelta(
+                np.diff(
+                    dataset.time
+                ).min()
+            )
+            logger.info(
+                f'#############Detected minumum frequency: {freq}#############'
+            )
+            dataset = extend_df(
+                dataset.time,
+                freq
+            ).merge(
+                dataset,
+                how = 'left'
+            )
 
-        assert len(target_variables) > 0, f'Provide at least one column for target'
-        assert 'time' in dataset.columns, f'The temporal column must be called time'
-        if set(target_variables).intersection(set(past_variables)) != set(target_variables):
-            if check_past:
-                logging.info(
-                    '##########I will update past column adding all target columns, if you want to avoid this '
-                    'beahviour please use check_pass as false############'
+        assert len(
+            target_variables
+        ) > 0, 'Provide at least one column for target'
+        assert 'time' in dataset.columns, 'The temporal column must be called time'
+        if check_past and (set(
+                target_variables
+        ).intersection(
+                set(
+                        past_variables
                 )
-                past_variables = list(set(past_variables).union(set(target_variables)))
+        ) != set(
+                target_variables
+        )):
+            logger.info(
+                '##########I will update past column adding all target columns, if you want to avoid this '
+                'beahviour please use check_pass as false############'
+            )
+            past_variables = list(
+                set(
+                    past_variables
+                ).union(
+                    set(
+                        target_variables
+                    )
+                )
+            )
 
         self.cat_var = cat_var
         self.enrich_cat = enrich_cat
         for c in enrich_cat:
-            self.cat_var = list(set(self.cat_var + [c]))
+            self.cat_var = list(
+                set(
+                    self.cat_var + [c]
+                )
+            )
 
             if c in dataset.columns:
-                logging.info(
+                logger.info(
                     '#########Categorical {c} already present, it will be added to categorical variable but not '
                     'recomputed#########'
                 )
             else:
-                self.enrich(dataset, c)
+                self.enrich(
+                    dataset,
+                    c
+                )
         self.scalers_fitted = False
         self.dataset = dataset
         self.past_variables = past_variables
         self.future_variables = future_variables
         self.target_variables = target_variables
-        self.out_vars = len(target_variables)
+        self.out_vars = len(
+            target_variables
+        )
         self.num_var = list(
-            set(self.past_variables).union(set(self.future_variables)).union(set(self.target_variables))
+            set(
+                self.past_variables
+            ).union(
+                set(
+                    self.future_variables
+                )
+            ).union(
+                set(
+                    self.target_variables
+                )
+            )
         )
 
     def plot(
@@ -322,9 +464,19 @@ class TimeSeries():
             plotly.graph_objects._figure.Figure: figure of the target variables
         """
 
-        logging.info('plotting only target variables')
-        tmp = self.dataset[['time'] + self.target_variables].melt(id_vars = ['time'])
-        fig = px.line(tmp, x = 'time', y = 'value', color = 'variable', title = self.name)
+        logger.info(
+            'plotting only target variables'
+        )
+        tmp = self.dataset[['time'] + self.target_variables].melt(
+            id_vars = ['time']
+        )
+        fig = px.line(
+            tmp,
+            x = 'time',
+            y = 'value',
+            color = 'variable',
+            title = self.name
+        )
         fig.show()
         return fig
 
@@ -335,7 +487,7 @@ class TimeSeries():
         future_steps: int,
         shift: int = 0,
         keep_entire_seq_while_shifting: bool = False,
-        starting_point: Union[None, dict] = None,
+        starting_point: None | dict = None,
         skip_step: int = 1
     ) -> MyDataset:
         """ Create the dataset for the training/inference step
@@ -376,96 +528,188 @@ class TimeSeries():
 
         ##overwrite categorical columns
         for c in self.cat_var:
-            self.enrich(data, c)
+            self.enrich(
+                data,
+                c
+            )
 
         for c in self.cat_var:
-            data[c] = self.scaler_cat[c].transform(data[c].values.ravel()).flatten()
+            data[c] = self.scaler_cat[c].transform(
+                data[c].values.ravel()
+            ).flatten()
         for c in self.num_var:
-            data[c] = self.scaler_num[c].transform(data[c].to_numpy().reshape(-1, 1)).flatten()
+            data[c] = self.scaler_num[c].transform(
+                data[c].to_numpy().reshape(
+                    -1,
+                    1
+                )
+            ).flatten()
 
         idx_target = []
         for c in self.target_variables:
-            idx_target.append(self.past_variables.index(c))
+            idx_target.append(
+                self.past_variables.index(
+                    c
+                )
+            )
 
         x_num_past = data[self.past_variables].values
-        if len(self.future_variables) > 0:
+        if len(
+                self.future_variables
+        ) > 0:
             x_num_future = data[self.future_variables].values
-        if len(self.cat_var) > 0:
+        if len(
+                self.cat_var
+        ) > 0:
             x_cat = data[self.cat_var].values
         y_target = data[self.target_variables].values
         t = data["time"].to_numpy()
 
         ##questo serve a forzare di iniziare i samples alla stessa ora per esempio (controllo sul primo indice della y)
         if starting_point is not None:
-            check = data[list(starting_point.keys())[0]].values == starting_point[list(starting_point.keys())[0]]
+            check = data[next(
+                iter(
+                    starting_point
+                )
+            )].values == starting_point[next(
+                iter(
+                    starting_point
+                )
+            )]
         else:
-            check = [True] * len(y_target)
+            check = [True] * len(
+                y_target
+            )
 
-        for i in range(past_steps, data.shape[0] - future_steps, skip_step):
+        for i in range(
+                past_steps,
+                data.shape[0] - future_steps,
+                skip_step
+        ):
             if check[i]:
 
-                if len(self.future_variables) > 0:
+                if len(
+                        self.future_variables
+                ) > 0:
                     if keep_entire_seq_while_shifting:
                         xx = x_num_future[i - shift:i + future_steps].mean()
                     else:
                         xx = x_num_future[i - shift:i + future_steps - shift].mean()
                 else:
                     xx = 0.0
-                if np.isfinite(x_num_past[i - past_steps:i].min() + y_target[i:i + future_steps].min() + xx):
+                if np.isfinite(
+                        x_num_past[i - past_steps:i].min() + y_target[i:i + future_steps].min() + xx
+                ):
 
-                    x_num_past_samples.append(x_num_past[i - past_steps:i])
-                    if len(self.future_variables) > 0:
+                    x_num_past_samples.append(
+                        x_num_past[i - past_steps:i]
+                    )
+                    if len(
+                            self.future_variables
+                    ) > 0:
                         if keep_entire_seq_while_shifting:
-                            x_num_future_samples.append(x_num_future[i - shift:i + future_steps])
+                            x_num_future_samples.append(
+                                x_num_future[i - shift:i + future_steps]
+                            )
                         else:
-                            x_num_future_samples.append(x_num_future[i - shift:i + future_steps - shift])
-                    if len(self.cat_var) > 0:
-                        x_cat_past_samples.append(x_cat[i - past_steps:i])
+                            x_num_future_samples.append(
+                                x_num_future[i - shift:i + future_steps - shift]
+                            )
+                    if len(
+                            self.cat_var
+                    ) > 0:
+                        x_cat_past_samples.append(
+                            x_cat[i - past_steps:i]
+                        )
                         if keep_entire_seq_while_shifting:
-                            x_cat_future_samples.append(x_cat[i - shift:i + future_steps])
+                            x_cat_future_samples.append(
+                                x_cat[i - shift:i + future_steps]
+                            )
                         else:
-                            x_cat_future_samples.append(x_cat[i - shift:i + future_steps - shift])
-                    y_samples.append(y_target[i:i + future_steps])
-                    t_samples.append(t[i:i + future_steps])
+                            x_cat_future_samples.append(
+                                x_cat[i - shift:i + future_steps - shift]
+                            )
+                    y_samples.append(
+                        y_target[i:i + future_steps]
+                    )
+                    t_samples.append(
+                        t[i:i + future_steps]
+                    )
 
-        if len(self.future_variables) > 0:
+        if len(
+                self.future_variables
+        ) > 0:
             try:
-                x_num_future_samples = np.stack(list(x_num_future_samples))
-            except:
-                logging.error(f'WARNING!!!!!!!!!!!!x_num_future_samples is empty and it should not')
-        targets = np.stack(y_samples)
+                x_num_future_samples = np.stack(
+                    list(
+                        x_num_future_samples
+                    )
+                )
+            except ValueError:
+                logger.error(
+                    'WARNING!!!!!!!!!!!!x_num_future_samples is empty and it should not'
+                )
+        targets = np.stack(
+            y_samples
+        )
 
-        times = np.stack(t_samples)
-        if len(self.cat_var) > 0:
-            x_cat_past_samples = np.stack(x_cat_past_samples)
-            x_cat_future_samples = np.stack(x_cat_future_samples)
-        x_num_past_samples = np.stack(x_num_past_samples)
+        times = np.stack(
+            t_samples
+        )
+        if len(
+                self.cat_var
+        ) > 0:
+            x_cat_past_samples = np.stack(
+                x_cat_past_samples
+            )
+            x_cat_future_samples = np.stack(
+                x_cat_future_samples
+            )
+        x_num_past_samples = np.stack(
+            x_num_past_samples
+        )
 
         dd = {
-            'y': targets.astype(np.float32),
+            'y': targets.astype(
+                np.float32
+            ),
 
-            'x_num_past': x_num_past_samples.astype(np.float32)
+            'x_num_past': x_num_past_samples.astype(
+                np.float32
+            )
         }
-        if len(self.cat_var) > 0:
+        if len(
+                self.cat_var
+        ) > 0:
             dd['x_cat_past'] = x_cat_past_samples
             dd['x_cat_future'] = x_cat_future_samples
-        if len(self.future_variables) > 0:
-            dd['x_num_future'] = np.asarray(x_num_future_samples).astype(np.float32)
+        if len(
+                self.future_variables
+        ) > 0:
+            dd['x_num_future'] = np.asarray(
+                x_num_future_samples
+            ).astype(
+                np.float32
+            )
 
-        return MyDataset(dd, times, idx_target)
+        return MyDataset(
+            dd,
+            times,
+            idx_target
+        )
 
     def split_for_train(
         self,
-        perc_train: Union[float, None] = 0.6,
-        perc_valid: Union[float, None] = 0.2,
-        range_train: Union[List[Union[datetime, str]], None] = None,
-        range_validation: Union[List[Union[datetime, str]], None] = None,
-        range_test: Union[List[Union[datetime, str]], None] = None,
+        perc_train: float | None = 0.6,
+        perc_valid: float | None = 0.2,
+        range_train: list[datetime | str] | None = None,
+        range_validation: list[datetime | str] | None = None,
+        range_test: list[datetime | str] | None = None,
         past_steps: int = 100,
         future_steps: int = 20,
         shift: int = 0,
         keep_entire_seq_while_shifting: bool = False,
-        starting_point: Union[None, dict] = None,
+        starting_point: None | dict = None,
         skip_step: int = 1
     ) -> tuple[MyDataset, MyDataset, MyDataset]:
         """Split the data and create the datasets.
@@ -494,34 +738,63 @@ class TimeSeries():
 
         try:
             l = self.dataset.shape[0]
-        except:
-            logging.error('Empty dataset')
-            raise ValueError("Empty dataset")
+        except AttributeError:
+            logger.error(
+                'Empty dataset'
+            )
+            raise ValueError(
+                "Empty dataset"
+            )
 
         if range_train is None:
             if perc_train is None or perc_valid is None:
-                raise ValueError("Training and validation fractions are required.")
-            logging.info(f'Split temporally using perc_train: {perc_train} and perc_valid:{perc_valid}')
+                raise ValueError(
+                    "Training and validation fractions are required."
+                )
+            logger.info(
+                f'Split temporally using perc_train: {perc_train} and perc_valid:{perc_valid}'
+            )
 
-            train = self.dataset.iloc[0:int(perc_train * l)]
-            validation = self.dataset.iloc[int(perc_train * l):int(perc_train * l + perc_valid * l)]
-            test = self.dataset.iloc[int(perc_train * l + perc_valid * l):]
+            train = self.dataset.iloc[0:int(
+                perc_train * l
+            )]
+            validation = self.dataset.iloc[int(
+                perc_train * l
+            ):int(
+                perc_train * l + perc_valid * l
+            )]
+            test = self.dataset.iloc[int(
+                perc_train * l + perc_valid * l
+            ):]
         else:
             if range_validation is None or range_test is None:
-                raise ValueError("Provide training, validation, and test intervals together.")
-            logging.info('Split temporally using the time intervals provided')
+                raise ValueError(
+                    "Provide training, validation, and test intervals together."
+                )
+            logger.info(
+                'Split temporally using the time intervals provided'
+            )
 
-            train = self.dataset[self.dataset.time.between(range_train[0], range_train[1])]
-            validation = self.dataset[self.dataset.time.between(range_validation[0], range_validation[1])]
-            test = self.dataset[self.dataset.time.between(range_test[0], range_test[1])]
+            train = self.dataset[self.dataset.time.between(
+                range_train[0],
+                range_train[1]
+            )]
+            validation = self.dataset[self.dataset.time.between(
+                range_validation[0],
+                range_validation[1]
+            )]
+            test = self.dataset[self.dataset.time.between(
+                range_test[0],
+                range_test[1]
+            )]
 
-        logging.info(
+        logger.info(
             '######################################################################################################'
         )
-        logging.info(
+        logger.info(
             '######Scaling numerical (standard scaler) and categorical (label encorer) on the training data! ######'
         )
-        logging.info(
+        logger.info(
             '######################################################################################################'
         )
         if self.scalers_fitted:
@@ -531,23 +804,48 @@ class TimeSeries():
             self.scaler_num = {}
             for c in self.num_var:
                 self.scaler_num[c] = StandardScaler()
-                self.scaler_num[c].fit(train[c].to_numpy().reshape(-1, 1))
+                self.scaler_num[c].fit(
+                    train[c].to_numpy().reshape(
+                        -1,
+                        1
+                    )
+                )
             for c in self.cat_var:
                 self.scaler_cat[c] = LabelEncoder()
-                self.scaler_cat[c].fit(train[c].to_numpy().reshape(-1, 1))
+                self.scaler_cat[c].fit(
+                    train[c].to_numpy().reshape(
+                        -1,
+                        1
+                    )
+                )
 
         self.scalers_fitted = True
         dl_train = self.create_data_loader(
-            train, past_steps, future_steps, shift, keep_entire_seq_while_shifting,
-            starting_point, skip_step
+            train,
+            past_steps,
+            future_steps,
+            shift,
+            keep_entire_seq_while_shifting,
+            starting_point,
+            skip_step
         )
         dl_validation = self.create_data_loader(
-            validation, past_steps, future_steps, shift,
-            keep_entire_seq_while_shifting, starting_point, skip_step
+            validation,
+            past_steps,
+            future_steps,
+            shift,
+            keep_entire_seq_while_shifting,
+            starting_point,
+            skip_step
         )
         dl_test = self.create_data_loader(
-            test, past_steps, future_steps, shift, keep_entire_seq_while_shifting,
-            starting_point, skip_step
+            test,
+            past_steps,
+            future_steps,
+            shift,
+            keep_entire_seq_while_shifting,
+            starting_point,
+            skip_step
         )
 
         return dl_train, dl_validation, dl_test

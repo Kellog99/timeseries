@@ -1,6 +1,6 @@
+# ruff: noqa: N999  # Preserve public import paths.
 import logging
-from typing import Any, ClassVar
-from typing import Literal
+from typing import Any, ClassVar, Literal
 
 import torch
 from pydantic import Field
@@ -8,62 +8,152 @@ from torch import nn
 
 from timeseries.base import Base
 from timeseries.configuration import ForecastLoss as RNNLoss
-from timeseries.configuration import ThreeQuantileConfiguration, PositiveInt, NonNegativeInt, Probability, Quantile
+from timeseries.configuration import (
+    NonNegativeInt,
+    PositiveInt,
+    Probability,
+    Quantile,
+    ThreeQuantileConfiguration,
+)
 from timeseries.model_register import ModelFactory
 from timeseries.utils.torch import Permute, get_activation
 from timeseries.utils.typing import Module
 
+logger = logging.getLogger(
+    __name__
+)
+
 RNNKind = Literal["lstm", "gru"]
 
 
-class ConfigRNN(ThreeQuantileConfiguration):
+class ConfigRNN(
+    ThreeQuantileConfiguration
+):
     """Recurrent encoder-decoder forecasting with GRU or LSTM."""
-    past_steps: PositiveInt = Field(..., description = 'Number of past observations in each input window.')
-    future_steps: PositiveInt = Field(..., description = 'Number of future observations to predict.')
-    past_channels: PositiveInt = Field(..., description = 'Number of observed numerical input features.')
+    past_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of past observations in each input window.'
+    )
+    future_steps: PositiveInt = Field(
+        ...,
+        description = 'Number of future observations to predict.'
+    )
+    past_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of observed numerical input features.'
+    )
     future_channels: NonNegativeInt = Field(
         ...,
         description = 'Number of known future numerical features; zero is allowed.'
     )
-    embs: list[PositiveInt] = Field(..., description = 'Cardinalities of the categorical input features.')
-    cat_emb_dim: PositiveInt = Field(..., description = 'Embedding dimension for each categorical variable.')
-    hidden_RNN: PositiveInt = Field(..., description = 'Hidden recurrent state dimension.')
-    num_layers_RNN: PositiveInt = Field(..., description = 'Number of recurrent layers.')
-    kind: RNNKind = Field(..., description = 'Recurrent cell architecture: lstm or gru.')
-    kernel_size: PositiveInt = Field(..., description = 'Convolution or moving-average kernel width.')
-    sum_emb: bool = Field(..., description = 'Sum categorical embeddings instead of concatenating them.')
-    out_channels: PositiveInt = Field(..., description = 'Number of target variables.')
-    activation: str = Field('torch.nn.ReLU', description = 'Fully qualified torch activation class name.')
-    remove_last: bool = Field(False, description = 'Predict differences from the last observed target value.')
-    dropout_rate: Probability = Field(0.1, description = 'Dropout rate.')
-    use_bn: bool = Field(False, description = 'Use batch normalization in place of dropout.')
-    persistence_weight: float = Field(
-        0.0, description = 'Weight applied to the persistence-based loss penalty.', ge = 0
+    embs: list[PositiveInt] = Field(
+        ...,
+        description = 'Cardinalities of the categorical input features.'
     )
-    loss_type: RNNLoss = Field('l1', description = 'Training loss selection.')
+    cat_emb_dim: PositiveInt = Field(
+        ...,
+        description = 'Embedding dimension for each categorical variable.'
+    )
+    hidden_RNN: PositiveInt = Field(
+        ...,
+        description = 'Hidden recurrent state dimension.'
+    )
+    num_layers_RNN: PositiveInt = Field(
+        ...,
+        description = 'Number of recurrent layers.'
+    )
+    kind: RNNKind = Field(
+        ...,
+        description = 'Recurrent cell architecture: lstm or gru.'
+    )
+    kernel_size: PositiveInt = Field(
+        ...,
+        description = 'Convolution or moving-average kernel width.'
+    )
+    sum_emb: bool = Field(
+        ...,
+        description = 'Sum categorical embeddings instead of concatenating them.'
+    )
+    out_channels: PositiveInt = Field(
+        ...,
+        description = 'Number of target variables.'
+    )
+    activation: str = Field(
+        'torch.nn.ReLU',
+        description = 'Fully qualified torch activation class name.'
+    )
+    remove_last: bool = Field(
+        False,
+        description = 'Predict differences from the last observed target value.'
+    )
+    dropout_rate: Probability = Field(
+        0.1,
+        description = 'Dropout rate.'
+    )
+    use_bn: bool = Field(
+        False,
+        description = 'Use batch normalization in place of dropout.'
+    )
+    persistence_weight: float = Field(
+        0.0,
+        description = 'Weight applied to the persistence-based loss penalty.',
+        ge = 0
+    )
+    loss_type: RNNLoss = Field(
+        'l1',
+        description = 'Training loss selection.'
+    )
     quantiles: list[Quantile] | None = Field(
         None,
         description = 'Three increasing output quantiles, or None/empty for point forecasts.'
     )
-    n_classes: NonNegativeInt = Field(0, description = 'Number of classes; zero selects regression.')
-    optim: str | None = Field(None, description = 'Torch optimizer class name; None selects Adam.')
-    optim_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the optimizer.')
-    scheduler_config: dict[str, Any] | None = Field(None, description = 'Keyword arguments for the StepLR scheduler.')
+    n_classes: NonNegativeInt = Field(
+        0,
+        description = 'Number of classes; zero selects regression.'
+    )
+    optim: str | None = Field(
+        None,
+        description = 'Torch optimizer class name; None selects Adam.'
+    )
+    optim_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the optimizer.'
+    )
+    scheduler_config: dict[str, Any] | None = Field(
+        None,
+        description = 'Keyword arguments for the StepLR scheduler.'
+    )
 
 
-class MyBN(Module):
+class MyBN(
+    Module
+):
     def __init__(
         self,
         channels
     ):
-        super(MyBN, self).__init__()
-        self.BN = nn.BatchNorm1d(channels)
+        super(
+
+        ).__init__()
+        self.BN = nn.BatchNorm1d(
+            channels
+        )
 
     def forward(
         self,
         x
     ):
-        return self.BN(x.permute(0, 2, 1)).permute(0, 2, 1)
+        return self.BN(
+            x.permute(
+                0,
+                2,
+                1
+            )
+        ).permute(
+            0,
+            2,
+            1
+        )
 
 
 @ModelFactory.register(
@@ -71,7 +161,9 @@ class MyBN(Module):
     description = 'Recurrent encoder-decoder forecasting with GRU or LSTM.',
     domain = 'forecasting',
 )
-class RNN(Base):
+class RNN(
+    Base
+):
     CONFIG_T: ClassVar[type[ConfigRNN]] = ConfigRNN
 
     def __init__(
@@ -134,9 +226,13 @@ class RNN(Base):
 
         match activation:
             case 'torch.nn.SELU':
-                logging.info('SELU does not require batch normalization')
+                logger.info(
+                    'SELU does not require batch normalization'
+                )
                 use_bn = False
-        activation_type = get_activation(activation)
+        activation_type = get_activation(
+            activation
+        )
 
         match kind:
             case 'lstm':
@@ -144,7 +240,9 @@ class RNN(Base):
             case 'gru':
                 recurrent_type = nn.GRU
             case _:
-                raise ValueError(f"Unsupported recurrent cell {kind!r}; expected 'lstm' or 'gru'.")
+                raise ValueError(
+                    f"Unsupported recurrent cell {kind!r}; expected 'lstm' or 'gru'."
+                )
 
         super().__init__(
             past_steps = past_steps,
@@ -172,41 +270,91 @@ class RNN(Base):
         emb_channels = 0
 
         for k in embs:
-            self.embs.append(nn.Embedding(k + 1, cat_emb_dim))
+            self.embs.append(
+                nn.Embedding(
+                    k + 1,
+                    cat_emb_dim
+                )
+            )
             emb_channels += cat_emb_dim
 
         if sum_emb and (emb_channels > 0):
             emb_channels = cat_emb_dim
-            logging.info('Using sum')
+            logger.info(
+                'Using sum'
+            )
         else:
-            logging.info('Using stacked')
+            logger.info(
+                'Using stacked'
+            )
 
         self.initial_linear_encoder = nn.Sequential(
-            nn.Linear(past_channels, 4),
+            nn.Linear(
+                past_channels,
+                4
+            ),
             activation_type(),
 
-            MyBN(4) if use_bn else nn.Dropout(dropout_rate),
-            nn.Linear(4, 8),
+            MyBN(
+                4
+            ) if use_bn else nn.Dropout(
+                dropout_rate
+            ),
+            nn.Linear(
+                4,
+                8
+            ),
             activation_type(),
-            MyBN(8) if use_bn else nn.Dropout(dropout_rate),
-            nn.Linear(8, hidden_RNN // 8)
+            MyBN(
+                8
+            ) if use_bn else nn.Dropout(
+                dropout_rate
+            ),
+            nn.Linear(
+                8,
+                hidden_RNN // 8
+            )
         )
         self.initial_linear_decoder = nn.Sequential(
-            nn.Linear(future_channels, 4),
+            nn.Linear(
+                future_channels,
+                4
+            ),
             activation_type(),
-            MyBN(4) if use_bn else nn.Dropout(dropout_rate),
-            nn.Linear(4, 8),
+            MyBN(
+                4
+            ) if use_bn else nn.Dropout(
+                dropout_rate
+            ),
+            nn.Linear(
+                4,
+                8
+            ),
             activation_type(),
-            MyBN(8) if use_bn else nn.Dropout(dropout_rate),
-            nn.Linear(8, hidden_RNN // 8)
+            MyBN(
+                8
+            ) if use_bn else nn.Dropout(
+                dropout_rate
+            ),
+            nn.Linear(
+                8,
+                hidden_RNN // 8
+            )
         )
 
         self.conv_encoder = nn.Sequential(
             Permute(),
             nn.Conv1d(
-                emb_channels + hidden_RNN // 8, hidden_RNN // 8, kernel_size,
-                stride = 1, padding = 'same'
-            ), Permute(), nn.Dropout(0.3)
+                emb_channels + hidden_RNN // 8,
+                hidden_RNN // 8,
+                kernel_size,
+                stride = 1,
+                padding = 'same'
+            ),
+            Permute(),
+            nn.Dropout(
+                0.3
+            )
         )
 
         if future_channels + emb_channels == 0:
@@ -214,41 +362,79 @@ class RNN(Base):
             self.conv_decoder = nn.Sequential(
                 Permute(),
                 nn.Conv1d(
-                    hidden_RNN, hidden_RNN // 8, kernel_size = kernel_size, stride = 1,
+                    hidden_RNN,
+                    hidden_RNN // 8,
+                    kernel_size = kernel_size,
+                    stride = 1,
                     padding = 'same'
-                ), Permute()
+                ),
+                Permute()
             )
         else:
             self.conv_decoder = nn.Sequential(
-                Permute(), nn.Conv1d(
-                    future_channels + emb_channels, hidden_RNN // 8,
-                    kernel_size = kernel_size, stride = 1, padding = 'same'
+                Permute(),
+                nn.Conv1d(
+                    future_channels + emb_channels,
+                    hidden_RNN // 8,
+                    kernel_size = kernel_size,
+                    stride = 1,
+                    padding = 'same'
                 ),
                 Permute()
             )
 
         self.Encoder = recurrent_type(
-            input_size = hidden_RNN // 8, hidden_size = hidden_RNN,
-            num_layers = num_layers_RNN, batch_first = True
+            input_size = hidden_RNN // 8,
+            hidden_size = hidden_RNN,
+            num_layers = num_layers_RNN,
+            batch_first = True
         )
         self.Decoder = recurrent_type(
-            input_size = hidden_RNN // 8, hidden_size = hidden_RNN,
-            num_layers = num_layers_RNN, batch_first = True
+            input_size = hidden_RNN // 8,
+            hidden_size = hidden_RNN,
+            num_layers = num_layers_RNN,
+            batch_first = True
         )
         self.final_linear = nn.ModuleList()
-        for _ in range(out_channels * self.mul):
+        for _ in range(
+                out_channels * self.mul
+        ):
             self.final_linear.append(
                 nn.Sequential(
-                    nn.Linear(hidden_RNN, hidden_RNN // 2),
+                    nn.Linear(
+                        hidden_RNN,
+                        hidden_RNN // 2
+                    ),
                     activation_type(),
-                    MyBN(hidden_RNN // 2) if use_bn else nn.Dropout(dropout_rate),
-                    nn.Linear(hidden_RNN // 2, hidden_RNN // 4),
+                    MyBN(
+                        hidden_RNN // 2
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
+                    nn.Linear(
+                        hidden_RNN // 2,
+                        hidden_RNN // 4
+                    ),
                     activation_type(),
-                    MyBN(hidden_RNN // 4) if use_bn else nn.Dropout(dropout_rate),
-                    nn.Linear(hidden_RNN // 4, hidden_RNN // 8),
+                    MyBN(
+                        hidden_RNN // 4
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
+                    nn.Linear(
+                        hidden_RNN // 4,
+                        hidden_RNN // 8
+                    ),
                     activation_type(),
-                    MyBN(hidden_RNN // 8) if use_bn else nn.Dropout(dropout_rate),
-                    nn.Linear(hidden_RNN // 8, 1)
+                    MyBN(
+                        hidden_RNN // 8
+                    ) if use_bn else nn.Dropout(
+                        dropout_rate
+                    ),
+                    nn.Linear(
+                        hidden_RNN // 8,
+                        1
+                    )
                 )
             )
 
@@ -264,14 +450,22 @@ class RNN(Base):
         Returns:
             torch.tensor: result
         """
-        x = batch['x_num_past'].to(self.device)
+        x = batch['x_num_past'].to(
+            self.device
+        )
 
-        if 'x_cat_future' in batch.keys():
-            cat_future = batch['x_cat_future'].to(self.device)
-        if 'x_cat_past' in batch.keys():
-            cat_past = batch['x_cat_past'].to(self.device)
-        if 'x_num_future' in batch.keys():
-            x_future = batch['x_num_future'].to(self.device)
+        if 'x_cat_future' in batch:
+            cat_future = batch['x_cat_future'].to(
+                self.device
+            )
+        if 'x_cat_past' in batch:
+            cat_past = batch['x_cat_past'].to(
+                self.device
+            )
+        if 'x_num_future' in batch:
+            x_future = batch['x_num_future'].to(
+                self.device
+            )
         else:
             x_future = None
         # import pdb
@@ -279,59 +473,142 @@ class RNN(Base):
         if self.remove_last:
             idx_target = batch['idx_target'][0]
 
-            x_start = x[:, -1, idx_target].unsqueeze(1)
+            x_start = x[:, -1, idx_target].unsqueeze(
+                1
+            )
             ##BxC
             x[:, :, idx_target] -= x_start
 
-        tmp = [self.initial_linear_encoder(x)]
+        tmp = [
+            self.initial_linear_encoder(
+                x
+            )
+        ]
 
-        for i in range(len(self.embs)):
+        tmp_emb = None
+        for i in range(
+                len(
+                    self.embs
+                )
+        ):
             if self.sum_emb:
                 if i > 0:
-                    tmp_emb += self.embs[i](cat_past[:, :, i])
+                    tmp_emb += self.embs[i](
+                        cat_past[:, :, i]
+                    )
                 else:
-                    tmp_emb = self.embs[i](cat_past[:, :, i])
+                    tmp_emb = self.embs[i](
+                        cat_past[:, :, i]
+                    )
             else:
-                tmp.append(self.embs[i](cat_past[:, :, i]))
-        if self.sum_emb and (len(self.embs) > 0):
-            tmp.append(tmp_emb)
-        tot = torch.cat(tmp, 2)
+                tmp.append(
+                    self.embs[i](
+                        cat_past[:, :, i]
+                    )
+                )
+        if self.sum_emb and (len(
+                self.embs
+        ) > 0):
+            assert tmp_emb is not None
+            tmp.append(
+                tmp_emb
+            )
+        tot = torch.cat(
+            tmp,
+            2
+        )
 
-        out, hidden = self.Encoder(self.conv_encoder(tot))
+        out, hidden = self.Encoder(
+            self.conv_encoder(
+                tot
+            )
+        )
 
         tmp = []
-        for i in range(len(self.embs)):
+        tmp_emb = None
+        for i in range(
+                len(
+                    self.embs
+                )
+        ):
             if self.sum_emb:
                 if i > 0:
-                    tmp_emb += self.embs[i](cat_future[:, :, i])
+                    tmp_emb += self.embs[i](
+                        cat_future[:, :, i]
+                    )
                 else:
-                    tmp_emb = self.embs[i](cat_future[:, :, i])
+                    tmp_emb = self.embs[i](
+                        cat_future[:, :, i]
+                    )
             else:
-                tmp.append(self.embs[i](cat_future[:, :, i]))
-        if self.sum_emb and (len(self.embs)):
-            tmp.append(tmp_emb)
+                tmp.append(
+                    self.embs[i](
+                        cat_future[:, :, i]
+                    )
+                )
+        if self.sum_emb and (len(
+                self.embs
+        )):
+            assert tmp_emb is not None
+            tmp.append(
+                tmp_emb
+            )
 
         if x_future is not None and x_future.shape[-1] > 0:
-            tmp.append(x_future)
+            tmp.append(
+                x_future
+            )
 
-        if len(tmp) > 0:
-            tot = torch.cat(tmp, 2)
+        if len(
+                tmp
+        ) > 0:
+            tot = torch.cat(
+                tmp,
+                2
+            )
         else:
-            tot = out[:, -1:, :].repeat(1, self.future_steps, 1)
-        out, _ = self.Decoder(self.conv_decoder(tot), hidden)
+            tot = out[:, -1:, :].repeat(
+                1,
+                self.future_steps,
+                1
+            )
+        out, _ = self.Decoder(
+            self.conv_decoder(
+                tot
+            ),
+            hidden
+        )
         # else:
         #    out, _ = self.Decoder(self.conv_decoder(out),hidden)  
         res = []
 
-        for j in range(len(self.final_linear)):
-            res.append(self.final_linear[j](out))
+        for j in range(
+                len(
+                    self.final_linear
+                )
+        ):
+            res.append(
+                self.final_linear[j](
+                    out
+                )
+            )
 
-        res = torch.cat(res, 2)
+        res = torch.cat(
+            res,
+            2
+        )
         ##BxLxC
         B, L, _ = res.shape
-        res = res.reshape(B, L, -1, self.mul)
+        res = res.reshape(
+            B,
+            L,
+            -1,
+            self.mul
+        )
 
         if self.remove_last:
-            res += x_start.unsqueeze(1)
+            res += x_start.unsqueeze(
+                1
+            )
 
         return res

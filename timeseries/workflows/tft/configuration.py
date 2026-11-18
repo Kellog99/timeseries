@@ -4,7 +4,7 @@ from typing import Any
 import torch
 
 
-class dictConfiguration():
+class dictConfiguration:
 
     def __init__(
         self,
@@ -52,24 +52,52 @@ class dictConfiguration():
     def __str__(
         self
     ):
-        print('\n' + '- ' * 10)
-        print(f'NAME = {self.name}')
-        print('\n' + '- ' * 10)
-        print('> Strategy Dict:')
-        for val in self.strategy_dict.keys():
-            print(f'   {val} - {self.strategy_dict[val]}')
-        print('\n' + '- ' * 10)
-        print('> Model Dict:')
-        for val in self.model_dict.keys():
-            print(f'   {val} - {self.model_dict[val]}')
-        print('\n' + '- ' * 10)
-        print('> Train Dict:')
-        for val in self.train_dict.keys():
-            print(f'   {val} - {self.train_dict[val]}')
-        print('\n' + '- ' * 10)
-        print('> Test Dict:')
-        for val in self.test_dict.keys():
-            print(f'   {val} - {self.test_dict[val]}')
+        print(
+            '\n' + '- ' * 10
+        )
+        print(
+            f'NAME = {self.name}'
+        )
+        print(
+            '\n' + '- ' * 10
+        )
+        print(
+            '> Strategy Dict:'
+        )
+        for val in self.strategy_dict:
+            print(
+                f'   {val} - {self.strategy_dict[val]}'
+            )
+        print(
+            '\n' + '- ' * 10
+        )
+        print(
+            '> Model Dict:'
+        )
+        for val in self.model_dict:
+            print(
+                f'   {val} - {self.model_dict[val]}'
+            )
+        print(
+            '\n' + '- ' * 10
+        )
+        print(
+            '> Train Dict:'
+        )
+        for val in self.train_dict:
+            print(
+                f'   {val} - {self.train_dict[val]}'
+            )
+        print(
+            '\n' + '- ' * 10
+        )
+        print(
+            '> Test Dict:'
+        )
+        for val in self.test_dict:
+            print(
+                f'   {val} - {self.test_dict[val]}'
+            )
         return ''
 
     def get_optim(
@@ -78,19 +106,27 @@ class dictConfiguration():
     ):
         if self.train_dict['optimizer_index_selection'] == 0:
             optimizer = torch.optim.AdamW(
-                model.parameters(), lr = self.train_dict['lr'], weight_decay = self.train_dict['wd']
+                model.parameters(),
+                lr = self.train_dict['lr'],
+                weight_decay = self.train_dict['wd']
             )
         elif self.train_dict['optimizer_index_selection'] == 1:
             optimizer = torch.optim.Adam(
-                model.parameters(), lr = self.train_dict['lr'], weight_decay = self.train_dict['wd']
+                model.parameters(),
+                lr = self.train_dict['lr'],
+                weight_decay = self.train_dict['wd']
             )
         elif self.train_dict['optimizer_index_selection'] == 2:
             optimizer = torch.optim.Adagrad(
-                model.parameters(), lr = self.train_dict['lr'], weight_decay = self.train_dict['wd']
+                model.parameters(),
+                lr = self.train_dict['lr'],
+                weight_decay = self.train_dict['wd']
             )
         elif self.train_dict['optimizer_index_selection'] == 3:
             optimizer = torch.optim.SGD(
-                model.parameters(), lr = self.train_dict['lr'], weight_decay = self.train_dict['wd']
+                model.parameters(),
+                lr = self.train_dict['lr'],
+                weight_decay = self.train_dict['wd']
             )
         else:
             raise ValueError(
@@ -106,9 +142,13 @@ class dictConfiguration():
         self
     ):
         if self.train_dict['loss_index_selection'] == 0:
-            loss_fun = torch.nn.L1Loss(reduction = self.train_dict['loss_reduction'])
+            loss_fun = torch.nn.L1Loss(
+                reduction = self.train_dict['loss_reduction']
+            )
         elif self.train_dict['loss_index_selection'] == 1:
-            loss_fun = torch.nn.MSELoss(reduction = self.train_dict['loss_reduction'])
+            loss_fun = torch.nn.MSELoss(
+                reduction = self.train_dict['loss_reduction']
+            )
         else:
             raise ValueError(
                 'Non Valid Index for Loss Function\n\
@@ -123,7 +163,9 @@ class dictConfiguration():
     ):
         if self.train_dict['sched_index_selection'] == 0:
             scheduler = torch.optim.lr_scheduler.StepLR(
-                optimizer, step_size = self.train_dict['sched_step'], gamma = self.train_dict['sched_gamma']
+                optimizer,
+                step_size = self.train_dict['sched_step'],
+                gamma = self.train_dict['sched_gamma']
             )
         else:
             raise ValueError(

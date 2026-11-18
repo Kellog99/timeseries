@@ -1,8 +1,9 @@
 from timeseries.models.legacy_tft.model import *
 
 if __name__ == '__main__':
-    from timeseries.data_management.tft import dataloading
     from sklearn.preprocessing import StandardScaler
+
+    from timeseries.data_management.tft import dataloading
 
     bs = 8
     bs_test = 4
@@ -15,8 +16,10 @@ if __name__ == '__main__':
     scaler_type = StandardScaler()
     path_data = '/home/andrea/timeseries/data/edison/processed.pkl'
     train_dl, _, _, _ = dataloading(
-        batch_size = bs, batch_size_test = bs_test,
-        seq_len = seq_len, lag = lag,
+        batch_size = bs,
+        batch_size_test = bs_test,
+        seq_len = seq_len,
+        lag = lag,
         hour_learning = hour,
         hour_inference = hour_test,
         train_bool = train,
@@ -57,8 +60,15 @@ if __name__ == '__main__':
         device
     )
 
-    x, y = next(iter(train_dl))
+    x, y = next(
+        iter(
+            train_dl
+        )
+    )
     # x.shape = [8, 256, 6]
     # y.shape = [8, 256]
     categorical = x[:, :, 1:]
-    out = model(categorical, y)
+    out = model(
+        categorical,
+        y
+    )
